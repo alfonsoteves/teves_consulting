@@ -1,0 +1,26 @@
+{
+  "canisters": {
+    "teves_consulting_backend": {
+      "main": "src/teves_consulting_backend/main.mo",
+      "type": "motoko"
+    },
+    "teves_consulting_frontend": {
+      "dependencies": [
+        "teves_consulting_backend"
+      ],
+      "source": [
+        "src/teves_consulting_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "teves_consulting_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
