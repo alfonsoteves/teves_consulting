@@ -1,26 +1,21 @@
 {
   "canisters": {
-    "teves_consulting_backend": {
-      "main": "src/teves_consulting_backend/main.mo",
-      "type": "motoko"
-    },
     "teves_consulting_frontend": {
-      "dependencies": [
-        "teves_consulting_backend"
-      ],
-      "source": [
-        "src/teves_consulting_frontend/dist"
-      ],
       "type": "assets",
-      "workspace": "teves_consulting_frontend"
+      "source": ["src/teves_consulting_frontend"],
+      "http_domains": ["www.tevesconsulting.com"]
     }
   },
-  "defaults": {
-    "build": {
-      "args": "",
-      "packtool": ""
+  "networks": {
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    },
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
     }
   },
-  "output_env_file": ".env",
   "version": 1
 }
+
