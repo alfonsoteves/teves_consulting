@@ -19,7 +19,14 @@ target/
 # frontend code
 node_modules/
 dist/
+build/
 .svelte-kit/
 
 # environment variables
 .env
+
+# logs
+*.log
+
+# ICP
+canister_ids.json
