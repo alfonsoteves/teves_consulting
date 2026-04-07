@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Principios de Claridad — Teves Consulting</title>
 <meta name="description" content="Una filosofía práctica para una vida resiliente: claridad, resiliencia y habilidades prácticas a través de principios, entendimiento y práctica real."/>
+<meta content="Teves Consulting" name="author"/>
+<link href="https://www.tevesconsulting.com/es/principles.html" rel="canonical"/>
+
+<!-- Open Graph -->
+<meta content="article" property="og:type"/>
+<meta content="Principios de Claridad — Teves Consulting" property="og:title"/>
+<meta content="Una filosofía práctica para una vida resiliente: claridad, resiliencia y habilidades prácticas a través de principios, entendimiento y práctica real." property="og:description"/>
+<meta content="https://www.tevesconsulting.com/es/principles.html" property="og:url"/>
+<meta content="Teves Consulting" property="og:site_name"/>
+<meta content="https://www.tevesconsulting.com/assets/images/og-home.jpg" property="og:image"/>
+<meta content="Teves Consulting Principios de Claridad" property="og:image:alt"/>
+
+<!-- Twitter Card -->
+<meta content="summary_large_image" name="twitter:card"/>
+<meta content="Principios de Claridad — Teves Consulting" name="twitter:title"/>
+<meta content="Una filosofía práctica para una vida resiliente: claridad, resiliencia y habilidades prácticas a través de principios, entendimiento y práctica real." name="twitter:description"/>
+<meta content="https://www.tevesconsulting.com/assets/images/og-home.jpg" name="twitter:image"/>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -27,15 +44,16 @@ html { scroll-behavior: smooth; }
 </head>
 
 <body class="bg-white text-slate-800">
-
 <header class="border-b border-slate-200">
-<div class="mx-auto max-w-6xl px-4 py-6 flex justify-between">
-<a class="font-semibold" href="/es/">Teves Consulting</a>
-<nav class="hidden sm:flex gap-6 text-sm">
-<a href="/es/index.html">Inicio</a>
-<a href="/es/insights.html">Perspectivas</a>
-</nav>
-</div>
+  <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-between">
+    <a class="text-lg font-semibold tracking-tight" href="/es/">Teves Consulting</a>
+    <nav class="hidden sm:flex gap-6 text-sm">
+      <a class="hover:text-slate-600" href="/es/">Inicio</a>
+      <a class="hover:text-slate-600" href="/es/insights.html">Perspectivas</a>
+      <a class="hover:text-slate-600" href="/es/#about">Acerca de</a>
+      <a class="hover:text-slate-600" href="/es/#contact">Contacto</a>
+    </nav>
+  </div>
 </header>
 
 <main class="mx-auto max-w-3xl px-4 py-10">
@@ -131,10 +149,19 @@ Elige mejoras que aumenten la calidad y refuérzalas con suficiente redundancia 
 
 </article>
 </main>
-
-<footer class="py-10 border-t border-slate-200 text-center text-sm text-slate-500">
-© 2026 Teves Consulting LLC
+<footer class="py-10">
+  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>© <span id="year"></span> Teves Consulting LLC. Todos los derechos reservados.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-slate-700" href="/es/principles.html">Arriba</a>
+      <a class="hover:text-slate-700" href="/es/">Inicio</a>
+      <a class="hover:text-slate-700" href="/es/#contact">Contacto</a>
+    </div>
+  </div>
 </footer>
 
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
