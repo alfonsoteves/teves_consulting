@@ -14,13 +14,14 @@ Teves Consulting is a structured framework for maintaining clarity, stability, a
 ## Philosophy
 - Clarity over noise
 - Calm over reaction
+- Literacy before optimization
 - Practical next steps
 - Optionality over rigidity
 
 Clarity compounds. So does confusion.
 
 ## Status
-- Core Calm articles complete in English and Spanish
+- Core articles complete in English and Spanish
 - Ongoing translation of additional articles
 - Continuous refinement of structure and content
 
