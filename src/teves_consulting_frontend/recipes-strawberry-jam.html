@@ -53,8 +53,7 @@
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/">Home</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/#about">About</a>
-      <a class="hover:text-slate-600" href="/#contact">Contact</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
     </nav>
   </div>
 </header>
@@ -148,19 +147,18 @@
     <p class="mt-8"><a href="/food.html">← Back to Food</a></p>
   </article>
 </main>
-
-<footer class="border-t border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-600">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <p>© 2026 Teves Consulting. All rights reserved.</p>
-      <div class="flex gap-4">
-        <a class="hover:text-slate-800" href="/#about">About</a>
-        <a class="hover:text-slate-800" href="/#contact">Contact</a>
-        <a class="hover:text-slate-800" href="/insights.html">Insights</a>
-      </div>
+<footer class="py-10 border-t border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-slate-700" href="/about.html">About this site</a>
     </div>
   </div>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 
 </body>
 </html>

@@ -29,19 +29,20 @@
     gtag('js', new Date());
     gtag('config', 'G-WMZ9MD4EY4');
   </script>
-<style>
-html { scroll-behavior: smooth; }
-.tc-article h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 600; letter-spacing: -0.02em; }
-.tc-article h2 { margin-top: 2.5rem; font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; }
-.tc-article h3 { margin-top: 2rem; font-size: 1.25rem; font-weight: 600; }
-.tc-article p { margin-top: 1rem; color: rgb(30 41 59); line-height: 1.75; }
-.tc-article p.lead { margin-top: 1rem; color: rgb(71 85 105); font-size: 1.05rem; }
-.tc-article ul { margin-top: 1rem; padding-left: 1.25rem; }
-.tc-article li { margin-top: 0.5rem; }
-.tc-article hr { margin: 2.25rem 0; border-top: 1px solid rgb(226 232 240); }
-.tc-article a { text-decoration: underline; }
-.tc-callout { border: 1px solid rgb(226 232 240); border-radius: 1rem; padding: 1.1rem; background: rgb(248 250 252); margin-top: 1.5rem; }
-</style>
+  <style>
+    html { scroll-behavior: smooth; }
+    .tc-article h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 600; letter-spacing: -0.02em; }
+    .tc-article h2 { margin-top: 2.5rem; font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; }
+    .tc-article h3 { margin-top: 2rem; font-size: 1.25rem; font-weight: 600; }
+    .tc-article p { margin-top: 1rem; color: rgb(30 41 59); line-height: 1.75; }
+    .tc-article p.lead { margin-top: 1rem; color: rgb(71 85 105); font-size: 1.05rem; }
+    .tc-article ul { margin-top: 1rem; padding-left: 1.25rem; }
+    .tc-article li { margin-top: 0.5rem; }
+    .tc-article hr { margin: 2.25rem 0; border-top: 1px solid rgb(226 232 240); }
+    .tc-article a { text-decoration: underline; }
+    .tc-callout { border: 1px solid rgb(226 232 240); border-radius: 1rem; padding: 1.1rem; background: rgb(248 250 252); margin-top: 1.5rem; }
+    .tc-checklist li { margin-top: 0.6rem; }
+  </style>
 </head>
 <body class="bg-white text-slate-800">
 <header class="border-b border-slate-200">
@@ -50,8 +51,11 @@ html { scroll-behavior: smooth; }
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/">Home</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/#about">About</a>
-      <a class="hover:text-slate-600" href="/#contact">Contact</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
+      <span class="ml-4"></span> 
+      <a href="https://www.tevesconsulting.com/water-foundations.html" class="hover:underline">EN</a>
+         |
+      <a href="https://www.tevesconsulting.com/es/water-foundations.html" class="hover:underline">ES</a>
     </nav>
   </div>
 </header>
@@ -63,7 +67,9 @@ html { scroll-behavior: smooth; }
     <div class="mt-6 rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-white">
       <img src="/assets/images/water1.jpg" alt="Household water storage basics: containers, jugs, and a rain barrel" class="w-full h-72 object-cover" />
     </div>
-
+    <p class="lead">
+Water resilience is about reliability, not volume. This guide explains how to store, rotate, and treat water so your household can maintain safe supply under uncertainty without overbuilding or overcomplicating the system.
+</p>
     <div class="tc-callout">
   <div class="font-semibold">Key takeaways</div>
   <ul class="mt-3">
@@ -73,9 +79,12 @@ html { scroll-behavior: smooth; }
 <li>Keep a small grab‑and‑go subset so your plan survives real life.</li>
   </ul>
 </div>
+<hr/>
 
-    <p class="lead"><strong>Purpose:</strong> A clean baseline for safe household water: how much to store, how to store it, and what to do when taps don’t feel trustworthy.</p>
-
+<h2>Purpose</h2>
+<p>
+Establish a dependable water baseline that prioritizes safe storage, simple treatment, and easy rotation. The goal is to ensure consistent access to drinkable water using methods that remain practical under stress and easy to maintain over time.
+</p>
 <hr/>
 
 <h2 id="targets">How much water you need</h2>
@@ -152,18 +161,21 @@ html { scroll-behavior: smooth; }
 <p>Once your baseline is stable, move to the layered model in <a href="/water-practical.html">Water — Practical</a> for refill sources and mobility.</p>
 
 <p class="text-sm text-slate-500 mt-8">Educational content only. When in doubt, follow local public health guidance.</p>
-<p class="mt-10"><a href="/water.html" class="text-sm text-slate-700 hover:underline">← Back to Water</a></p>
+<p class="mt-8"><a href="/water.html">← Back to Water</a></p>
 
-  </article>
+</article>
 </main>
 <footer class="py-10 border-t border-slate-200">
   <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
     <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
     <div class="flex items-center gap-4">
-      <a class="hover:text-slate-700" href="/">Home</a>
-      <a class="hover:text-slate-700" href="/#contact">Contact</a>
+      <a class="hover:text-slate-700" href="/about.html">About this site</a>
     </div>
   </div>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>

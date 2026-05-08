@@ -54,9 +54,7 @@
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/">Home</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/food.html">Food</a>
-      <a class="hover:text-slate-600" href="/#about">About</a>
-      <a class="hover:text-slate-600" href="/#contact">Contact</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
     </nav>
   </div>
 </header>
@@ -87,7 +85,7 @@
 
 <h2>Purpose</h2>
 <p>A practical soup system that turns simple vegetables into a smooth, nourishing meal. Designed for flexibility, low waste, and consistent results.</p>
-
+<p>This includes simple variations (such as carrot-based soups) that follow the same structure while adjusting flavor and texture.</p>
 <h2>Servings</h2>
 <ul>
   <li>About 2–3 servings</li>
@@ -109,6 +107,19 @@
 
 <hr/>
 
+<h2>Carrot Cream Variation</h2>
+<p>A simple, reliable variation using carrots as the primary base. This version produces a naturally sweet, smooth soup with minimal ingredients.</p>
+<ul>
+  <li><strong>4–5 carrots</strong>, chopped</li>
+  <li><strong>1 yellow onion</strong> (optional but recommended)</li>
+  <li><strong>1–2 small potatoes</strong> (for structure)</li>
+  <li>Water (enough to cover, ~2–4 cups)</li>
+  <li>Milk (added after blending, to taste)</li>
+  <li>Salt, to taste</li>
+</ul>
+<p class="tc-muted">Optional: butter or olive oil for finishing.</p>
+<hr/>
+
 <h2>Method</h2>
 <ol>
   <li><strong>Build the base.</strong> Heat oil or butter. Add garlic/onion and cook briefly.</li>
@@ -118,8 +129,15 @@
   <li><strong>Blend.</strong> Blend until smooth.</li>
   <li><strong>Finish.</strong> Add salt after blending. Adjust texture and flavor.</li>
 </ol>
-
 <hr/>
+<h3>Carrot variation method notes</h3>
+<ul>
+  <li><strong>Start with onion:</strong> cook chopped onion in oil or butter for 5–7 minutes before adding carrots.</li>
+  <li><strong>Simmer until soft:</strong> carrots should be very soft before blending.</li>
+  <li><strong>Blend first, then add milk:</strong> add milk gradually to control texture.</li>
+</ul>
+
+
 
 <h2>Notes</h2>
 <ul>
@@ -152,18 +170,18 @@
 
 </article>
 </main>
-
-<footer class="border-t border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
-    <div class="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-      <div>© 2026 Teves Consulting</div>
-      <div class="flex gap-4">
-        <a class="hover:text-slate-600" href="/#about">About</a>
-        <a class="hover:text-slate-600" href="/#contact">Contact</a>
-      </div>
+<footer class="py-10 border-t border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-slate-700" href="/about.html">About this site</a>
     </div>
   </div>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 
 </body>
 </html>

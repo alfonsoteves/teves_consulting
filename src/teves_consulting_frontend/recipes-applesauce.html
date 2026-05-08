@@ -12,12 +12,12 @@
   <meta property="og:description" content="A simple, repeatable homemade applesauce method with clean ingredients, flexible storage, and family-friendly use across snacks and meals."/>
   <meta property="og:url" content="https://www.tevesconsulting.com/recipes-applesauce.html"/>
   <meta property="og:site_name" content="Teves Consulting"/>
-  <meta property="og:image" content="https://www.tevesconsulting.com/assets/images/recipes-applesauce.jpg"/>
+  <meta property="og:image" content="https://www.tevesconsulting.com/assets/images/recipes20.jpg"/>
 
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Whole Foods Recipes: Homemade Applesauce — Teves Consulting"/>
   <meta name="twitter:description" content="A simple, repeatable homemade applesauce method with clean ingredients, flexible storage, and family-friendly use across snacks and meals."/>
-  <meta name="twitter:image" content="https://www.tevesconsulting.com/assets/images/recipes-applesauce.jpg"/>
+  <meta name="twitter:image" content="https://www.tevesconsulting.com/assets/images/recipes20.jpg"/>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- GA4 -->
@@ -49,8 +49,7 @@ html { scroll-behavior: smooth; }
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/">Home</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/#about">About</a>
-      <a class="hover:text-slate-600" href="/#contact">Contact</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
     </nav>
   </div>
 </header>
@@ -60,7 +59,7 @@ html { scroll-behavior: smooth; }
 <p class="text-sm text-slate-500">Last updated: April 5, 2026</p>
 
 <div class="mt-6 rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-white">
-  <img alt="Homemade applesauce in a glass jar with sliced apples on a kitchen counter" class="w-full h-72 object-cover" src="assets/images/recipes-applesauce.jpg"/>
+  <img alt="Homemade applesauce in a glass jar with sliced apples on a kitchen counter" class="w-full h-72 object-cover" src="/assets/images/recipes20.jpg"/>
 </div>
 
 <p class="lead">Homemade applesauce is one of the simplest food-control systems you can build: a clean ingredient snack, a flexible side, and an easy family-friendly fallback that takes little effort to repeat.</p>
@@ -186,16 +185,17 @@ The goal is not to eliminate juice entirely, but to use it in a way that fits in
 <p class="mt-8"><a href="/food.html">← Back to Food</a></p>
 </article>
 </main>
-<footer class="border-t border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
-    <div class="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-      <div>© 2026 Teves Consulting</div>
-      <div class="flex gap-4">
-        <a class="hover:text-slate-600" href="/#about">About</a>
-        <a class="hover:text-slate-600" href="/#contact">Contact</a>
-      </div>
+<footer class="py-10 border-t border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-slate-700" href="/about.html">About this site</a>
     </div>
   </div>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>

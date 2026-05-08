@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Whole Foods Recipes: Quinoa (Simple Foundation Base) — Teves Consulting</title>
+  <title>Whole Foods Recipes: Quinoa — Simple Foundation Base — Teves Consulting</title>
   <meta name="description" content="A simple onion-garlic quinoa method that creates a flavorful, nutrient-dense base for bowls, vegetables, and leftover meats."/>
   <link rel="canonical" href="https://www.tevesconsulting.com/recipes-quinoa.html"/>
 
   <meta property="og:type" content="article"/>
-  <meta property="og:title" content="Whole Foods Recipes: Quinoa (Simple Foundation Base) — Teves Consulting"/>
+  <meta property="og:title" content="Whole Foods Recipes: Quinoa — Simple Foundation Base — Teves Consulting"/>
   <meta property="og:description" content="A simple onion-garlic quinoa method that creates a flavorful, nutrient-dense base for bowls, vegetables, and leftover meats."/>
   <meta property="og:url" content="https://www.tevesconsulting.com/recipes-quinoa.html"/>
   <meta property="og:site_name" content="Teves Consulting"/>
   <meta property="og:image" content="https://www.tevesconsulting.com/assets/images/recipes11.jpg"/>
 
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Whole Foods Recipes: Quinoa (Simple Foundation Base) — Teves Consulting"/>
+  <meta name="twitter:title" content="Whole Foods Recipes: Quinoa — Simple Foundation Base — Teves Consulting"/>
   <meta name="twitter:description" content="A simple onion-garlic quinoa method that creates a flavorful, nutrient-dense base for bowls, vegetables, and leftover meats."/>
   <meta name="twitter:image" content="https://www.tevesconsulting.com/assets/images/recipes11.jpg"/>
 
@@ -51,8 +51,7 @@
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/">Home</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/#about">About</a>
-      <a class="hover:text-slate-600" href="/#contact">Contact</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
     </nav>
   </div>
 </header>
@@ -60,7 +59,7 @@
 <main class="mx-auto max-w-3xl px-4 py-10 pb-20">
 <article class="tc-article">
 
-<h1><strong>Whole Foods Recipes: Quinoa (Simple Foundation Base)</strong></h1>
+<h1><strong>Whole Foods Recipes: Quinoa — Simple Foundation Base</strong></h1>
 <p class="text-sm text-slate-500">Last updated: March 2026</p>
 
 <div class="mt-6 rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-white">
@@ -138,18 +137,18 @@
 <p class="mt-8"><a href="/food.html">← Back to Food</a></p>
 </article>
 </main>
-
-<footer class="border-t border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
-    <div class="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-      <div>© 2026 Teves Consulting</div>
-      <div class="flex gap-4">
-        <a class="hover:text-slate-600" href="/#about">About</a>
-        <a class="hover:text-slate-600" href="/#contact">Contact</a>
-      </div>
+<footer class="py-10 border-t border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-slate-700" href="/about.html">About this site</a>
     </div>
   </div>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 
 </body>
 </html>
