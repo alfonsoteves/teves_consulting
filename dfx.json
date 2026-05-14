@@ -4,6 +4,10 @@
       "type": "assets",
       "source": ["src/teves_consulting_frontend"],
       "http_domains": ["www.tevesconsulting.com"]
+    },
+    "teves_consulting_backend": {
+      "type": "motoko",
+      "main": "src/teves_consulting_backend/main.mo"
     }
   },
   "networks": {
