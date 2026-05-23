@@ -3,23 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aionic Agent</title>
-  <!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-WMZ9MD4EY4');
-</script>
+  <title>Aionic Agent — Teves Consulting</title>
+
   <style>
+    html,
+    body {
+      min-height: 100%;
+    }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+      color: #1f2937;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .site-header,
+    .site-footer {
+      width: 100%;
+      border-color: #e5e7eb;
+    }
+
+    .site-header {
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .site-footer {
+      border-top: 1px solid #e5e7eb;
+      margin-top: auto;
+      padding: 0px 0;
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+
+    .header-inner,
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 25px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .header-links {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-size: 0.87rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 25px;
+      align-items: center;
+    }
+
+    .site-header a,
+    .site-footer a {
+      color: #1f2937;
+      text-decoration: none;
+    }
+
+    .site-header a:hover,
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .brand-link {
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .page-main {
+      width: 100%;
       max-width: 760px;
       margin: 40px auto;
       padding: 0 20px;
-      line-height: 1.5;
-      color: #1f2937;
+      box-sizing: border-box;
+      flex: 1;
     }
 
     h1 {
@@ -53,11 +122,6 @@ gtag('config', 'G-WMZ9MD4EY4');
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
     .answer {
       margin-top: 28px;
       padding: 18px;
@@ -67,30 +131,126 @@ gtag('config', 'G-WMZ9MD4EY4');
       white-space: pre-wrap;
     }
 
-    .feedback {
-      margin-top: 18px;
-      font-size: 0.9rem;
-      color: #6b7280;
+    @keyframes pulseT {
+      0% {
+        opacity: 0.35;
+        transform: scale(0.96);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+
+      100% {
+        opacity: 0.35;
+        transform: scale(0.96);
+      }
+    }
+    .thinking-logo-img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      animation: pulseT 1.1s infinite ease-in-out;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 1000;
+
+      width: 42px;
+      height: 42px;
+
+      border: 1px solid #d1d5db;
+      border-radius: 9999px;
+
+      background: white;
+      color: #111827;
+
+      cursor: pointer;
+      font-size: 1rem;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .feedback a {
-      color: #374151;
+    body.dark-mode {
+      background: #111315;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .site-header,
+    body.dark-mode .site-footer {
+      display: none;
+    }
+
+    body.dark-mode .page-main {
+      max-width: 720px;
+      margin-top: 80px;
+    }
+
+    body.dark-mode textarea {
+      background: #1a1d21;
+      color: #f3f4f6;
+      border: 1px solid #2c3138;
+    }
+
+    body.dark-mode .answer {
+      background: #1a1d21;
+      border: 1px solid #2c3138;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .subtitle {
+      color: #9ca3af;
+    }
+
+    body.dark-mode .theme-toggle {
+      background: #1f2937;
+      color: #f9fafb;
+      border: 1px solid #374151;
     }
   </style>
 </head>
 
 <body>
-  <h1>Aionic Agent</h1>
-  <p class="subtitle">Ask a practical question and get a clear, grounded answer.</p>
+<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
+  🌙
+</button>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand-link" href="/">Teves Consulting</a>
 
-  <textarea id="query" placeholder="Example: What foods should I always keep at home?"></textarea>
+    <div class="header-links">
+      <a href="https://www.tevesconsulting.com/agent.html">EN</a>
+      <span>|</span>
+      <a href="https://www.tevesconsulting.com/es/agent.html">ES</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+  <h1>Aionic Agent</h1>
+
+  <p class="subtitle">
+    Ask a practical question and get a clear, grounded answer.
+  </p>
+
+  <textarea
+    id="query"
+    placeholder="Example: What foods should I always keep at home?"
+  ></textarea>
+
   <br />
-  <button id="askButton" onclick="askAgent()">Ask</button>
+
+<button id="askButton" onclick="askAgent()">Ask</button>
 
   <div id="answer" class="answer" style="display:none;"></div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
-  <button onclick="sendFeedback('down')">👎 This needs work</button>
+<button onclick="sendFeedback('down')">👎 This needs work</button>
   </div>
 
 <script type="module">
@@ -124,11 +284,13 @@ gtag('config', 'G-WMZ9MD4EY4');
     const answerBox = document.getElementById("answer");
     const button = document.getElementById("askButton");
 
+    document.getElementById("feedback").style.display = "none";
+
     if (!query) return;
 
     button.disabled = true;
-    button.textContent = "Thinking...";
-    answerBox.style.display = "block";
+    button.innerHTML = '<img class="thinking-logo-img" src="/assets/images/t-logo-white.png" alt="Loading" />';
+    answerBox.style.display = "none";
     answerBox.textContent = "";
 
     try {
@@ -147,7 +309,7 @@ gtag('config', 'G-WMZ9MD4EY4');
           data.detail || "Request limit reached. Please try again later.";
         return;
       }
-
+      answerBox.style.display = "block";
       answerBox.textContent = data.answer || "No answer returned.";
       document.getElementById("feedback").style.display = "block";
 
@@ -155,9 +317,10 @@ gtag('config', 'G-WMZ9MD4EY4');
         query: query,
         answer: data.answer
       };
+
     } catch (err) {
       answerBox.textContent =
-        "The agent is waking up or temporarily unavailable. Please try again in a moment.";
+        "The agent is temporarily unavailable. Please try again in a moment.";
     } finally {
       button.disabled = false;
       button.textContent = "Ask";
@@ -179,6 +342,7 @@ gtag('config', 'G-WMZ9MD4EY4');
 
       document.getElementById("feedback").innerHTML =
         "Thanks — this helps improve the agent.";
+
     } catch (icpErr) {
       console.error("ICP feedback failed, falling back to Render", icpErr);
 
@@ -198,11 +362,54 @@ gtag('config', 'G-WMZ9MD4EY4');
 
         document.getElementById("feedback").innerHTML =
           "Thanks — this helps improve the agent.";
+
       } catch (renderErr) {
         console.error("Feedback failed", renderErr);
       }
     }
   };
+</script>
+  </main>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p>
+      © <span id="year"></span> Teves Consulting LLC. All rights reserved.
+    </p>
+
+    <div class="footer-links">
+      <a href="/about-aion.html">About Aion</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script>
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.body.classList.add("dark-mode");
+      document.getElementById("themeToggle").textContent = "☀️";
+    } else {
+      document.body.classList.remove("dark-mode");
+      document.getElementById("themeToggle").textContent = "🌙";
+    }
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.contains("dark-mode");
+
+    if (isDark) {
+      localStorage.setItem("aion-theme", "light");
+      applyTheme("light");
+    } else {
+      localStorage.setItem("aion-theme", "dark");
+      applyTheme("dark");
+    }
+  }
+
+  const savedTheme = localStorage.getItem("aion-theme") || "light";
+  applyTheme(savedTheme);
 </script>
 </body>
 </html>

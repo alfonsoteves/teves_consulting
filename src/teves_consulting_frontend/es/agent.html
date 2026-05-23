@@ -3,23 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agente Aionico</title>
-  <!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-WMZ9MD4EY4');
-</script>
+  <title>Agente Aionico — Teves Consulting</title>
+
   <style>
+    html,
+    body {
+      min-height: 100%;
+    }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+      color: #1f2937;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .site-header,
+    .site-footer {
+      width: 100%;
+      border-color: #e5e7eb;
+    }
+
+    .site-header {
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .site-footer {
+      border-top: 1px solid #e5e7eb;
+      margin-top: auto;
+      padding: 0px 0;
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+
+    .header-inner,
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 25px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .header-links {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-size: 0.87rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 25px;
+      align-items: center;
+    }
+
+    .site-header a,
+    .site-footer a {
+      color: #1f2937;
+      text-decoration: none;
+    }
+
+    .site-header a:hover,
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .brand-link {
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .page-main {
+      width: 100%;
       max-width: 760px;
       margin: 40px auto;
       padding: 0 20px;
-      line-height: 1.5;
-      color: #1f2937;
+      box-sizing: border-box;
+      flex: 1;
     }
 
     h1 {
@@ -53,11 +122,6 @@ gtag('config', 'G-WMZ9MD4EY4');
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
     .answer {
       margin-top: 28px;
       padding: 18px;
@@ -66,80 +130,220 @@ gtag('config', 'G-WMZ9MD4EY4');
       background: #f9fafb;
       white-space: pre-wrap;
     }
+    @keyframes pulseT {
+      0% {
+        opacity: 0.35;
+        transform: scale(0.96);
+      }
 
-    .feedback {
-      margin-top: 18px;
-      font-size: 0.9rem;
-      color: #6b7280;
+      50% {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+
+      100% {
+        opacity: 0.35;
+        transform: scale(0.96);
+      }
+    }
+    .thinking-logo-img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      animation: pulseT 1.1s infinite ease-in-out;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 1000;
+
+      width: 42px;
+      height: 42px;
+
+      border: 1px solid #d1d5db;
+      border-radius: 9999px;
+
+      background: white;
+      color: #111827;
+
+      cursor: pointer;
+      font-size: 1rem;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .feedback a {
-      color: #374151;
+    body.dark-mode {
+      background: #111315;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .site-header,
+    body.dark-mode .site-footer {
+      display: none;
+    }
+
+    body.dark-mode .page-main {
+      max-width: 720px;
+      margin-top: 80px;
+    }
+
+    body.dark-mode textarea {
+      background: #1a1d21;
+      color: #f3f4f6;
+      border: 1px solid #2c3138;
+    }
+
+    body.dark-mode .answer {
+      background: #1a1d21;
+      border: 1px solid #2c3138;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .subtitle {
+      color: #9ca3af;
+    }
+
+    body.dark-mode .theme-toggle {
+      background: #1f2937;
+      color: #f9fafb;
+      border: 1px solid #374151;
     }
   </style>
 </head>
 
 <body>
-  <h1>Agente Aionico</h1>
-  <p class="subtitle">Haz preguntas prácticas para tener una conversación clara y fundamentada.</p>
+<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
+  🌙
+</button>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand-link" href="/es/">Teves Consulting</a>
 
-  <textarea id="query" placeholder="Ejemplo: Que alimentos debo tener en casa?"></textarea>
+    <div class="header-links">
+      <a href="https://www.tevesconsulting.com/agent.html">EN</a>
+      <span>|</span>
+      <a href="https://www.tevesconsulting.com/es/agent.html">ES</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+  <h1>Agente Aionico</h1>
+
+  <p class="subtitle">
+    Haz preguntas prácticas para tener una conversación clara y fundamentada.
+  </p>
+
+  <textarea
+    id="query"
+    placeholder="Ejemplo: Que alimentos debo tener en casa?"
+  ></textarea>
+
   <br />
-  <button id="askButton" onclick="askAgent()">Pregunta</button>
+
+<button id="askButton" onclick="askAgent()">Pregunta</button>
 
   <div id="answer" class="answer" style="display:none;"></div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
-  <button onclick="sendFeedback('down')">👎 La respuesta necesita trabajo</button>
+<button onclick="sendFeedback('down')">👎 La respuesta necesita trabajo</button>
   </div>
 
-  <script>
-    async function askAgent() {
-      const query = document.getElementById("query").value.trim();
-      const answerBox = document.getElementById("answer");
-      const button = document.getElementById("askButton");
+ <script type="module">
+  import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
+  import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
 
-      if (!query) return;
+  const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
 
-      button.disabled = true;
-      button.textContent = "Pensando...";
-      answerBox.style.display = "block";
-      answerBox.textContent = "";
+  const idlFactory = ({ IDL }) => {
+    return IDL.Service({
+      addFeedback: IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
+        []
+      ),
+      getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
+    });
+  };
 
-      try {
-        const response = await fetch("https://aionic-agent-api.onrender.com/ask", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ query })
-        });
+  const agent = new HttpAgent({
+    host: "https://ic0.app",
+  });
 
-        const data = await response.json();
+  const feedbackActor = Actor.createActor(idlFactory, {
+    agent,
+    canisterId: BACKEND_CANISTER_ID,
+  });
 
-        answerBox.style.display = "block";
+  window.askAgent = async function askAgent() {
+    const query = document.getElementById("query").value.trim();
+    const answerBox = document.getElementById("answer");
+    const button = document.getElementById("askButton");
 
-        if (!response.ok) {
-          answerBox.textContent =
-            data.detail || "Request limit reached. Please try again later.";
-          return;
-        }        
-        answerBox.textContent = data.answer || "No answer returned.";
-        document.getElementById("feedback").style.display = "block";
-        // store context for feedback
-        window.lastInteraction = {
-          query: query,
-          answer: data.answer
-        };
-      } catch (err) {
-        answerBox.textContent = "The agent is waking up or temporarily unavailable. Please try again in a moment.";
-      } finally {
-        button.disabled = false;
-        button.textContent = "Pregunta";
+    document.getElementById("feedback").style.display = "none";
+    
+    if (!query) return;
+
+    button.disabled = true;
+    button.innerHTML = '<img class="thinking-logo-img" src="/assets/images/t-logo-white.png" alt="Loading" />';
+    answerBox.style.display = "none";
+    answerBox.textContent = "";
+
+    try {
+      const response = await fetch("https://aionic-agent-api.onrender.com/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        answerBox.textContent =
+          data.detail || "Límite de solicitudes alcanzado. Inténtalo nuevamente más tarde.";
+        return;
       }
+      answerBox.style.display = "block";
+      answerBox.textContent = data.answer || "No se recibió respuesta.";
+      document.getElementById("feedback").style.display = "block";
+
+      window.lastInteraction = {
+        query: query,
+        answer: data.answer
+      };
+
+    } catch (err) {
+      answerBox.textContent =
+        "El agente está temporalmente no disponible. Inténtalo nuevamente en un momento.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Pregunta";
     }
-    async function sendFeedback(type) {
-      if (!window.lastInteraction) return;
+  };
+
+  window.sendFeedback = async function sendFeedback(type) {
+    if (!window.lastInteraction) return;
+
+    const timestamp = new Date().toISOString();
+
+    try {
+      await feedbackActor.addFeedback(
+        type,
+        window.lastInteraction.query,
+        window.lastInteraction.answer,
+        timestamp
+      );
+
+      document.getElementById("feedback").innerHTML =
+        "Gracias — esto ayuda a mejorar el agente.";
+
+    } catch (icpErr) {
+      console.error("Falló feedback ICP, usando Render como respaldo", icpErr);
 
       try {
         await fetch("https://aionic-agent-api.onrender.com/feedback", {
@@ -151,16 +355,60 @@ gtag('config', 'G-WMZ9MD4EY4');
             rating: type,
             query: window.lastInteraction.query,
             answer: window.lastInteraction.answer,
-            timestamp: new Date().toISOString()
+            timestamp: timestamp
           })
         });
 
         document.getElementById("feedback").innerHTML =
           "Gracias — esto ayuda a mejorar el agente.";
-      } catch (err) {
-        console.error("Feedback failed", err);
+
+      } catch (renderErr) {
+        console.error("Falló feedback", renderErr);
       }
     }
-  </script>
+  };
+</script>
+  </main>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p>
+      © <span id="year"></span> Teves Consulting LLC. Todos los derechos reservados.
+    </p>
+
+    <div class="footer-links">
+      <a href="/es/about-aion.html">Acerca de Aion</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script>
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.body.classList.add("dark-mode");
+      document.getElementById("themeToggle").textContent = "☀️";
+    } else {
+      document.body.classList.remove("dark-mode");
+      document.getElementById("themeToggle").textContent = "🌙";
+    }
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.contains("dark-mode");
+
+    if (isDark) {
+      localStorage.setItem("aion-theme", "light");
+      applyTheme("light");
+    } else {
+      localStorage.setItem("aion-theme", "dark");
+      applyTheme("dark");
+    }
+  }
+
+  const savedTheme = localStorage.getItem("aion-theme") || "light";
+  applyTheme(savedTheme);
+</script>
 </body>
 </html>
