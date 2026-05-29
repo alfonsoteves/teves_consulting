@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aionic Agent — Teves Consulting</title>
-
+  <!-- GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
+  <script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WMZ9MD4EY4');
+  </script>
   <style>
     html,
     body {
@@ -103,7 +110,7 @@
 
     textarea {
       width: 100%;
-      min-height: 120px;
+      min-height: 90px;
       padding: 12px;
       font-size: 1rem;
       border: 1px solid #d1d5db;
@@ -111,6 +118,18 @@
       box-sizing: border-box;
     }
 
+    .composer {
+      margin-top: 24px;
+    }
+
+    .composer textarea {
+      display: block;
+    }
+
+    .composer button {
+      margin-top: 12px;
+    }
+    
     button {
       margin-top: 12px;
       padding: 10px 18px;
@@ -131,6 +150,40 @@
       white-space: pre-wrap;
     }
 
+    .conversation {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      padding: 14px 16px;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      max-width: 85%;
+      background: #111827;
+      color: white;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      max-width: 100%;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #1f2937;
+    }
+
+    body.dark-mode .message.assistant {
+      background: #1a1d21;
+      border: 1px solid #2c3138;
+      color: #f3f4f6;
+    }
     @keyframes pulseT {
       0% {
         opacity: 0.35;
@@ -153,35 +206,64 @@
       object-fit: contain;
       animation: pulseT 1.1s infinite ease-in-out;
     }
+
     .theme-toggle {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      z-index: 1000;
-
-      width: 42px;
-      height: 42px;
-
-      border: 1px solid #d1d5db;
-      border-radius: 9999px;
-
-      background: white;
-      color: #111827;
-
+      margin: 0;
+      padding: 0;
+      width: auto;
+      height: auto;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: #1f2937;
       cursor: pointer;
-      font-size: 1rem;
-
-      display: flex;
+      font-size: 0.95rem;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
+    .auth-button {
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #1f2937;
+      cursor: pointer;
+      font-size: 0.87rem;
+    }
+
+    .auth-button:hover {
+      text-decoration: underline;
+    }
+
+    body.dark-mode .auth-button {
+      display: none;
+}
     body.dark-mode {
       background: #111315;
       color: #f3f4f6;
     }
 
-    body.dark-mode .site-header,
+    body.dark-mode .site-header {
+      border-bottom: none;
+    }
+
+    body.dark-mode .site-header a,
+    body.dark-mode .header-links span {
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .brand-link,
+    body.dark-mode .header-links a,
+    body.dark-mode .header-links span {
+      display: none;
+    }
+
+    body.dark-mode .header-inner {
+      justify-content: flex-end;
+    }
+
     body.dark-mode .site-footer {
       display: none;
     }
@@ -208,25 +290,29 @@
     }
 
     body.dark-mode .theme-toggle {
-      background: #1f2937;
+      background: transparent;
       color: #f9fafb;
-      border: 1px solid #374151;
+      border: none;
     }
   </style>
 </head>
 
 <body>
-<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
-  🌙
-</button>
 <header class="site-header">
   <div class="header-inner">
     <a class="brand-link" href="/">Teves Consulting</a>
-
     <div class="header-links">
       <a href="https://www.tevesconsulting.com/agent.html">EN</a>
       <span>|</span>
       <a href="https://www.tevesconsulting.com/es/agent.html">ES</a>
+      <span>|</span>
+      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        🌙
+      </button>
+      <span>|</span>
+      <button id="authButton" class="auth-button" onclick="handleAuth()">
+        Sign In
+      </button>
     </div>
   </div>
 </header>
@@ -237,17 +323,16 @@
   <p class="subtitle">
     Ask a practical question and get a clear, grounded answer.
   </p>
+  <div id="conversation" class="conversation"></div>
 
-  <textarea
-    id="query"
-    placeholder="Example: What foods should I always keep at home?"
-  ></textarea>
+  <div class="composer">
+    <textarea
+      id="query"
+      placeholder="Example: What foods should I always keep at home?"
+    ></textarea>
 
-  <br />
-
-<button id="askButton" onclick="askAgent()">Ask</button>
-
-  <div id="answer" class="answer" style="display:none;"></div>
+    <button id="askButton" onclick="askAgent()">Ask</button>
+  </div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
 <button onclick="sendFeedback('down')">👎 This needs work</button>
@@ -256,9 +341,20 @@
 <script type="module">
   import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
   import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
+  import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
 
   const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
-
+  
+  let authClient = null;
+  let isAuthenticated = false;
+  let identity = null;
+  let sessionSaved = false;
+  let inactivityTimer = null;
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000;
+  
+  window.messages = [];
+  window.continuityContext = [];
+  
   const idlFactory = ({ IDL }) => {
     return IDL.Service({
       addFeedback: IDL.Func(
@@ -267,6 +363,26 @@
         []
       ),
       getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
+      whoami: IDL.Func([], [IDL.Text], []),
+      storeSummary: IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Bool],
+        [IDL.Nat],
+        []
+      ),
+      getMyRecentSummaries: IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(IDL.Record({
+          id: IDL.Nat,
+          owner: IDL.Principal,
+          createdAt: IDL.Int,
+          title: IDL.Text,
+          summary: IDL.Text,
+          tags: IDL.Vec(IDL.Text),
+          milestone: IDL.Bool,
+        }))],
+        ["query"]
+      ),
+      deleteAllMySummaries: IDL.Func([], [IDL.Bool], []),
     });
   };
 
@@ -274,14 +390,323 @@
     host: "https://ic0.app",
   });
 
-  const feedbackActor = Actor.createActor(idlFactory, {
+  window.feedbackActor = Actor.createActor(idlFactory, {
     agent,
     canisterId: BACKEND_CANISTER_ID,
   });
 
-  window.askAgent = async function askAgent() {
+  async function initAuth() {
+    authClient = await AuthClient.create();
+
+    isAuthenticated = await authClient.isAuthenticated();
+
+    if (isAuthenticated) {
+      identity = authClient.getIdentity();
+    }
+
+    updateAuthUI();
+  }
+
+  async function createAuthenticatedActor() {
+    const authenticatedAgent = new HttpAgent({
+      identity,
+      host: "https://ic0.app",
+    });
+
+    feedbackActor = Actor.createActor(idlFactory, {
+      agent: authenticatedAgent,
+      canisterId: BACKEND_CANISTER_ID,
+    });
+
+    try {
+      const principal = await feedbackActor.whoami();
+      console.log("Authenticated principal:", principal);
+    } catch (err) {
+      console.error("whoami failed:", err);
+    }
+  }
+
+  function updateAuthUI() {
+    const authButton = document.getElementById("authButton");
+    
+    if (!authButton || !authStatus) return;
+
+    if (isAuthenticated) {
+      authButton.textContent = "Logout";
+    } else {
+      authButton.textContent = "Sign In";
+    }
+  }
+
+  window.handleAuth = async function handleAuth() {
+    if (!authClient) {
+      authClient = await AuthClient.create();
+    }
+
+    if (isAuthenticated) {
+      await saveCurrentSession({ refreshContinuity: false });
+
+      await authClient.logout();
+      isAuthenticated = false;
+      identity = null;
+      sessionSaved = false;
+
+      feedbackActor = Actor.createActor(idlFactory, {
+        agent,
+        canisterId: BACKEND_CANISTER_ID,
+      });
+
+      updateAuthUI();
+      return;
+    }
+
+    await authClient.login({
+      identityProvider: "https://identity.ic0.app",
+      onSuccess: async () => {
+        isAuthenticated = true;
+        identity = authClient.getIdentity();
+
+        updateAuthUI();
+
+        await createAuthenticatedActor();
+        await loadContinuityContext();
+      },
+    });
+  };
+    function selectRelevantContinuity(query, contextItems) {
+      if (!contextItems || contextItems.length === 0) {
+        return [];
+      }
+
+      const queryWords = query
+        .toLowerCase()
+        .split(/\W+/)
+        .filter(word =>
+          word.length > 3 &&
+          ![
+            "should", "would", "could", "about", "there", "their",
+            "today", "regularly", "simple", "question", "questions",
+            "what", "when", "where", "which", "your", "you"
+          ].includes(word)
+        );
+
+      const scored = contextItems.map(item => {
+        const searchableText = [
+          item.title || "",
+          item.summary || "",
+          ...(item.tags || [])
+        ].join(" ").toLowerCase();
+
+        let score = 0;
+
+        queryWords.forEach(word => {
+          if (searchableText.includes(word)) {
+            score += 1;
+          }
+        });
+
+        if (item.milestone) {
+          score += 4;
+        }
+        if (item.createdAt) {
+          score += 0.5;
+        }
+        return {
+          item,
+          score
+        };
+      });
+
+      const selected = scored
+        .filter(entry =>
+          entry.score >= 2 &&
+          entry.score > (entry.item.milestone ? 4 : 0)
+        )
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2)
+        .map(entry => entry.item);
+
+      if (selected.length === 0) {
+        return scored
+          .filter(entry =>
+            entry.score > 0 &&
+            entry.score > (entry.item.milestone ? 4 : 0)
+          )
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 1)
+          .map(entry => entry.item);
+      }
+
+return selected;
+
+    }
+   
+    function resetInactivityTimer() {
+
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+    }
+
+    inactivityTimer = setTimeout(async () => {
+
+      console.log("Inactivity timeout reached. Saving session.");
+
+      await saveCurrentSession({
+        refreshContinuity: true
+      });
+
+    }, INACTIVITY_TIMEOUT);
+  }   
+   
+    initAuth();
+
+    function appendMessage(role, text) {
+      const conversation = document.getElementById("conversation");
+
+      const message = document.createElement("div");
+      message.className = `message ${role}`;
+      message.textContent = text;
+
+      conversation.appendChild(message);
+
+      message.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+
+      window.messages.push({
+        role,
+        text,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    function generateSessionSummary() {
+
+      const userMessages = window.messages
+        .filter(m => m.role === "user")
+        .map(m => m.text);
+
+      const assistantMessages = window.messages
+        .filter(m => m.role === "assistant")
+        .map(m => m.text);
+
+      const recentUserTopics = userMessages.slice(-5).join(" ");
+      const recentGuidance = assistantMessages.slice(-3).join(" ");
+
+      const summary = `
+    Session focus:
+    Discussion centered on ${recentUserTopics.slice(0, 180)}.
+
+    Key user questions:
+    ${userMessages.slice(-3).map(q => "- " + q).join("\n")}
+
+    Key Aion guidance:
+    ${assistantMessages.slice(-2).map(a => "- " + a.slice(0, 220)).join("\n")}
+
+    Continuity notes:
+    Session maintained continuity-oriented discussion and preserved conversational state successfully.
+      `.trim();
+
+      let tags = ["continuity"];
+
+      if (recentUserTopics.toLowerCase().includes("phase")) {
+        tags.push("phase2");
+      }
+
+      if (recentUserTopics.toLowerCase().includes("memory")) {
+        tags.push("memory");
+      }
+
+      if (recentUserTopics.toLowerCase().includes("interview")) {
+        tags.push("career");
+      }
+
+      return {
+        title: `Session ${new Date().toLocaleDateString()}`,
+        summary,
+        tags,
+        milestone: recentUserTopics.toLowerCase().includes("continuity"),
+      };
+    }
+
+   window.saveCurrentSession = async function saveCurrentSession(options = {}) {
+      if (!isAuthenticated) {
+        console.warn("Not authenticated. Session summary was not saved.");
+        return;
+      }
+
+      if (sessionSaved) {
+        console.warn("Session already saved.");
+        return;
+      }
+
+      if (!window.messages || window.messages.length < 4) {
+        console.warn("Not enough conversation to summarize.");
+        return;
+      }
+
+      let session = generateSessionSummary();
+
+      try {
+        const response = await fetch("https://aionic-agent-api.onrender.com/summarize-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messages: window.messages
+          })
+        });
+
+        if (response.ok) {
+          session = await response.json();
+          console.log("Backend summary generated:", session);
+        } else {
+          console.warn("Backend summary failed, using frontend fallback.");
+        }
+
+      } catch (err) {
+        console.warn("Backend summary unavailable, using frontend fallback.", err);
+      }
+
+      try {
+        const id = await feedbackActor.storeSummary(
+          session.title,
+          session.summary,
+          session.tags,
+          session.milestone
+        );
+
+        sessionSaved = true;
+        window.messages = [];
+
+        if (inactivityTimer) {
+          clearTimeout(inactivityTimer);
+          inactivityTimer = null;
+        }
+
+        if (options.refreshContinuity) {
+          await loadContinuityContext();
+        }
+
+        console.log("Session summary saved:", {
+          id,
+          ...session,
+        });
+
+      } catch (err) {
+        console.error("Failed to save session summary:", err);
+      }
+    };
+
+    window.askAgent = async function askAgent() {
     const query = document.getElementById("query").value.trim();
-    const answerBox = document.getElementById("answer");
+    const conversation = document.getElementById("conversation");
     const button = document.getElementById("askButton");
 
     document.getElementById("feedback").style.display = "none";
@@ -290,8 +715,18 @@
 
     button.disabled = true;
     button.innerHTML = '<img class="thinking-logo-img" src="/assets/images/t-logo-white.png" alt="Loading" />';
-    answerBox.style.display = "none";
-    answerBox.textContent = "";
+    
+    if (sessionSaved) {
+      sessionSaved = false;
+      window.messages = [];
+    }
+    
+    appendMessage("user", query);
+    resetInactivityTimer();
+
+    const queryInput = document.getElementById("query");
+    queryInput.value = "";
+    queryInput.placeholder = "";
 
     try {
       const response = await fetch("https://aionic-agent-api.onrender.com/ask", {
@@ -299,18 +734,22 @@
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({
+          query,
+          continuityContext: selectRelevantContinuity(
+            query,
+            window.continuityContext || []
+          )
+        })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        answerBox.textContent =
-          data.detail || "Request limit reached. Please try again later.";
-        return;
+        appendMessage("assistant", data.detail || "Request limit reached. Please try again later.");
+        return;        
       }
-      answerBox.style.display = "block";
-      answerBox.textContent = data.answer || "No answer returned.";
+      appendMessage("assistant", data.answer || "No answer returned.");
       document.getElementById("feedback").style.display = "block";
 
       window.lastInteraction = {
@@ -319,8 +758,7 @@
       };
 
     } catch (err) {
-      answerBox.textContent =
-        "The agent is temporarily unavailable. Please try again in a moment.";
+      appendMessage("assistant", "The agent is temporarily unavailable. Please try again in a moment.");      
     } finally {
       button.disabled = false;
       button.textContent = "Ask";
@@ -368,8 +806,35 @@
       }
     }
   };
+
+  window.loadContinuityContext = async function loadContinuityContext() {
+    if (!isAuthenticated) {
+      console.warn("Not authenticated. Continuity context not loaded.");
+      return [];
+    }
+
+    try {
+      const summaries = await feedbackActor.getMyRecentSummaries(5);
+
+      window.continuityContext = summaries.map((s) => ({
+        title: s.title,
+        summary: s.summary,
+        tags: s.tags,
+        milestone: s.milestone,
+        createdAt: s.createdAt.toString(),
+      }));
+
+      console.log("Continuity context loaded:", window.continuityContext);
+
+      return window.continuityContext;
+    } catch (err) {
+      console.error("Failed to load continuity context:", err);
+      return [];
+    }
+  };
+
 </script>
-  </main>
+</main>
 <footer class="site-footer">
   <div class="footer-inner">
     <p>
