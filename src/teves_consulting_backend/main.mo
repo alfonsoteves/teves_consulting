@@ -21,6 +21,7 @@ persistent actor {
     createdAt : Int;
     title : Text;
     summary : Text;
+    keyDecisions : [Text];
     tags : [Text];
     milestone : Bool;
   };
@@ -83,6 +84,7 @@ persistent actor {
   public shared(msg) func storeSummary(
     title : Text,
     summary : Text,
+    keyDecisions : [Text],
     tags : [Text],
     milestone : Bool
   ) : async Nat {
@@ -94,6 +96,7 @@ persistent actor {
       createdAt = Time.now();
       title = title;
       summary = summary;
+      keyDecisions = keyDecisions;
       tags = tags;
       milestone = milestone;
     };
@@ -126,6 +129,32 @@ persistent actor {
     }
   };
 
+  public shared query(msg) func getMyAllSummaries() : async [MemorySummary] {
+    Array.filter<MemorySummary>(
+      memorySummaries,
+      func(entry : MemorySummary) : Bool {
+        entry.owner == msg.caller
+      }
+    )
+  };
+
+    public shared(msg) func deleteSummaryById(id : Nat) : async Bool {
+
+    let before = memorySummaries.size();
+
+    memorySummaries := Array.filter<MemorySummary>(
+      memorySummaries,
+      func(entry : MemorySummary) : Bool {
+        not (
+          entry.owner == msg.caller
+          and entry.id == id
+        )
+      }
+    );
+
+    memorySummaries.size() < before
+  };
+  
   public shared(msg) func deleteAllMySummaries() : async Bool {
     memorySummaries := Array.filter<MemorySummary>(
       memorySummaries,

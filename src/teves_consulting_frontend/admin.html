@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teves Consulting Admin</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #1f2937;
+      line-height: 1.5;
+    }
+
+    button {
+      margin: 8px 8px 8px 0;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #111827;
+      color: white;
+      cursor: pointer;
+    }
+
+    .memory-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+      background: #f9fafb;
+    }
+
+    .meta {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      font-family: inherit;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Teves Consulting Admin</h1>
+  <p>Private memory tools for Aion continuity testing.</p>
+
+  <button id="authButton" onclick="handleAuth()">Sign In</button>
+  <button onclick="loadMemories()">Load Memories</button>
+
+  <div id="memoryList"></div>
+
+  <script type="module">
+    import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
+    import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
+    import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
+
+    const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
+
+    let authClient = null;
+    let isAuthenticated = false;
+    let identity = null;
+
+    const idlFactory = ({ IDL }) => {
+      return IDL.Service({
+        whoami: IDL.Func([], [IDL.Text], []),
+
+        getMyAllSummaries: IDL.Func(
+          [],
+          [IDL.Vec(IDL.Record({
+            id: IDL.Nat,
+            owner: IDL.Principal,
+            createdAt: IDL.Int,
+            title: IDL.Text,
+            summary: IDL.Text,
+            tags: IDL.Vec(IDL.Text),
+            milestone: IDL.Bool,
+          }))],
+          ["query"]
+        ),
+
+        deleteSummaryById: IDL.Func([IDL.Nat], [IDL.Bool], []),
+      });
+    };
+
+    const agent = new HttpAgent({
+      host: "https://ic0.app",
+    });
+
+    window.adminActor = Actor.createActor(idlFactory, {
+      agent,
+      canisterId: BACKEND_CANISTER_ID,
+    });
+
+    async function initAuth() {
+      authClient = await AuthClient.create();
+      isAuthenticated = await authClient.isAuthenticated();
+
+      if (isAuthenticated) {
+        identity = authClient.getIdentity();
+        await createAuthenticatedActor();
+      }
+
+      updateAuthUI();
+    }
+
+    async function createAuthenticatedActor() {
+      const authenticatedAgent = new HttpAgent({
+        identity,
+        host: "https://ic0.app",
+      });
+
+      window.adminActor = Actor.createActor(idlFactory, {
+        agent: authenticatedAgent,
+        canisterId: BACKEND_CANISTER_ID,
+      });
+
+      const principal = await window.adminActor.whoami();
+      console.log("Authenticated principal:", principal);
+    }
+
+    function updateAuthUI() {
+      const authButton = document.getElementById("authButton");
+      authButton.textContent = isAuthenticated ? "Logout" : "Sign In";
+    }
+
+    window.handleAuth = async function handleAuth() {
+      if (!authClient) {
+        authClient = await AuthClient.create();
+      }
+
+      if (isAuthenticated) {
+        await authClient.logout();
+        isAuthenticated = false;
+        identity = null;
+
+        window.adminActor = Actor.createActor(idlFactory, {
+          agent,
+          canisterId: BACKEND_CANISTER_ID,
+        });
+
+        updateAuthUI();
+        document.getElementById("memoryList").innerHTML = "";
+        return;
+      }
+
+      await authClient.login({
+        identityProvider: "https://identity.ic0.app",
+        onSuccess: async () => {
+          isAuthenticated = true;
+          identity = authClient.getIdentity();
+          await createAuthenticatedActor();
+          updateAuthUI();
+          await loadMemories();
+        },
+      });
+    };
+
+    window.loadMemories = async function loadMemories() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const memories = await window.adminActor.getMyAllSummaries();
+
+      const list = document.getElementById("memoryList");
+      list.innerHTML = "";
+
+      memories
+        .slice()
+        .reverse()
+        .forEach((m) => {
+          const card = document.createElement("div");
+          card.className = "memory-card";
+
+          card.innerHTML = `
+            <h3>#${m.id.toString()} — ${escapeHtml(m.title)}</h3>
+            <p class="meta">
+              Milestone: ${m.milestone ? "true" : "false"} |
+              Tags: ${m.tags.join(", ")} |
+              Created: ${m.createdAt.toString()}
+            </p>
+            <pre>${escapeHtml(m.summary)}</pre>
+            <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
+          `;
+
+          list.appendChild(card);
+        });
+    };
+
+    window.deleteMemory = async function deleteMemory(id) {
+      if (!confirm(`Delete memory #${id}?`)) return;
+
+      const ok = await window.adminActor.deleteSummaryById(BigInt(id));
+
+      if (ok) {
+        await loadMemories();
+      } else {
+        alert("Delete failed or memory not found.");
+      }
+    };
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    initAuth();
+  </script>
+</body>
+</html>

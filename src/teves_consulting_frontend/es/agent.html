@@ -366,7 +366,7 @@
       getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
       whoami: IDL.Func([], [IDL.Text], []),
       storeSummary: IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Bool],
+        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Vec(IDL.Text), IDL.Bool],
         [IDL.Nat],
         []
       ),
@@ -378,6 +378,7 @@
           createdAt: IDL.Int,
           title: IDL.Text,
           summary: IDL.Text,
+          keyDecisions: IDL.Vec(IDL.Text),
           tags: IDL.Vec(IDL.Text),
           milestone: IDL.Bool,
         }))],
@@ -414,13 +415,13 @@
       host: "https://ic0.app",
     });
 
-    feedbackActor = Actor.createActor(idlFactory, {
+    window.feedbackActor = Actor.createActor(idlFactory, {
       agent: authenticatedAgent,
       canisterId: BACKEND_CANISTER_ID,
     });
 
     try {
-      const principal = await feedbackActor.whoami();
+      const principal = await window.feedbackActor.whoami();
       console.log("Authenticated principal:", principal);
     } catch (err) {
       console.error("whoami failed:", err);
@@ -429,8 +430,8 @@
 
   function updateAuthUI() {
     const authButton = document.getElementById("authButton");
-    
-    if (!authButton || !authStatus) return;
+
+    if (!authButton) return;
 
     if (isAuthenticated) {
       authButton.textContent = "Cerrar sesión";
@@ -452,7 +453,7 @@
       identity = null;
       sessionSaved = false;
 
-      feedbackActor = Actor.createActor(idlFactory, {
+      window.feedbackActor = Actor.createActor(idlFactory, {
         agent,
         canisterId: BACKEND_CANISTER_ID,
       });
@@ -507,9 +508,11 @@
         });
 
         if (item.milestone) {
-          score += 2;
+          score += 4;
         }
-
+        if (item.createdAt) {
+          score += 0.5;
+        }
         return {
           item,
           score
@@ -517,20 +520,26 @@
       });
 
       const selected = scored
-        .filter(entry => entry.score >= 2)
+        .filter(entry =>
+          entry.score >= 2 &&
+          entry.score > (entry.item.milestone ? 4 : 0)
+        )
         .sort((a, b) => b.score - a.score)
         .slice(0, 2)
         .map(entry => entry.item);
 
       if (selected.length === 0) {
         return scored
-          .filter(entry => entry.score > 0)
+          .filter(entry =>
+            entry.score > 0 &&
+            entry.score > (entry.item.milestone ? 4 : 0)
+          )
           .sort((a, b) => b.score - a.score)
           .slice(0, 1)
           .map(entry => entry.item);
       }
 
-      return selected;
+return selected;
 
     }
    
@@ -627,6 +636,193 @@
       };
     }
 
+    function buildLocalSessionSummary() {
+      const userMessages = window.messages.filter((m) => m.role === "user");
+      const assistantMessages = window.messages.filter((m) => m.role === "assistant");
+
+      const firstUserMessage = userMessages[0]?.text || "Aion session";
+
+      const combinedText = window.messages
+        .map((m) => `${m.role}: ${m.text}`)
+        .join("\n\n");
+
+      const lowerText = combinedText.toLowerCase();
+
+      let title =
+        firstUserMessage.length > 70
+          ? firstUserMessage.slice(0, 67) + "..."
+          : firstUserMessage;
+
+      if (lowerText.includes("steak") || lowerText.includes("chicken") || lowerText.includes("food") || lowerText.includes("eat")) {
+        title = "Nutrition and food decision";
+      } else if (lowerText.includes("tennis") || lowerText.includes("gym") || lowerText.includes("exercise")) {
+        title = "Exercise and recovery decision";
+      } else if (lowerText.includes("identity") || lowerText.includes("login")) {
+        title = "Identity and authentication architecture";
+      } else if (lowerText.includes("memory") || lowerText.includes("summary") || lowerText.includes("continuity")) {
+        title = "Aion continuity memory design";
+      } else if (lowerText.includes("privacy") || lowerText.includes("data")) {
+        title = "Privacy and continuity policy";
+      }
+
+      const tags = [];
+
+      tags.push("session");
+
+      if (lowerText.includes("steak") ||
+          lowerText.includes("chicken") ||
+          lowerText.includes("food") ||
+          lowerText.includes("eat")) {
+        tags.push("nutrition");
+        tags.push("food");
+      }
+
+      if (lowerText.includes("tennis") ||
+          lowerText.includes("gym") ||
+          lowerText.includes("exercise") ||
+          lowerText.includes("spinning")) {
+        tags.push("exercise");
+        tags.push("recovery");
+      }
+
+      if (lowerText.includes("identity") ||
+          lowerText.includes("login") ||
+          lowerText.includes("internet identity")) {
+        tags.push("identity");
+      }
+
+      if (lowerText.includes("memory") ||
+          lowerText.includes("summary") ||
+          lowerText.includes("continuity")) {
+        tags.push("memory");
+        tags.push("continuity");
+      }
+
+      if (lowerText.includes("privacy") ||
+          lowerText.includes("data")) {
+        tags.push("privacy");
+      }
+
+      if (lowerText.includes("icp") ||
+          lowerText.includes("motoko") ||
+          lowerText.includes("canister")) {
+        tags.push("icp");
+      }
+
+      if (lowerText.includes("architecture") ||
+          lowerText.includes("schema")) {
+        tags.push("architecture");
+      }
+
+      const keyDecisions = [];
+
+      if (lowerText.includes("key decisions")) {
+        keyDecisions.push("Use keyDecisions as a dedicated continuity memory field.");
+      }
+
+      if (lowerText.includes("open questions")) {
+        keyDecisions.push("Do not include openQuestions as a Version 1 memory field.");
+      }
+
+      if (lowerText.includes("createdat") || lowerText.includes("timestamp")) {
+        keyDecisions.push("Keep createdAt timestamp metadata for recency and retrieval ranking.");
+      }
+
+      if (lowerText.includes("summaries instead of raw") || lowerText.includes("structured summaries")) {
+        keyDecisions.push("Use structured summaries rather than raw transcript storage.");
+      }
+
+      if (lowerText.includes("use structured summaries") ||
+          lowerText.includes("structured summaries rather than raw") ||
+          lowerText.includes("not raw transcript")) {
+        keyDecisions.push("Use structured summaries rather than raw transcript storage.");
+      }
+
+      if (lowerText.includes("keydecisions") ||
+          lowerText.includes("key decisions")) {
+        keyDecisions.push("Use keyDecisions as a dedicated continuity memory field.");
+      }
+
+      if (lowerText.includes("open questions")) {
+        keyDecisions.push("Do not include openQuestions as a Version 1 memory field.");
+      }
+
+      if (lowerText.includes("createdat") ||
+          lowerText.includes("timestamp")) {
+        keyDecisions.push("Keep createdAt timestamp metadata for recency and retrieval ranking.");
+      }
+
+      if (lowerText.includes("phase 2b") ||
+          lowerText.includes("memory quality")) {
+        keyDecisions.push("Current work is Phase 2B: memory quality improvement, not full memory intelligence yet.");
+      }
+
+      const milestone =
+        lowerText.includes("deployed") ||
+        lowerText.includes("working") ||
+        lowerText.includes("success") ||
+        lowerText.includes("milestone") ||
+        lowerText.includes("schema");
+
+      let detectedTopic = "general continuity discussion";
+
+      if (lowerText.includes("steak") || lowerText.includes("food") || lowerText.includes("eat")) {
+        detectedTopic = "nutrition and food decision";
+      } else if (lowerText.includes("tennis") || lowerText.includes("gym") || lowerText.includes("exercise")) {
+        detectedTopic = "exercise and recovery decision";
+      } else if (lowerText.includes("identity") || lowerText.includes("login")) {
+        detectedTopic = "identity and authentication architecture";
+      } else if (lowerText.includes("memory") || lowerText.includes("summary") || lowerText.includes("continuity")) {
+        detectedTopic = "Aion continuity memory design";
+      } else if (lowerText.includes("privacy") || lowerText.includes("data")) {
+        detectedTopic = "privacy and continuity policy";
+      }
+
+      const summary =
+        `Discussed ${detectedTopic}. The session focused on preserving useful context for future Aion continuity rather than storing a raw transcript.`;
+        
+      return {
+        title,
+        summary,
+        keyDecisions: [...new Set(keyDecisions)],
+        tags: [...new Set(tags)],
+        milestone,
+      };
+    }
+
+    window.saveCurrentSessionSummary = async function saveCurrentSessionSummary() {
+      if (!isAuthenticated) {
+        console.warn("Cannot save summary: user is not authenticated.");
+        return;
+      }
+
+      if (!window.messages || window.messages.length === 0) {
+        console.warn("Cannot save summary: no messages in current session.");
+        return;
+      }
+
+      const draft = buildLocalSessionSummary();
+
+      try {
+        const id = await window.feedbackActor.storeSummary(
+          draft.title,
+          draft.summary,
+          draft.keyDecisions,
+          draft.tags,
+          draft.milestone
+        );
+
+        console.log("Current session summary saved:", {
+          id,
+          ...draft,
+        });
+
+        return id;
+      } catch (err) {
+        console.error("Failed to save current session summary:", err);
+      }
+    };
+
    window.saveCurrentSession = async function saveCurrentSession(options = {}) {
       if (!isAuthenticated) {
         console.warn("Not authenticated. Session summary was not saved.");
@@ -668,9 +864,10 @@
       }
 
       try {
-        const id = await feedbackActor.storeSummary(
+        const id = await window.feedbackActor.storeSummary(
           session.title,
           session.summary,
+          session.keyDecisions || [],
           session.tags,
           session.milestone
         );
@@ -732,7 +929,9 @@
           continuityContext: selectRelevantContinuity(
             query,
             window.continuityContext || []
-          )
+          ),
+          continuitySnapshot: window.continuitySnapshot || null,
+          continuityContextText: window.continuityContextText || ""
         })
       });
 
@@ -764,7 +963,7 @@
     const timestamp = new Date().toISOString();
 
     try {
-      await feedbackActor.addFeedback(
+      await window.feedbackActor.addFeedback(
         type,
         window.lastInteraction.query,
         window.lastInteraction.answer,
@@ -792,13 +991,72 @@
         });
 
         document.getElementById("feedback").innerHTML =
-          "Thanks — this helps improve the agent.";
+          "Gracias — esto ayuda a mejorar el agente.";
 
       } catch (renderErr) {
         console.error("Feedback failed", renderErr);
       }
     }
   };
+
+  function buildContinuitySnapshot(memories) {
+    const recentTitles = [];
+    const keyDecisions = [];
+    const milestones = [];
+    const tags = [];
+
+    for (const memory of memories) {
+      if (memory.title) recentTitles.push(memory.title);
+      if (memory.keyDecisions) keyDecisions.push(...memory.keyDecisions);
+      if (memory.milestone && memory.title) milestones.push(memory.title);
+      if (memory.tags) tags.push(...memory.tags);
+    }
+
+    return {
+      recentTitles: [...new Set(recentTitles)],
+      keyDecisions: [...new Set(keyDecisions)],
+      milestones: [...new Set(milestones)],
+      tags: [...new Set(tags)],
+    };
+  }
+
+  function buildContinuityContextText(snapshot) {
+  if (!snapshot) {
+    return "";
+  }
+
+  const sections = [];
+
+  if (snapshot.recentTitles && snapshot.recentTitles.length > 0) {
+    sections.push(
+      "Recent continuity memories:\n" +
+      snapshot.recentTitles.map((title) => `- ${title}`).join("\n")
+    );
+  }
+
+  if (snapshot.keyDecisions && snapshot.keyDecisions.length > 0) {
+    sections.push(
+      "Key prior decisions:\n" +
+      snapshot.keyDecisions.map((decision) => `- ${decision}`).join("\n")
+    );
+  }
+
+  if (snapshot.milestones && snapshot.milestones.length > 0) {
+    sections.push(
+      "Continuity milestones:\n" +
+      snapshot.milestones.map((milestone) => `- ${milestone}`).join("\n")
+    );
+  }
+
+  if (snapshot.tags && snapshot.tags.length > 0) {
+    sections.push(
+      "Continuity tags:\n" +
+      snapshot.tags.map((tag) => `- ${tag}`).join("\n")
+    );
+  }
+
+  return sections.join("\n\n");
+}
 
   window.loadContinuityContext = async function loadContinuityContext() {
     if (!isAuthenticated) {
@@ -807,18 +1065,22 @@
     }
 
     try {
-      const summaries = await feedbackActor.getMyRecentSummaries(5);
+      const summaries = await window.feedbackActor.getMyRecentSummaries(5);
 
       window.continuityContext = summaries.map((s) => ({
         title: s.title,
         summary: s.summary,
+        keyDecisions: s.keyDecisions,
         tags: s.tags,
         milestone: s.milestone,
         createdAt: s.createdAt.toString(),
       }));
 
       console.log("Continuity context loaded:", window.continuityContext);
-
+      window.continuitySnapshot = buildContinuitySnapshot(window.continuityContext);
+      console.log("Continuity snapshot:", window.continuitySnapshot);
+      window.continuityContextText = buildContinuityContextText(window.continuitySnapshot);
+      console.log("Continuity context text:", window.continuityContextText);
       return window.continuityContext;
     } catch (err) {
       console.error("Failed to load continuity context:", err);
