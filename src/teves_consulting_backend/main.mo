@@ -129,6 +129,16 @@ persistent actor {
     }
   };
 
+  public shared query(msg) func getMyMilestoneSummaries() : async [MemorySummary] {
+
+    Array.filter<MemorySummary>(
+      memorySummaries,
+      func(summary : MemorySummary) : Bool {
+        summary.owner == msg.caller and summary.milestone
+      }
+    )
+
+  };
   public shared query(msg) func getMyAllSummaries() : async [MemorySummary] {
     Array.filter<MemorySummary>(
       memorySummaries,

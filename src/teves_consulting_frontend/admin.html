@@ -53,6 +53,18 @@
 
   <div id="memoryList"></div>
 
+  <hr />
+
+<h2>Golden Tests</h2>
+
+<p id="goldenLastRun">Last run: Never</p>
+<p id="goldenSummary">No results available.</p>
+
+<button onclick="runGoldenTests()">Run Golden Tests</button>
+<button onclick="loadGoldenTests()">Refresh Golden Test Status</button>
+
+<div id="goldenResults"></div>
+
   <script type="module">
     import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
     import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
@@ -212,6 +224,67 @@
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
     }
+    window.loadGoldenTests = async function loadGoldenTests() {
+      try {
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/golden-tests/last"
+        );
+
+        const data = await res.json();
+        renderGoldenTests(data);
+
+      } catch (err) {
+        console.error("Failed to load golden tests:", err);
+      }
+    };
+
+    window.runGoldenTests = async function runGoldenTests() {
+      const button = event.target;
+      button.disabled = true;
+      button.textContent = "Running...";
+
+      try {
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/golden-tests/run",
+          { method: "POST" }
+        );
+
+        const data = await res.json();
+        renderGoldenTests(data);
+
+      } catch (err) {
+        console.error("Failed to run golden tests:", err);
+      } finally {
+        button.disabled = false;
+        button.textContent = "Run Golden Tests";
+      }
+    };
+
+    function renderGoldenTests(data) {
+      document.getElementById("goldenLastRun").textContent =
+        `Last run: ${data.last_run_at || "Never"}`;
+
+      document.getElementById("goldenSummary").textContent =
+        `${data.passed || 0}/${data.total || 0} passed`;
+
+      document.getElementById("goldenResults").innerHTML =
+        (data.results || [])
+          .map((r) => `
+            <div class="memory-card">
+              <strong>${r.passed ? "✅" : "❌"} ${escapeHtml(r.name)}</strong>
+              <p class="meta">${escapeHtml(r.query || "")}</p>
+              <details>
+                <summary>View answer</summary>
+                <pre>${escapeHtml(r.answer || "")}</pre>
+              </details>
+
+              <pre>${escapeHtml(r.notes || "")}</pre>
+            </div>
+          `)
+          .join("");
+    }
+
+    loadGoldenTests();
 
     initAuth();
   </script>
