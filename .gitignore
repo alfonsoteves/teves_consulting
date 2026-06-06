@@ -30,3 +30,5 @@ build/
 
 # ICP
 canister_ids.json
+.icp/
+.mops/
