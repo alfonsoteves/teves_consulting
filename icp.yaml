@@ -1,0 +1,13 @@
+canisters:
+  - name: teves_consulting_frontend
+    recipe:
+      type: "@dfinity/asset-canister@v2.2.0"
+      configuration:
+        dir: src/teves_consulting_frontend
+
+  - name: teves_consulting_backend
+    recipe:
+      type: "@dfinity/motoko@v4.1.0"
+      configuration:
+        main: src/teves_consulting_backend/main.mo
+
