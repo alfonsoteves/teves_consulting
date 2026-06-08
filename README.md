@@ -21,8 +21,8 @@ Teves Consulting is a structured framework for maintaining clarity, stability, a
 Clarity compounds. So does confusion.
 
 ## Status
-- Core articles complete in English and Spanish
-- Ongoing translation of additional articles
+- Articles complete in English and Spanish
+- Ongoing optimization of Aion
 - Continuous refinement of structure and content
 
 ## Website
