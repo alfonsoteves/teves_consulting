@@ -206,6 +206,27 @@
       });
     };
 
+    function getMainTopic(tags = []) {
+      const topicTag = tags.find(tag => tag.startsWith("topic:"));
+
+      if (!topicTag) return "Unclassified";
+
+      const topicMap = {
+        "topic:food": "Food",
+        "topic:water": "Water",
+        "topic:power": "Power",
+        "topic:financial": "Financial",
+        "topic:calm": "Calm",
+        "topic:identity-memory": "Identity & Memory",
+      };
+
+      return topicMap[topicTag] || "Unclassified";
+    }
+
+    function getVisibleTags(tags = []) {
+      return tags.filter(tag => !tag.startsWith("topic:"));
+    }
+
     window.loadMemories = async function loadMemories() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -242,15 +263,21 @@
         .slice()
         .reverse()
         .forEach((m) => {
+          const createdDate = new Date(
+            Number(m.createdAt) / 1_000_000
+          );
+
+          const createdText = createdDate.toLocaleString();
           const card = document.createElement("div");
           card.className = "memory-card";
 
           card.innerHTML = `
             <h3>#${m.id.toString()} — ${escapeHtml(m.title)}</h3>
             <p class="meta">
+              Main Topic: ${escapeHtml(getMainTopic(m.tags))} |
               Milestone: ${m.milestone ? "true" : "false"} |
-              Tags: ${m.tags.join(", ")} |
-              Created: ${m.createdAt.toString()}
+              Tags: ${escapeHtml(getVisibleTags(m.tags).join(", ") || "None")} |
+              Created: ${escapeHtml(createdText)}
             </p>
             <pre>${escapeHtml(m.summary)}</pre>
             <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
