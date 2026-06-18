@@ -108,6 +108,7 @@
             createdAt: IDL.Int,
             title: IDL.Text,
             summary: IDL.Text,
+            keyDecisions: IDL.Vec(IDL.Text),
             tags: IDL.Vec(IDL.Text),
             milestone: IDL.Bool,
           }))],
@@ -227,6 +228,23 @@
       return tags.filter(tag => !tag.startsWith("topic:"));
     }
 
+    function renderKeyDecisions(decisions = []) {
+      if (!decisions || decisions.length === 0) {
+        return "";
+      }
+
+      return `
+        <div>
+          <strong>Key Decisions</strong>
+          <ul>
+            ${decisions
+              .map(decision => `<li>${escapeHtml(decision)}</li>`)
+              .join("")}
+          </ul>
+        </div>
+      `;
+    }
+
     window.loadMemories = async function loadMemories() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -280,6 +298,7 @@
               Created: ${escapeHtml(createdText)}
             </p>
             <pre>${escapeHtml(m.summary)}</pre>
+            ${renderKeyDecisions(m.keyDecisions)}
             <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
           `;
 
