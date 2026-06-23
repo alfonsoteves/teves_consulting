@@ -82,7 +82,36 @@
 
       <div id="goldenResults"></div>
     </details>
+    <details>
+      <summary><strong>Retrieval Debugger</strong></summary>
 
+      <p>Test which chunks Aion retrieves for a query.</p>
+
+      <input
+        id="retrievalQuery"
+        placeholder="Enter retrieval query..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runRetrievalDebug()">Test Retrieval</button>
+
+      <div id="retrievalResults"></div>
+    </details>
+    <details>
+      <summary><strong>Context Viewer</strong></summary>
+
+      <p>Build and inspect the context Aion would send for a query.</p>
+
+      <input
+        id="contextQuery"
+        placeholder="Enter context query..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runContextDebug()">Build Context</button>
+
+      <div id="contextResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -369,6 +398,132 @@
       }
     };
 
+    window.runRetrievalDebug = async function runRetrievalDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const query = document.getElementById("retrievalQuery").value.trim();
+
+      if (!query) {
+        alert("Enter a query.");
+        return;
+      }
+
+      const container = document.getElementById("retrievalResults");
+
+      container.innerHTML = "<p>Searching...</p>";
+
+      try {
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/retrieval-debug",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML =
+            `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        const results = data.results || [];
+
+        if (results.length === 0) {
+          container.innerHTML = "<p>No chunks found.</p>";
+          return;
+        }
+
+        container.innerHTML = results
+          .map((r) => `
+            <div class="memory-card">
+              <h3>Rank ${escapeHtml(r.rank)}</h3>
+
+              <p class="meta">
+                Document: ${escapeHtml(r.document_id || "Unknown")} |
+                Title: ${escapeHtml(r.title || "Untitled")} |
+                Score: ${escapeHtml(r.score ?? "N/A")} |
+                Boosted: ${escapeHtml(r.boosted_score ?? "N/A")} |
+                Type: ${escapeHtml(r.source_type || "Unknown")}
+              </p>
+
+              <pre>${escapeHtml(r.text || "")}</pre>
+            </div>
+          `)
+          .join("");
+
+      } catch (err) {
+        console.error("Retrieval debug failed:", err);
+        container.innerHTML = "<p>Retrieval debug failed.</p>";
+      }
+    };
+
+    window.runContextDebug = async function runContextDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const query = document.getElementById("contextQuery").value.trim();
+
+      if (!query) {
+        alert("Enter a query.");
+        return;
+      }
+
+      const container = document.getElementById("contextResults");
+      container.innerHTML = "<p>Building context...</p>";
+
+      try {
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/context-debug",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Retrieved Chunks</h3>
+            <pre>${escapeHtml(JSON.stringify(data.retrieved_chunks || [], null, 2))}</pre>
+          </div>
+
+          <div class="memory-card">
+            <h3>Knowledge Context</h3>
+            <pre>${escapeHtml(data.knowledge_context || "")}</pre>
+          </div>
+
+          <div class="memory-card">
+            <h3>Final Prompt Preview</h3>
+            <pre>${escapeHtml(data.final_prompt_preview || "")}</pre>
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Context debug failed:", err);
+        container.innerHTML = "<p>Context debug failed.</p>";
+      }
+    };
+    
     function renderGoldenTests(data) {
       document.getElementById("goldenLastRun").textContent =
         `Last run: ${data.last_run_at || "Never"}`;
