@@ -15,15 +15,36 @@ persistent actor {
     receivedAt : Int;
   };
 
+  public type Relationship = {
+      subject : Text;
+      predicate : Text;
+      target : Text;
+      category : Text;
+  };
+
   public type MemorySummary = {
     id : Nat;
     owner : Principal;
+
     createdAt : Int;
+    updatedAt : Int;
+
     title : Text;
     summary : Text;
-    keyDecisions : [Text];
+
+    topics : [Text];
     tags : [Text];
+
+    keyDecisions : [Text];
+    relationships : [Relationship];
+
     milestone : Bool;
+
+    importance : Nat;
+    memoryType : Text;
+    sourceSessionId : Text;
+    confidence : Nat;
+    status : Text;
   };
 
   stable var feedbackEntries : [Feedback] = [];
@@ -84,21 +105,43 @@ persistent actor {
   public shared(msg) func storeSummary(
     title : Text,
     summary : Text,
-    keyDecisions : [Text],
+    topics : [Text],
     tags : [Text],
-    milestone : Bool
+    keyDecisions : [Text],
+    relationships : [Relationship],
+    milestone : Bool,
+    importance : Nat,
+    memoryType : Text,
+    sourceSessionId : Text,
+    confidence : Nat,
+    status : Text
   ) : async Nat {
     let id = nextMemoryId;
+    let now = Time.now();
 
     let entry : MemorySummary = {
       id = id;
       owner = msg.caller;
-      createdAt = Time.now();
+
+      createdAt = now;
+      updatedAt = now;
+
       title = title;
       summary = summary;
-      keyDecisions = keyDecisions;
+
+      topics = topics;
       tags = tags;
+
+      keyDecisions = keyDecisions;
+      relationships = relationships;
+
       milestone = milestone;
+
+      importance = importance;
+      memoryType = memoryType;
+      sourceSessionId = sourceSessionId;
+      confidence = confidence;
+      status = status;
     };
 
     memorySummaries := Array.append<MemorySummary>(memorySummaries, [entry]);

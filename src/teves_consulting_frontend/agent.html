@@ -355,6 +355,11 @@
   window.messages = [];
   window.continuityContext = [];
   
+  const Relationship = IDL.Record({
+    targetMemoryId: IDL.Nat,
+    relationshipType: IDL.Text,
+  });
+
   const idlFactory = ({ IDL }) => {
     return IDL.Service({
       addFeedback: IDL.Func(
@@ -365,10 +370,24 @@
       getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
       whoami: IDL.Func([], [IDL.Text], []),
       storeSummary: IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Vec(IDL.Text), IDL.Bool],
+        [
+          IDL.Text,               // title
+          IDL.Text,               // summary
+          IDL.Vec(IDL.Text),      // topics
+          IDL.Vec(IDL.Text),      // tags
+          IDL.Vec(IDL.Text),      // keyDecisions
+          IDL.Vec(Relationship),  // relationships
+          IDL.Bool,               // milestone
+          IDL.Nat,                // importance
+          IDL.Text,               // memoryType
+          IDL.Text,               // sourceSessionId
+          IDL.Nat,                // confidence
+          IDL.Text                // status
+        ],
         [IDL.Nat],
         []
       ),
+
       getMyRecentSummaries: IDL.Func(
         [IDL.Nat],
         [IDL.Vec(IDL.Record({
@@ -580,9 +599,16 @@
         const id = await window.feedbackActor.storeSummary(
           session.title,
           session.summary,
+          session.topics || [],
+          session.tags || [],
           session.keyDecisions || [],
-          session.tags,
-          session.milestone
+          [],                     // relationships
+          session.milestone || false,
+          session.importance || 5,
+          session.memoryType || "session",
+          session.sourceSessionId || "",
+          session.confidence || 80,
+          session.status || "active"
         );
 
         sessionSaved = true;

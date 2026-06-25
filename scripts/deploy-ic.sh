@@ -15,7 +15,7 @@ echo "Building project..."
 icp build
 
 echo "Deploying backend..."
-icp deploy teves_consulting_backend -e ic --mode upgrade
+icp deploy teves_consulting_backend -e ic --mode upgrade --yes
 
 echo "Deploying frontend..."
 icp deploy teves_consulting_frontend -e ic --mode upgrade
