@@ -83,9 +83,9 @@
       <div id="goldenResults"></div>
     </details>
     <details>
-      <summary><strong>Retrieval Debugger</strong></summary>
+      <summary><strong>Retrieval Debugger Final</strong></summary>
 
-      <p>Test which chunks Aion retrieves for a query.</p>
+      <p>Final post-filtered retrieval used by Aion.</p>
 
       <input
         id="retrievalQuery"
@@ -96,6 +96,23 @@
       <button onclick="runRetrievalDebug()">Test Retrieval</button>
 
       <div id="retrievalResults"></div>
+    </details>
+    <details>
+      <summary><strong>Retrieval Debugger Raw</strong></summary>
+
+      <p>Inspect raw search results before filtering and boosting.</p>
+
+      <input
+        id="retrievalRawQuery"
+        placeholder="Enter retrieval query..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runRawRetrievalDebug()">
+        Test Raw Retrieval
+      </button>
+
+      <div id="retrievalRawResults"></div>
     </details>
     <details>
       <summary><strong>Context Viewer</strong></summary>
@@ -466,6 +483,66 @@
       }
     };
 
+    window.runRawRetrievalDebug = async function () {
+
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const query =
+        document.getElementById("retrievalRawQuery").value.trim();
+
+      if (!query) {
+        alert("Enter a query.");
+        return;
+      }
+
+      const container =
+        document.getElementById("retrievalRawResults");
+
+      container.innerHTML = "<p>Searching...</p>";
+
+      try {
+
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/retrieval-debug-raw",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query })
+          }
+        );
+
+        const data = await res.json();
+
+        const results = data.results || [];
+
+        container.innerHTML = results
+          .map(r => `
+            <div class="memory-card">
+              <h3>Rank ${r.rank}</h3>
+
+              <p class="meta">
+                ${escapeHtml(r.document_id)}
+                |
+                Score: ${escapeHtml(r.score)}
+              </p>
+
+              <pre>${escapeHtml(r.text)}</pre>
+            </div>
+          `)
+          .join("");
+
+      } catch (err) {
+        console.error(err);
+        container.innerHTML =
+          "<p>Raw retrieval failed.</p>";
+      }
+    };
+
     window.runContextDebug = async function runContextDebug() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -524,7 +601,32 @@
       }
     };
     
+    const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
+
+    function saveGoldenResults(data) {
+      localStorage.setItem(
+        GOLDEN_RESULTS_KEY,
+        JSON.stringify(data)
+      );
+    }
+
+    function loadSavedGoldenResults() {
+      try {
+        const raw = localStorage.getItem(GOLDEN_RESULTS_KEY);
+
+        if (!raw) return null;
+
+        return JSON.parse(raw);
+      } catch (err) {
+        console.error("Could not load saved golden results:", err);
+        return null;
+      }
+    }
+
     function renderGoldenTests(data) {
+
+      saveGoldenResults(data);
+
       document.getElementById("goldenLastRun").textContent =
         `Last run: ${data.last_run_at || "Never"}`;
 
@@ -547,7 +649,11 @@
           `)
           .join("");
     }
+    const savedGolden = loadSavedGoldenResults();
 
+    if (savedGolden) {
+      renderGoldenTests(savedGolden);
+    }
     initAuth();
   </script>
 </body>
