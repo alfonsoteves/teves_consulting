@@ -335,7 +335,8 @@
   </div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
-<button onclick="sendFeedback('down')">👎 This needs work</button>
+    <button onclick="sendFeedback('up')">👍 Helpful</button>
+    <button onclick="sendFeedback('down')">👎 This needs work</button>
   </div>
 
 <script type="module">
@@ -695,41 +696,28 @@
     if (!window.lastInteraction) return;
 
     const timestamp = new Date().toISOString();
+    const feedbackEl = document.getElementById("feedback");
 
     try {
-      await window.feedbackActor.addFeedback(
+      const ok = await window.feedbackActor.addFeedback(
         type,
         window.lastInteraction.query,
         window.lastInteraction.answer,
         timestamp
       );
 
-      document.getElementById("feedback").innerHTML =
-        "Thanks — this helps improve the agent.";
-
-    } catch (icpErr) {
-      console.error("ICP feedback failed, falling back to Render", icpErr);
-
-      try {
-        await fetch("https://aionic-agent-api.onrender.com/feedback", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            rating: type,
-            query: window.lastInteraction.query,
-            answer: window.lastInteraction.answer,
-            timestamp: timestamp
-          })
-        });
-
-        document.getElementById("feedback").innerHTML =
+      if (ok) {
+        feedbackEl.innerHTML =
           "Thanks — this helps improve the agent.";
-
-      } catch (renderErr) {
-        console.error("Feedback failed", renderErr);
+      } else {
+        feedbackEl.innerHTML =
+          "Feedback failed.";
       }
+
+    } catch (err) {
+      console.error("Feedback failed", err);
+      feedbackEl.innerHTML =
+        "Feedback failed.";
     }
   };
 

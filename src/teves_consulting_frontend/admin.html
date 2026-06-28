@@ -78,9 +78,20 @@
       <p id="goldenSummary">No results available.</p>
 
       <button onclick="runGoldenTests()">Run Golden Tests</button>
-      <button onclick="loadGoldenTests()">Refresh Golden Test Status</button>
 
       <div id="goldenResults"></div>
+    </details>
+    <details>
+      <summary><strong>Feedback Dashboard</strong></summary>
+
+      <p>Total Feedback: <span id="feedbackTotal">0</span></p>
+      <p>Thumbs Up: <span id="feedbackUp">0</span></p>
+      <p>Thumbs Down: <span id="feedbackDown">0</span></p>
+
+      <button onclick="loadFeedback()">Refresh Feedback</button>
+      <button onclick="exportFeedback()">Export Feedback JSON</button>
+
+      <div id="feedbackList"></div>
     </details>
     <details>
       <summary><strong>Retrieval Debugger Final</strong></summary>
@@ -162,6 +173,21 @@
         ),
 
         deleteSummaryById: IDL.Func([IDL.Nat], [IDL.Bool], []),
+
+        getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
+
+        getRecentFeedback: IDL.Func(
+          [IDL.Nat],
+          [IDL.Vec(IDL.Record({
+            id: IDL.Nat,
+            rating: IDL.Text,
+            question: IDL.Text,
+            answer: IDL.Text,
+            timestamp: IDL.Text,
+            receivedAt: IDL.Int,
+          }))],
+          ["query"]
+        ),
       });
     };
 
@@ -249,6 +275,7 @@
 
           await loadMemories();
           await loadGoldenTests();
+          await loadFeedback();     
         },
       });
     };
@@ -364,6 +391,89 @@
       }
     };
 
+    let latestFeedback = [];
+
+    window.loadFeedback = async function loadFeedback() {
+      const list = document.getElementById("feedbackList");
+      list.innerHTML = "<p>Loading feedback...</p>";
+
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      try {
+        console.log("Loading ICP feedback...");
+        const feedback = await window.adminActor.getRecentFeedback(BigInt(100));
+        console.log("Feedback loaded:", feedback);
+
+        latestFeedback = feedback;
+
+        document.getElementById("feedbackTotal").textContent = feedback.length;
+        document.getElementById("feedbackUp").textContent =
+          feedback.filter(f => f.rating === "up").length;
+        document.getElementById("feedbackDown").textContent =
+          feedback.filter(f => f.rating === "down").length;
+
+        if (feedback.length === 0) {
+          list.innerHTML = "<p>No feedback yet.</p>";
+          return;
+        }
+
+        list.innerHTML = feedback.slice().reverse().map(f => {
+          const receivedText =
+            f.receivedAt
+              ? new Date(Number(f.receivedAt) / 1_000_000).toLocaleString()
+              : "Unknown";
+
+          return `
+            <div class="memory-card">
+              <h3>${f.rating === "up" ? "👍" : "👎"} Feedback #${f.id.toString()}</h3>
+              <p class="meta">
+                Rating: ${escapeHtml(f.rating)} |
+                Submitted: ${escapeHtml(f.timestamp || "Unknown")} |
+                Received: ${escapeHtml(receivedText)}
+              </p>
+              <strong>Question</strong>
+              <pre>${escapeHtml(f.question || "")}</pre>
+              <strong>Answer</strong>
+              <pre>${escapeHtml(f.answer || "")}</pre>
+            </div>
+          `;
+        }).join("");
+
+      } catch (err) {
+        console.error("Failed to load feedback:", err);
+        list.innerHTML =
+          `<p>Failed to load feedback. ${escapeHtml(err.message || String(err))}</p>`;
+      }
+    };
+
+    window.exportFeedback = function exportFeedback() {
+      const plainFeedback = latestFeedback.map(f => ({
+        id: f.id.toString(),
+        rating: f.rating,
+        question: f.question,
+        answer: f.answer,
+        timestamp: f.timestamp,
+        receivedAt: f.receivedAt.toString(),
+      }));
+
+      const blob = new Blob(
+        [JSON.stringify(plainFeedback, null, 2)],
+        { type: "application/json" }
+      );
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      a.download = `aion-feedback-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+
+      URL.revokeObjectURL(url);
+    };
+
     function escapeHtml(str) {
       return String(str)
         .replaceAll("&", "&amp;")
@@ -382,7 +492,14 @@
         );
 
         const data = await res.json();
-        renderGoldenTests(data);
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          renderGoldenTests(data, { save: true });
+        } else {
+          const savedGolden = loadSavedGoldenResults();
+          if (savedGolden) {
+            renderGoldenTests(savedGolden, { save: false });
+          }
+        }
 
       } catch (err) {
         console.error("Failed to load golden tests:", err);
@@ -405,7 +522,7 @@
         );
 
         const data = await res.json();
-        renderGoldenTests(data);
+        renderGoldenTests(data, { save: true });
 
       } catch (err) {
         console.error("Failed to run golden tests:", err);
@@ -623,9 +740,17 @@
       }
     }
 
-    function renderGoldenTests(data) {
+    function renderGoldenTests(data, options = {}) {
 
-      saveGoldenResults(data);
+      const shouldSave =
+        options.save === true &&
+        data &&
+        Array.isArray(data.results) &&
+        data.results.length > 0;
+
+      if (shouldSave) {
+        saveGoldenResults(data);
+      }
 
       document.getElementById("goldenLastRun").textContent =
         `Last run: ${data.last_run_at || "Never"}`;
