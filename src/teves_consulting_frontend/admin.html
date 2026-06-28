@@ -153,22 +153,39 @@
     let isAuthenticated = false;
     let identity = null;
 
+    const Relationship = IDL.Record({
+      subject: IDL.Text,
+      predicate: IDL.Text,
+      target: IDL.Text,
+      category: IDL.Text,
+    });
+
+    const MemorySummary = IDL.Record({
+      id: IDL.Nat,
+      owner: IDL.Principal,
+      createdAt: IDL.Int,
+      updatedAt: IDL.Int,
+      title: IDL.Text,
+      summary: IDL.Text,
+      topics: IDL.Vec(IDL.Text),
+      tags: IDL.Vec(IDL.Text),
+      keyDecisions: IDL.Vec(IDL.Text),
+      relationships: IDL.Vec(Relationship),
+      milestone: IDL.Bool,
+      importance: IDL.Nat,
+      memoryType: IDL.Text,
+      sourceSessionId: IDL.Text,
+      confidence: IDL.Nat,
+      status: IDL.Text,
+    });
+
     const idlFactory = ({ IDL }) => {
       return IDL.Service({
         whoami: IDL.Func([], [IDL.Text], []),
 
         getMyAllSummaries: IDL.Func(
           [],
-          [IDL.Vec(IDL.Record({
-            id: IDL.Nat,
-            owner: IDL.Principal,
-            createdAt: IDL.Int,
-            title: IDL.Text,
-            summary: IDL.Text,
-            keyDecisions: IDL.Vec(IDL.Text),
-            tags: IDL.Vec(IDL.Text),
-            milestone: IDL.Bool,
-          }))],
+          [IDL.Vec(MemorySummary)],
           ["query"]
         ),
 
@@ -318,6 +335,30 @@
       `;
     }
 
+    function renderRelationships(relationships = []) {
+      if (!relationships || relationships.length === 0) {
+        return "";
+      }
+
+      return `
+        <div>
+          <strong>Relationships</strong>
+          <ul>
+            ${relationships
+              .map((relationship) => `
+                <li>
+                  ${escapeHtml(relationship.subject)}
+                  ${escapeHtml(relationship.predicate)}
+                  ${escapeHtml(relationship.target)}
+                  ${relationship.category ? `(${escapeHtml(relationship.category)})` : ""}
+                </li>
+              `)
+              .join("")}
+          </ul>
+        </div>
+      `;
+    }
+
     window.loadMemories = async function loadMemories() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -367,11 +408,16 @@
             <p class="meta">
               Main Topic: ${escapeHtml(getMainTopic(m.tags))} |
               Milestone: ${m.milestone ? "true" : "false"} |
+              Type: ${escapeHtml(m.memoryType || "session")} |
+              Importance: ${m.importance?.toString?.() || "n/a"} |
+              Confidence: ${m.confidence?.toString?.() || "n/a"} |
+              Status: ${escapeHtml(m.status || "active")} |
               Tags: ${escapeHtml(getVisibleTags(m.tags).join(", ") || "None")} |
               Created: ${escapeHtml(createdText)}
             </p>
             <pre>${escapeHtml(m.summary)}</pre>
             ${renderKeyDecisions(m.keyDecisions)}
+            ${renderRelationships(m.relationships)}
             <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
           `;
 

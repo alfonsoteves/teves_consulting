@@ -28,7 +28,6 @@ export default defineConfig({
   plugins: [
     react(),
     environment("all", { prefix: "CANISTER_" }),
-    environment("all", { prefix: "DFX_" }),
   ],
   resolve: {
     alias: [

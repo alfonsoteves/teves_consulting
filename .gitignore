@@ -7,7 +7,7 @@
 .DS_Store
 **/.DS_Store
 
-# dfx temporary files
+# local canister build caches
 .dfx/
 
 # generated files

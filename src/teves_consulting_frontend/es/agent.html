@@ -357,8 +357,10 @@
   window.continuityContext = [];
 
   const Relationship = IDL.Record({
-    targetMemoryId: IDL.Nat,
-    relationshipType: IDL.Text,
+    subject: IDL.Text,
+    predicate: IDL.Text,
+    target: IDL.Text,
+    category: IDL.Text,
   });
   
   const idlFactory = ({ IDL }) => {
@@ -420,6 +422,25 @@
     });
   };
 
+  function normalizeRelationships(relationships = []) {
+    if (!Array.isArray(relationships)) {
+      return [];
+    }
+
+    return relationships
+      .map((relationship) => ({
+        subject: String(relationship.subject || ""),
+        predicate: String(relationship.predicate || relationship.relationshipType || ""),
+        target: String(relationship.target || relationship.targetMemoryId || ""),
+        category: String(relationship.category || ""),
+      }))
+      .filter((relationship) =>
+        relationship.subject &&
+        relationship.predicate &&
+        relationship.target
+      );
+  }
+
   const agent = new HttpAgent({
     host: "https://ic0.app",
   });
@@ -439,6 +460,11 @@
     }
 
     updateAuthUI();
+
+    if (isAuthenticated) {
+      await createAuthenticatedActor();
+      await loadContinuityContext();
+    }
   }
 
   async function createAuthenticatedActor() {
@@ -601,7 +627,7 @@
           session.topics || [],
           session.tags || [],
           session.keyDecisions || [],
-          [],                     // relationships
+          normalizeRelationships(session.relationships),
           session.milestone || false,
           session.importance || 5,
           session.memoryType || "session",
