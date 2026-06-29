@@ -362,6 +362,25 @@
     target: IDL.Text,
     category: IDL.Text,
   });
+
+  const MemorySummary = IDL.Record({
+    id: IDL.Nat,
+    owner: IDL.Principal,
+    createdAt: IDL.Int,
+    updatedAt: IDL.Int,
+    title: IDL.Text,
+    summary: IDL.Text,
+    topics: IDL.Vec(IDL.Text),
+    tags: IDL.Vec(IDL.Text),
+    keyDecisions: IDL.Vec(IDL.Text),
+    relationships: IDL.Vec(Relationship),
+    milestone: IDL.Bool,
+    importance: IDL.Nat,
+    memoryType: IDL.Text,
+    sourceSessionId: IDL.Text,
+    confidence: IDL.Nat,
+    status: IDL.Text,
+  });
   
   const idlFactory = ({ IDL }) => {
     return IDL.Service({
@@ -392,30 +411,12 @@
       ),
       getMyRecentSummaries: IDL.Func(
         [IDL.Nat],
-        [IDL.Vec(IDL.Record({
-          id: IDL.Nat,
-          owner: IDL.Principal,
-          createdAt: IDL.Int,
-          title: IDL.Text,
-          summary: IDL.Text,
-          keyDecisions: IDL.Vec(IDL.Text),
-          tags: IDL.Vec(IDL.Text),
-          milestone: IDL.Bool,
-        }))],
+        [IDL.Vec(MemorySummary)],
         ["query"]
       ),
       getMyMilestoneSummaries: IDL.Func(
         [],
-        [IDL.Vec(IDL.Record({
-          id: IDL.Nat,
-          owner: IDL.Principal,
-          createdAt: IDL.Int,
-          title: IDL.Text,
-          summary: IDL.Text,
-          keyDecisions: IDL.Vec(IDL.Text),
-          tags: IDL.Vec(IDL.Text),
-          milestone: IDL.Bool,
-        }))],
+        [IDL.Vec(MemorySummary)],
         ["query"]
       ),
       deleteAllMySummaries: IDL.Func([], [IDL.Bool], []),
@@ -788,9 +789,14 @@
       window.continuityContext = merged.map((s) => ({
         title: s.title,
         summary: s.summary,
-        keyDecisions: s.keyDecisions,
-        tags: s.tags,
+        topics: s.topics || [],
+        keyDecisions: s.keyDecisions || [],
+        tags: s.tags || [],
+        relationships: s.relationships || [],
         milestone: s.milestone,
+        importance: s.importance?.toString?.() || "5",
+        memoryType: s.memoryType || "session",
+        status: s.status || "active",
         createdAt: s.createdAt.toString(),
       }));
 
