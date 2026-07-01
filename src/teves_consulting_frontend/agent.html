@@ -356,33 +356,33 @@
   window.messages = [];
   window.continuityContext = [];
   
-  const Relationship = IDL.Record({
-    subject: IDL.Text,
-    predicate: IDL.Text,
-    target: IDL.Text,
-    category: IDL.Text,
-  });
-
-  const MemorySummary = IDL.Record({
-    id: IDL.Nat,
-    owner: IDL.Principal,
-    createdAt: IDL.Int,
-    updatedAt: IDL.Int,
-    title: IDL.Text,
-    summary: IDL.Text,
-    topics: IDL.Vec(IDL.Text),
-    tags: IDL.Vec(IDL.Text),
-    keyDecisions: IDL.Vec(IDL.Text),
-    relationships: IDL.Vec(Relationship),
-    milestone: IDL.Bool,
-    importance: IDL.Nat,
-    memoryType: IDL.Text,
-    sourceSessionId: IDL.Text,
-    confidence: IDL.Nat,
-    status: IDL.Text,
-  });
-
   const idlFactory = ({ IDL }) => {
+    const Relationship = IDL.Record({
+      subject: IDL.Text,
+      predicate: IDL.Text,
+      target: IDL.Text,
+      category: IDL.Text,
+    });
+
+    const MemorySummary = IDL.Record({
+      id: IDL.Nat,
+      owner: IDL.Principal,
+      createdAt: IDL.Int,
+      updatedAt: IDL.Int,
+      title: IDL.Text,
+      summary: IDL.Text,
+      topics: IDL.Vec(IDL.Text),
+      tags: IDL.Vec(IDL.Text),
+      keyDecisions: IDL.Vec(IDL.Text),
+      relationships: IDL.Vec(Relationship),
+      milestone: IDL.Bool,
+      importance: IDL.Nat,
+      memoryType: IDL.Text,
+      sourceSessionId: IDL.Text,
+      confidence: IDL.Nat,
+      status: IDL.Text,
+    });
+
     return IDL.Service({
       addFeedback: IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
