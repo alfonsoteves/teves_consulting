@@ -840,6 +840,64 @@
       };
     }
 
+    function summarizeMemoryTypes(memories = []) {
+      const counts = {};
+
+      memories.forEach((memory) => {
+        const type = String(memory.memoryType || "session").toLowerCase();
+        counts[type] = (counts[type] || 0) + 1;
+      });
+
+      const entries = Object.entries(counts)
+        .sort((a, b) => a[0].localeCompare(b[0]));
+
+      if (entries.length === 0) {
+        return "None";
+      }
+
+      return entries
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(" | ");
+    }
+
+    function renderRankingReasons(reasons = []) {
+      if (!Array.isArray(reasons) || reasons.length === 0) {
+        return "None";
+      }
+
+      return reasons.join(", ");
+    }
+
+    function renderRankingTrace(trace = []) {
+      if (!Array.isArray(trace) || trace.length === 0) {
+        return "<p>No trace returned.</p>";
+      }
+
+      return trace
+        .map((entry) => `
+          <div>
+            <strong>
+              #${escapeHtml(entry.rank ?? "?")}
+              ${escapeHtml(entry.title || "Untitled")}
+            </strong>
+            <p class="meta">
+              ID: ${escapeHtml(entry.id ?? "n/a")} |
+              Type: ${escapeHtml(entry.memoryType || "session")} |
+              Score: ${escapeHtml(entry.score ?? "N/A")} |
+              Importance: ${escapeHtml(entry.importance ?? "n/a")} |
+              Confidence: ${escapeHtml(entry.confidence ?? "n/a")} |
+              Milestone: ${entry.milestone ? "true" : "false"} |
+              Relationships: ${escapeHtml(entry.relationshipCount ?? 0)} |
+              Status: ${escapeHtml(entry.status || "active")}
+            </p>
+            <p class="meta">
+              Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+            </p>
+          </div>
+        `)
+        .join("");
+    }
+
     window.runMemoryRankingDebug = async function runMemoryRankingDebug() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -857,12 +915,10 @@
       container.innerHTML = "<p>Ranking memories...</p>";
 
       try {
-        let memories = latestMemories;
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
 
-        if (!memories || memories.length === 0) {
-          memories = await window.adminActor.getMyAllSummaries();
-          latestMemories = memories;
-        }
+        const serializedMemories = memories.map(serializeMemoryForRanking);
 
         const res = await fetch(
           "https://aionic-agent-api.onrender.com/admin/ranked-continuity-context",
@@ -874,7 +930,7 @@
             body: JSON.stringify({
               query,
               limit: 5,
-              memories: memories.map(serializeMemoryForRanking),
+              memories: serializedMemories,
             })
           }
         );
@@ -887,25 +943,53 @@
         }
 
         const ranked = data.rankedMemories || [];
+        const trace = data.rankingTrace || [];
 
         if (ranked.length === 0) {
-          container.innerHTML = "<p>No memories selected.</p>";
+          container.innerHTML = `
+            <div class="memory-card">
+              <h3>Selection Trace</h3>
+              <p class="meta">
+                Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+                Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+                Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+              </p>
+              ${renderRankingTrace(trace)}
+            </div>
+          `;
           return;
         }
 
         container.innerHTML = `
+          <div class="memory-card">
+            <h3>Selection Summary</h3>
+            <p class="meta">
+              Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Selected: ${escapeHtml(ranked.length)} |
+              Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+            </p>
+          </div>
+
           <div class="memory-card">
             <h3>Selected Memories</h3>
             ${ranked.map((entry, index) => `
               <div>
                 <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
                 <p class="meta">
+                  ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+                  Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
                   Score: ${escapeHtml(entry.score ?? "N/A")} |
-                  Reasons: ${escapeHtml((entry.reasons || []).join(", ") || "None")}
+                  Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
                 </p>
                 <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
               </div>
             `).join("")}
+          </div>
+
+          <div class="memory-card">
+            <h3>Full Selection Trace</h3>
+            ${renderRankingTrace(trace)}
           </div>
 
           <div class="memory-card">
