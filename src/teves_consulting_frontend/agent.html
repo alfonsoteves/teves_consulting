@@ -415,6 +415,11 @@
         [IDL.Vec(MemorySummary)],
         ["query"]
       ),
+      getMyAllSummaries: IDL.Func(
+        [],
+        [IDL.Vec(MemorySummary)],
+        ["query"]
+      ),
       getMyMilestoneSummaries: IDL.Func(
         [],
         [IDL.Vec(MemorySummary)],
@@ -755,25 +760,33 @@
     }
 
     try {
-      const recent =
-        await window.feedbackActor.getMyRecentSummaries(5);
+      let merged = [];
 
-      const milestones =
-        await window.feedbackActor.getMyMilestoneSummaries();
-      
-      const merged = [...recent];
+      try {
+        merged = await window.feedbackActor.getMyAllSummaries();
+      } catch (err) {
+        console.warn("All summaries unavailable. Falling back to recent summaries.", err);
 
-      milestones.forEach(milestone => {
+        const recent =
+          await window.feedbackActor.getMyRecentSummaries(5);
 
-        const exists = merged.some(
-          item => item.id.toString() === milestone.id.toString()
-        );
+        const milestones =
+          await window.feedbackActor.getMyMilestoneSummaries();
+        
+        merged = [...recent];
 
-        if (!exists) {
-          merged.push(milestone);
-        }
+        milestones.forEach(milestone => {
 
-      });
+          const exists = merged.some(
+            item => item.id.toString() === milestone.id.toString()
+          );
+
+          if (!exists) {
+            merged.push(milestone);
+          }
+
+        });
+      }
 
       window.continuityContext = merged.map((s) => ({
         title: s.title,
