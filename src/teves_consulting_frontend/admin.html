@@ -1038,6 +1038,24 @@
       `).join("");
     }
 
+    function renderContextMemoryEntries(memories = []) {
+      if (!Array.isArray(memories) || memories.length === 0) {
+        return "<p>No memories selected for final context.</p>";
+      }
+
+      return memories.map((memory, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(memory?.title || "Untitled")}</strong>
+          <p class="meta">
+            ID: ${escapeHtml(memory?.id ?? "n/a")} |
+            Type: ${escapeHtml(memory?.memoryType || "session")} |
+            Status: ${escapeHtml(memory?.status || "active")}
+          </p>
+          <pre>${escapeHtml(memory?.summary || "")}</pre>
+        </div>
+      `).join("");
+    }
+
     function renderExpandedMemoryEntries(entries = []) {
       if (!Array.isArray(entries) || entries.length === 0) {
         return "<p>No relationship expansions selected.</p>";
@@ -1107,6 +1125,7 @@
         }
 
         const ranked = data.rankedMemories || [];
+        const contextSelected = data.contextSelectedMemories || data.selectedMemories || [];
         const expanded = data.expandedRelatedMemories || [];
 
         container.innerHTML = `
@@ -1116,6 +1135,7 @@
               Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
               Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
               Ranked selected: ${escapeHtml(ranked.length)} |
+              Context selected: ${escapeHtml(contextSelected.length)} |
               Relationship expansions: ${escapeHtml(expanded.length)} |
               Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
             </p>
@@ -1124,6 +1144,11 @@
           <div class="memory-card">
             <h3>Ranked Selected Memories</h3>
             ${renderSelectedMemoryEntries(ranked)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Context Selected Memories</h3>
+            ${renderContextMemoryEntries(contextSelected)}
           </div>
 
           <div class="memory-card">
