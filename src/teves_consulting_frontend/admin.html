@@ -155,6 +155,21 @@
 
       <div id="memoryRankingResults"></div>
     </details>
+    <details>
+      <summary><strong>Relationship Expansion Dry Run</strong></summary>
+
+      <p>Inspect Phase 4.2 relationship-aware expansion without changing live retrieval.</p>
+
+      <input
+        id="relationshipExpansionQuery"
+        placeholder="Enter relationship expansion query..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runRelationshipExpansionDebug()">Expand Relationships</button>
+
+      <div id="relationshipExpansionResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1001,6 +1016,130 @@
       } catch (err) {
         console.error("Memory ranking dry run failed:", err);
         container.innerHTML = "<p>Memory ranking dry run failed.</p>";
+      }
+    };
+
+    function renderSelectedMemoryEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No selected memories.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
+          <p class="meta">
+            ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+            Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
+            Score: ${escapeHtml(entry.score ?? "N/A")} |
+            Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+          </p>
+          <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
+        </div>
+      `).join("");
+    }
+
+    function renderExpandedMemoryEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No relationship expansions selected.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
+          <p class="meta">
+            ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+            Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
+            Expansion Score: ${escapeHtml(entry.score ?? "N/A")} |
+            Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+          </p>
+          <p class="meta">
+            Source memories:
+            ${escapeHtml((entry.sourceMemoryTitles || []).join(", ") || "Unknown")}
+          </p>
+          <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
+        </div>
+      `).join("");
+    }
+
+    window.runRelationshipExpansionDebug = async function runRelationshipExpansionDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const query = document.getElementById("relationshipExpansionQuery").value.trim();
+
+      if (!query) {
+        alert("Enter a query.");
+        return;
+      }
+
+      const container = document.getElementById("relationshipExpansionResults");
+      container.innerHTML = "<p>Expanding related memories...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/relationship-expanded-continuity-context",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              query,
+              rankedLimit: 5,
+              expansionLimit: 2,
+              memories: serializedMemories,
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        const ranked = data.rankedMemories || [];
+        const expanded = data.expandedRelatedMemories || [];
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Expansion Summary</h3>
+            <p class="meta">
+              Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Ranked selected: ${escapeHtml(ranked.length)} |
+              Relationship expansions: ${escapeHtml(expanded.length)} |
+              Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Ranked Selected Memories</h3>
+            ${renderSelectedMemoryEntries(ranked)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Expanded Related Memories</h3>
+            ${renderExpandedMemoryEntries(expanded)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Context Text Preview</h3>
+            <pre>${escapeHtml(data.contextText || "")}</pre>
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Relationship expansion dry run failed:", err);
+        container.innerHTML = "<p>Relationship expansion dry run failed.</p>";
       }
     };
     
