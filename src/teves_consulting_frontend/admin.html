@@ -1220,8 +1220,10 @@
           <strong>${index + 1}. ${escapeHtml(duplicate.memoryA?.title || "Memory A")} / ${escapeHtml(duplicate.memoryB?.title || "Memory B")}</strong>
           <p class="meta">
             Score: ${escapeHtml(duplicate.score ?? "n/a")} |
+            Classification: ${escapeHtml(duplicate.classification || "unclassified")} |
             Reasons: ${escapeHtml((duplicate.reasons || []).join(", ") || "n/a")}
           </p>
+          <p>${escapeHtml(duplicate.recommendation || "")}</p>
           <pre>${escapeHtml((duplicate.sharedTerms || []).join(", "))}</pre>
         </div>
       `).join("");
@@ -1255,7 +1257,8 @@
           <strong>${index + 1}. ${escapeHtml(decision.olderMemory?.title || "Older memory")} -> ${escapeHtml(decision.newerMemory?.title || "Newer memory")}</strong>
           <p class="meta">
             Predicate: ${escapeHtml(decision.predicate || "n/a")} |
-            Source: ${escapeHtml(decision.sourceMemoryTitle || "n/a")}
+            Source: ${escapeHtml(decision.sourceMemoryTitle || "n/a")} |
+            Inferred: ${decision.inferred ? "true" : "false"}
           </p>
         </div>
       `).join("");
