@@ -170,6 +170,15 @@
 
       <div id="relationshipExpansionResults"></div>
     </details>
+    <details>
+      <summary><strong>Memory Health Dry Run</strong></summary>
+
+      <p>Inspect Phase 4.3 memory graph health without changing memories or live retrieval.</p>
+
+      <button onclick="runMemoryHealthDebug()">Analyze Memory Health</button>
+
+      <div id="memoryHealthResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1165,6 +1174,175 @@
       } catch (err) {
         console.error("Relationship expansion dry run failed:", err);
         container.innerHTML = "<p>Relationship expansion dry run failed.</p>";
+      }
+    };
+
+    function renderCountMap(counts = {}) {
+      const entries = Object.entries(counts || {});
+
+      if (entries.length === 0) {
+        return "<p>No counts available.</p>";
+      }
+
+      return `
+        <ul>
+          ${entries.map(([label, count]) => `
+            <li>${escapeHtml(label)}: ${escapeHtml(count)}</li>
+          `).join("")}
+        </ul>
+      `;
+    }
+
+    function renderStrongClusters(clusters = []) {
+      if (!Array.isArray(clusters) || clusters.length === 0) {
+        return "<p>No strong clusters detected.</p>";
+      }
+
+      return clusters.map((cluster, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(cluster.label || "Untitled cluster")}</strong>
+          <p class="meta">
+            Memories: ${escapeHtml(cluster.memoryCount ?? 0)} |
+            Relationships: ${escapeHtml(cluster.relationshipCount ?? 0)}
+          </p>
+          <pre>${escapeHtml((cluster.memoryTitles || []).join("\n"))}</pre>
+        </div>
+      `).join("");
+    }
+
+    function renderPotentialDuplicates(duplicates = []) {
+      if (!Array.isArray(duplicates) || duplicates.length === 0) {
+        return "<p>No duplicate candidates detected.</p>";
+      }
+
+      return duplicates.map((duplicate, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(duplicate.memoryA?.title || "Memory A")} / ${escapeHtml(duplicate.memoryB?.title || "Memory B")}</strong>
+          <p class="meta">
+            Score: ${escapeHtml(duplicate.score ?? "n/a")} |
+            Reasons: ${escapeHtml((duplicate.reasons || []).join(", ") || "n/a")}
+          </p>
+          <pre>${escapeHtml((duplicate.sharedTerms || []).join(", "))}</pre>
+        </div>
+      `).join("");
+    }
+
+    function renderOrphanMemories(orphans = []) {
+      if (!Array.isArray(orphans) || orphans.length === 0) {
+        return "<p>No orphan memories detected.</p>";
+      }
+
+      return orphans.map((orphan, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(orphan.title || "Untitled")}</strong>
+          <p class="meta">
+            ID: ${escapeHtml(orphan.id ?? "n/a")} |
+            Type: ${escapeHtml(orphan.type || "session")} |
+            Status: ${escapeHtml(orphan.status || "active")}
+          </p>
+          <p>${escapeHtml(orphan.reason || "")}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderSupersededDecisions(decisions = []) {
+      if (!Array.isArray(decisions) || decisions.length === 0) {
+        return "<p>No superseded decisions detected.</p>";
+      }
+
+      return decisions.map((decision, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(decision.olderMemory?.title || "Older memory")} -> ${escapeHtml(decision.newerMemory?.title || "Newer memory")}</strong>
+          <p class="meta">
+            Predicate: ${escapeHtml(decision.predicate || "n/a")} |
+            Source: ${escapeHtml(decision.sourceMemoryTitle || "n/a")}
+          </p>
+        </div>
+      `).join("");
+    }
+
+    window.runMemoryHealthDebug = async function runMemoryHealthDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("memoryHealthResults");
+      container.innerHTML = "<p>Analyzing memory health...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/memory-health",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              memories: serializedMemories,
+              clusterLimit: 8,
+              duplicateLimit: 8,
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Memory Health Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+              Average relationships per memory: ${escapeHtml(data.averageRelationshipsPerMemory ?? 0)} |
+              Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Memory Type Counts</h3>
+            ${renderCountMap(data.memoryTypeCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Relationship Predicate Frequency</h3>
+            ${renderCountMap(data.predicateFrequency)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Strong Clusters</h3>
+            ${renderStrongClusters(data.strongClusters)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Potential Duplicates</h3>
+            ${renderPotentialDuplicates(data.potentialDuplicates)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Orphan Memories</h3>
+            ${renderOrphanMemories(data.orphanMemories)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Superseded Decisions</h3>
+            ${renderSupersededDecisions(data.supersededDecisions)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Memory health dry run failed:", err);
+        container.innerHTML = "<p>Memory health dry run failed.</p>";
       }
     };
     
