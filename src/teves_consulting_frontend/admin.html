@@ -206,6 +206,15 @@
 
       <div id="memoryHealthDashboardResults"></div>
     </details>
+    <details>
+      <summary><strong>Relationship Confidence Dry Run</strong></summary>
+
+      <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
+
+      <button onclick="runRelationshipConfidenceDebug()">Analyze Relationship Confidence</button>
+
+      <div id="relationshipConfidenceResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1787,6 +1796,82 @@
       } catch (err) {
         console.error("Memory health dashboard failed:", err);
         container.innerHTML = `<p>Memory health dashboard failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderRelationshipConfidenceEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No relationships in this section.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(entry.subject || "subject")} ${escapeHtml(entry.predicate || "predicate")} ${escapeHtml(entry.target || "target")}</strong>
+          <p class="meta">
+            Confidence: ${escapeHtml(entry.confidence ?? "n/a")} |
+            Label: ${escapeHtml(entry.confidenceLabel || "n/a")} |
+            Frequency: ${escapeHtml(entry.frequency ?? 1)} |
+            Source: ${escapeHtml(entry.source || "n/a")} |
+            Inferred: ${entry.inferred ? "true" : "false"}
+          </p>
+          <p class="meta">
+            Source memory: ${escapeHtml(entry.sourceMemoryTitle || "n/a")}
+          </p>
+          <pre>${escapeHtml((entry.reasons || []).join(", "))}</pre>
+        </div>
+      `).join("");
+    }
+
+    window.runRelationshipConfidenceDebug = async function runRelationshipConfidenceDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("relationshipConfidenceResults");
+      container.innerHTML = "<p>Analyzing relationship confidence...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/relationship-confidence", {
+          memories: serializedMemories,
+          limit: 12,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Relationship Confidence Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+              Stored: ${escapeHtml(data.storedRelationshipCount ?? 0)} |
+              Inferred: ${escapeHtml(data.inferredRelationshipCount ?? 0)} |
+              Low confidence: ${escapeHtml(data.lowConfidenceCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Confidence Counts</h3>
+            ${renderCountMap(data.confidenceCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Lowest Confidence Relationships</h3>
+            ${renderRelationshipConfidenceEntries(data.lowConfidenceRelationships)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Highest Confidence Relationships</h3>
+            ${renderRelationshipConfidenceEntries(data.highConfidenceRelationships)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Relationship confidence dry run failed:", err);
+        container.innerHTML = `<p>Relationship confidence dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
     
