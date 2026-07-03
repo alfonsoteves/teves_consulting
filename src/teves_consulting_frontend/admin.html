@@ -188,6 +188,15 @@
 
       <div id="memoryConsolidationResults"></div>
     </details>
+    <details>
+      <summary><strong>Decision Evolution Dry Run</strong></summary>
+
+      <p>Inspect Phase 4.3.3 decision evolution without changing memories or live retrieval.</p>
+
+      <button onclick="runDecisionEvolutionDebug()">Analyze Decision Evolution</button>
+
+      <div id="decisionEvolutionResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1446,6 +1455,133 @@
       } catch (err) {
         console.error("Memory consolidation dry run failed:", err);
         container.innerHTML = "<p>Memory consolidation dry run failed.</p>";
+      }
+    };
+
+    function renderCurrentDecisionEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No current decision memories detected.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(renderMemoryRef(entry.memory))}</strong>
+          <p class="meta">
+            Key decisions: ${escapeHtml(entry.decisionCount ?? 0)} |
+            Relationships: ${escapeHtml(entry.relationshipCount ?? 0)} |
+            Signals: ${escapeHtml((entry.signals || []).join(", ") || "n/a")}
+          </p>
+        </div>
+      `).join("");
+    }
+
+    function renderSupersessionEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No superseded decisions detected.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(renderMemoryRef(entry.olderMemory))} -> ${escapeHtml(renderMemoryRef(entry.newerMemory))}</strong>
+          <p class="meta">
+            Predicate: ${escapeHtml(entry.predicate || "n/a")} |
+            Source: ${escapeHtml(entry.sourceMemoryTitle || "n/a")} |
+            Inferred: ${entry.inferred ? "true" : "false"}
+          </p>
+        </div>
+      `).join("");
+    }
+
+    function renderRecommendedRelationships(entries = []) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return "<p>No relationship recommendations.</p>";
+      }
+
+      return entries.map((entry, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(entry.subject || "subject")} ${escapeHtml(entry.predicate || "predicate")} ${escapeHtml(entry.target || "target")}</strong>
+          <p class="meta">
+            Category: ${escapeHtml(entry.category || "decision")} |
+            Confidence: ${escapeHtml(entry.confidence || "n/a")} |
+            Older resolved: ${entry.resolvedOlderMemory ? "true" : "false"} |
+            Newer resolved: ${entry.resolvedNewerMemory ? "true" : "false"}
+          </p>
+          <p>${escapeHtml(entry.recommendation || "")}</p>
+        </div>
+      `).join("");
+    }
+
+    window.runDecisionEvolutionDebug = async function runDecisionEvolutionDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("decisionEvolutionResults");
+      container.innerHTML = "<p>Analyzing decision evolution...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/decision-evolution",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              memories: serializedMemories,
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Decision Evolution Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Current decisions: ${escapeHtml(data.currentDecisionCount ?? 0)} |
+              Superseded decisions: ${escapeHtml(data.supersededDecisionCount ?? 0)} |
+              Inferred supersessions: ${escapeHtml(data.inferredSupersessionCount ?? 0)} |
+              Unresolved older references: ${escapeHtml(data.unresolvedOlderDecisionReferenceCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Current Decisions</h3>
+            ${renderCurrentDecisionEntries(data.currentDecisions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Superseded Decisions</h3>
+            ${renderSupersessionEntries(data.supersededDecisions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Unresolved Older Decision References</h3>
+            ${renderSupersessionEntries(data.unresolvedOlderDecisionReferences)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Recommended Relationships</h3>
+            ${renderRecommendedRelationships(data.recommendedRelationships)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Decision evolution dry run failed:", err);
+        container.innerHTML = "<p>Decision evolution dry run failed.</p>";
       }
     };
     
