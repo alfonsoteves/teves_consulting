@@ -179,6 +179,15 @@
 
       <div id="memoryHealthResults"></div>
     </details>
+    <details>
+      <summary><strong>Memory Consolidation Dry Run</strong></summary>
+
+      <p>Inspect Phase 4.3.2 consolidation suggestions without changing memories or live retrieval.</p>
+
+      <button onclick="runMemoryConsolidationDebug()">Suggest Consolidations</button>
+
+      <div id="memoryConsolidationResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1346,6 +1355,97 @@
       } catch (err) {
         console.error("Memory health dry run failed:", err);
         container.innerHTML = "<p>Memory health dry run failed.</p>";
+      }
+    };
+
+    function renderMemoryRef(memory = {}) {
+      if (!memory) {
+        return "None";
+      }
+
+      return `${memory.title || "Untitled"} (ID: ${memory.id ?? "n/a"}, Type: ${memory.type || "session"})`;
+    }
+
+    function renderConsolidationSuggestions(suggestions = []) {
+      if (!Array.isArray(suggestions) || suggestions.length === 0) {
+        return "<p>No consolidation suggestions.</p>";
+      }
+
+      return suggestions.map((suggestion, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(suggestion.action || "needs_review")}</strong>
+          <p class="meta">
+            Confidence: ${escapeHtml(suggestion.confidence || "n/a")} |
+            Source: ${escapeHtml(suggestion.source || "n/a")} |
+            Duplicate score: ${escapeHtml(suggestion.duplicateScore ?? "n/a")} |
+            Classification: ${escapeHtml(suggestion.duplicateClassification || "n/a")}
+          </p>
+          <p>${escapeHtml(suggestion.reason || "")}</p>
+          <p><strong>Keep:</strong> ${escapeHtml(renderMemoryRef(suggestion.keepMemory || suggestion.newerMemory || null))}</p>
+          <p><strong>Deprecate / review:</strong> ${escapeHtml(renderMemoryRef(suggestion.deprecateMemory || suggestion.olderMemory || null))}</p>
+          <p>${escapeHtml(suggestion.recommendation || "")}</p>
+          <pre>${escapeHtml((suggestion.sharedTerms || []).join(", "))}</pre>
+        </div>
+      `).join("");
+    }
+
+    window.runMemoryConsolidationDebug = async function runMemoryConsolidationDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("memoryConsolidationResults");
+      container.innerHTML = "<p>Building consolidation suggestions...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+
+        const res = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/memory-consolidations",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              memories: serializedMemories,
+              limit: 8,
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Consolidation Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Suggestions: ${escapeHtml(data.suggestionCount ?? 0)} |
+              Relationships: ${escapeHtml(data.healthSummary?.relationshipCount ?? 0)} |
+              Potential duplicates: ${escapeHtml(data.healthSummary?.potentialDuplicateCount ?? 0)} |
+              Superseded decisions: ${escapeHtml(data.healthSummary?.supersededDecisionCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Suggested Actions</h3>
+            ${renderConsolidationSuggestions(data.suggestions)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Memory consolidation dry run failed:", err);
+        container.innerHTML = "<p>Memory consolidation dry run failed.</p>";
       }
     };
     
