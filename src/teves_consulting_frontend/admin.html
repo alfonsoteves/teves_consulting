@@ -197,6 +197,15 @@
 
       <div id="decisionEvolutionResults"></div>
     </details>
+    <details>
+      <summary><strong>Memory Health Dashboard</strong></summary>
+
+      <p>Review Phase 4.3 health, consolidation, and decision-evolution status in one operator view.</p>
+
+      <button onclick="runMemoryHealthDashboard()">Build Dashboard</button>
+
+      <div id="memoryHealthDashboardResults"></div>
+    </details>
   </div>
 
   <script type="module">
@@ -1582,6 +1591,202 @@
       } catch (err) {
         console.error("Decision evolution dry run failed:", err);
         container.innerHTML = "<p>Decision evolution dry run failed.</p>";
+      }
+    };
+
+    async function postMemoryDryRun(path, payload) {
+      const res = await fetch(
+        `https://aionic-agent-api.onrender.com${path}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+      const data = await res.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return data;
+    }
+
+    function countSuggestionsByAction(suggestions = []) {
+      return (suggestions || []).reduce((counts, suggestion) => {
+        const action = suggestion.action || "unknown";
+        counts[action] = (counts[action] || 0) + 1;
+        return counts;
+      }, {});
+    }
+
+    function buildDashboardStatus(health, consolidation, decisionEvolution) {
+      const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+      const mergeCount = actionCounts.merge_candidate || 0;
+      const deprecateCount = actionCounts.deprecate_candidate || 0;
+      const orphanCount = (health.orphanMemories || []).length;
+      const unresolvedDecisionCount = decisionEvolution.unresolvedOlderDecisionReferenceCount || 0;
+
+      if (mergeCount || deprecateCount || orphanCount) {
+        return {
+          label: "Needs Manual Cleanup",
+          reason: "Review merge, deprecation, or orphan-memory items before proceeding.",
+        };
+      }
+
+      if (unresolvedDecisionCount || (actionCounts.needs_review || 0)) {
+        return {
+          label: "Review Recommended",
+          reason: "No immediate cleanup is required, but some items need human judgment.",
+        };
+      }
+
+      return {
+        label: "Looks Stable",
+        reason: "No high-priority memory graph issues were detected.",
+      };
+    }
+
+    function buildDashboardNextAction(health, consolidation, decisionEvolution) {
+      const suggestions = consolidation.suggestions || [];
+      const merge = suggestions.find((suggestion) => suggestion.action === "merge_candidate");
+      const deprecate = suggestions.find((suggestion) => suggestion.action === "deprecate_candidate");
+      const orphan = (health.orphanMemories || [])[0];
+      const unresolved = (decisionEvolution.unresolvedOlderDecisionReferences || [])[0];
+      const review = suggestions.find((suggestion) => suggestion.action === "needs_review");
+
+      if (merge) {
+        return `Review merge candidate: keep ${renderMemoryRef(merge.keepMemory)} and review ${renderMemoryRef(merge.deprecateMemory)}.`;
+      }
+
+      if (deprecate) {
+        return deprecate.recommendation || "Review deprecation candidate.";
+      }
+
+      if (orphan) {
+        return `Review orphan memory: ${orphan.title || "Untitled"}.`;
+      }
+
+      if (unresolved) {
+        return `Resolve older decision reference: ${renderMemoryRef(unresolved.olderMemory)}.`;
+      }
+
+      if (review) {
+        return review.recommendation || "Review remaining possible duplicate.";
+      }
+
+      return "No immediate manual action is recommended.";
+    }
+
+    function renderTopDashboardRisks(health, consolidation, decisionEvolution) {
+      const risks = [];
+      const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+
+      if (actionCounts.merge_candidate) {
+        risks.push(`${actionCounts.merge_candidate} merge candidate(s)`);
+      }
+
+      if (actionCounts.deprecate_candidate) {
+        risks.push(`${actionCounts.deprecate_candidate} deprecation candidate(s)`);
+      }
+
+      if ((health.orphanMemories || []).length) {
+        risks.push(`${health.orphanMemories.length} orphan memory item(s)`);
+      }
+
+      if (decisionEvolution.unresolvedOlderDecisionReferenceCount) {
+        risks.push(`${decisionEvolution.unresolvedOlderDecisionReferenceCount} unresolved older decision reference(s)`);
+      }
+
+      if (actionCounts.needs_review) {
+        risks.push(`${actionCounts.needs_review} needs-review item(s)`);
+      }
+
+      if (risks.length === 0) {
+        return "<p>No top risks detected.</p>";
+      }
+
+      return `
+        <ul>
+          ${risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
+        </ul>
+      `;
+    }
+
+    window.runMemoryHealthDashboard = async function runMemoryHealthDashboard() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("memoryHealthDashboardResults");
+      container.innerHTML = "<p>Building memory health dashboard...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const [health, consolidation, decisionEvolution] = await Promise.all([
+          postMemoryDryRun("/admin/memory-health", {
+            memories: serializedMemories,
+            clusterLimit: 8,
+            duplicateLimit: 8,
+          }),
+          postMemoryDryRun("/admin/memory-consolidations", {
+            memories: serializedMemories,
+            limit: 8,
+          }),
+          postMemoryDryRun("/admin/decision-evolution", {
+            memories: serializedMemories,
+          }),
+        ]);
+        const status = buildDashboardStatus(health, consolidation, decisionEvolution);
+        const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Dashboard Status</h3>
+            <p><strong>${escapeHtml(status.label)}</strong></p>
+            <p>${escapeHtml(status.reason)}</p>
+            <p class="meta">
+              Memories: ${escapeHtml(health.memoryCount ?? serializedMemories.length)} |
+              Relationships: ${escapeHtml(health.relationshipCount ?? 0)} |
+              Avg relationships/memory: ${escapeHtml(health.averageRelationshipsPerMemory ?? 0)} |
+              Current decisions: ${escapeHtml(decisionEvolution.currentDecisionCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Action Counts</h3>
+            ${renderCountMap(actionCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Top Risks</h3>
+            ${renderTopDashboardRisks(health, consolidation, decisionEvolution)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Recommended Next Manual Action</h3>
+            <p>${escapeHtml(buildDashboardNextAction(health, consolidation, decisionEvolution))}</p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Decision Evolution</h3>
+            <p class="meta">
+              Superseded decisions: ${escapeHtml(decisionEvolution.supersededDecisionCount ?? 0)} |
+              Inferred supersessions: ${escapeHtml(decisionEvolution.inferredSupersessionCount ?? 0)} |
+              Unresolved older references: ${escapeHtml(decisionEvolution.unresolvedOlderDecisionReferenceCount ?? 0)}
+            </p>
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Memory health dashboard failed:", err);
+        container.innerHTML = `<p>Memory health dashboard failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
     
