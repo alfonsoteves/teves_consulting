@@ -1873,6 +1873,39 @@
       `).join("");
     }
 
+    function renderMaintenanceExport(text = "") {
+      if (!text) {
+        return "<p>No export memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="memoryMaintenanceExportText"
+          readonly
+          style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyMemoryMaintenanceExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyMemoryMaintenanceExport = async function copyMemoryMaintenanceExport() {
+      const exportBox = document.getElementById("memoryMaintenanceExportText");
+
+      if (!exportBox) {
+        alert("No maintenance memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Maintenance memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
     window.runMemoryMaintenancePlanDebug = async function runMemoryMaintenancePlanDebug() {
       if (!isAuthenticated) {
         alert("Please sign in first.");
@@ -1925,6 +1958,11 @@
           <div class="memory-card">
             <h3>Operator Checklist</h3>
             ${renderMaintenanceActions(data.actions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderMaintenanceExport(data.exportText)}
           </div>
         `;
 
