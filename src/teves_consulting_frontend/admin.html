@@ -1816,6 +1816,34 @@
       return `${relationship.subject || "subject"} ${relationship.predicate || "predicate"} ${relationship.target || "target"}`;
     }
 
+    function renderOperatorGuidance(guidance = {}) {
+      if (!guidance || !guidance.mode) {
+        return "<p>No operator guidance available.</p>";
+      }
+
+      const steps = Array.isArray(guidance.manualSteps)
+        ? guidance.manualSteps
+        : [];
+
+      return `
+        <p class="meta">
+          Guidance: ${escapeHtml(guidance.mode || "manual_review")} |
+          Automatic action: ${guidance.canApplyAutomatically ? "yes" : "no"}
+        </p>
+        <p><strong>Outcome:</strong> ${escapeHtml(guidance.recommendedOutcome || "")}</p>
+        ${
+          guidance.blockedBy
+            ? `<p><strong>Blocked by:</strong> ${escapeHtml(guidance.blockedBy)}</p>`
+            : ""
+        }
+        ${
+          steps.length
+            ? `<ul>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ul>`
+            : ""
+        }
+      `;
+    }
+
     function renderMaintenanceActions(actions = []) {
       if (!Array.isArray(actions) || actions.length === 0) {
         return "<p>No maintenance actions suggested.</p>";
@@ -1836,6 +1864,10 @@
           <p><strong>Review:</strong> ${escapeHtml(renderMemoryRef(action.reviewMemory || null))}</p>
           <p><strong>Relationship:</strong> ${escapeHtml(renderMaintenanceRelationship(action.relationship))}</p>
           <p>${escapeHtml(action.recommendation || "")}</p>
+          <div>
+            <strong>Operator Guidance</strong>
+            ${renderOperatorGuidance(action.operatorGuidance)}
+          </div>
           <pre>${escapeHtml((action.sharedTerms || []).join(", "))}</pre>
         </div>
       `).join("");
