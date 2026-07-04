@@ -1888,6 +1888,23 @@
       `;
     }
 
+    function renderSeveritySummary(summary = {}) {
+      if (!summary || !summary.recommendedStatus) {
+        return "<p>No severity summary available.</p>";
+      }
+
+      return `
+        <p><strong>${escapeHtml(summary.recommendedStatus || "Looks Stable")}</strong></p>
+        <p>${escapeHtml(summary.reason || "")}</p>
+        <p class="meta">
+          Immediate blockers: ${escapeHtml(summary.immediateBlockerCount ?? 0)} |
+          Manual review items: ${escapeHtml(summary.manualReviewCount ?? 0)} |
+          No-action items: ${escapeHtml(summary.noActionCount ?? 0)}
+        </p>
+        <p><strong>Next action:</strong> ${escapeHtml(summary.nextAction || "No immediate manual action is recommended.")}</p>
+      `;
+    }
+
     window.copyMemoryMaintenanceExport = async function copyMemoryMaintenanceExport() {
       const exportBox = document.getElementById("memoryMaintenanceExportText");
 
@@ -1933,6 +1950,11 @@
               Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
               Actions: ${escapeHtml(data.actionCount ?? 0)}
             </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Severity Summary</h3>
+            ${renderSeveritySummary(data.severitySummary)}
           </div>
 
           <div class="memory-card">
