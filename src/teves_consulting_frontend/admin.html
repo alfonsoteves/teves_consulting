@@ -207,6 +207,15 @@
       <div id="memoryHealthDashboardResults"></div>
     </details>
     <details>
+      <summary><strong>Memory Maintenance Plan Dry Run</strong></summary>
+
+      <p>Build a Phase 4.4 operator action plan without changing memories or live retrieval.</p>
+
+      <button onclick="runMemoryMaintenancePlanDebug()">Build Action Plan</button>
+
+      <div id="memoryMaintenancePlanResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -1796,6 +1805,100 @@
       } catch (err) {
         console.error("Memory health dashboard failed:", err);
         container.innerHTML = `<p>Memory health dashboard failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderMaintenanceRelationship(relationship = {}) {
+      if (!relationship || !relationship.subject) {
+        return "None";
+      }
+
+      return `${relationship.subject || "subject"} ${relationship.predicate || "predicate"} ${relationship.target || "target"}`;
+    }
+
+    function renderMaintenanceActions(actions = []) {
+      if (!Array.isArray(actions) || actions.length === 0) {
+        return "<p>No maintenance actions suggested.</p>";
+      }
+
+      return actions.map((action, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(action.title || action.actionType || "Review action")}</strong>
+          <p class="meta">
+            Type: ${escapeHtml(action.actionType || "n/a")} |
+            Priority: ${escapeHtml(action.priority || "n/a")} |
+            Safety: ${escapeHtml(action.safety || "n/a")} |
+            Confidence: ${escapeHtml(action.confidence || "n/a")} |
+            Sources: ${escapeHtml((action.sourceAnalyses || []).join(", ") || "n/a")}
+          </p>
+          <p>${escapeHtml(action.reason || "")}</p>
+          <p><strong>Keep:</strong> ${escapeHtml(renderMemoryRef(action.keepMemory || null))}</p>
+          <p><strong>Review:</strong> ${escapeHtml(renderMemoryRef(action.reviewMemory || null))}</p>
+          <p><strong>Relationship:</strong> ${escapeHtml(renderMaintenanceRelationship(action.relationship))}</p>
+          <p>${escapeHtml(action.recommendation || "")}</p>
+          <pre>${escapeHtml((action.sharedTerms || []).join(", "))}</pre>
+        </div>
+      `).join("");
+    }
+
+    window.runMemoryMaintenancePlanDebug = async function runMemoryMaintenancePlanDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("memoryMaintenancePlanResults");
+      container.innerHTML = "<p>Building memory maintenance action plan...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/memory-maintenance-plan", {
+          memories: serializedMemories,
+          limit: 10,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Maintenance Plan Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+              Actions: ${escapeHtml(data.actionCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Safety Counts</h3>
+            ${renderCountMap(data.safetyCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Priority Counts</h3>
+            ${renderCountMap(data.priorityCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Action Type Counts</h3>
+            ${renderCountMap(data.actionTypeCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Source Summary</h3>
+            ${renderCountMap(data.sourceSummary)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Operator Checklist</h3>
+            ${renderMaintenanceActions(data.actions)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Memory maintenance plan dry run failed:", err);
+        container.innerHTML = `<p>Memory maintenance plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
