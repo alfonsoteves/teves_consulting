@@ -225,6 +225,15 @@
       <div id="knowledgeSynthesisResults"></div>
     </details>
     <details>
+      <summary><strong>Strategic Reasoning Dry Run</strong></summary>
+
+      <p>Build a Phase 5.2 operator reasoning brief without changing memories or live retrieval.</p>
+
+      <button onclick="runStrategicReasoningDebug()">Build Strategic Brief</button>
+
+      <div id="strategicReasoningResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -2155,6 +2164,117 @@
       } catch (err) {
         console.error("Knowledge synthesis dry run failed:", err);
         container.innerHTML = `<p>Knowledge synthesis dry run failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderStrategicReasoningExport(text = "") {
+      if (!text) {
+        return "<p>No strategic reasoning memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="strategicReasoningExportText"
+          readonly
+          style="width: 100%; min-height: 260px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyStrategicReasoningExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyStrategicReasoningExport = async function copyStrategicReasoningExport() {
+      const exportBox = document.getElementById("strategicReasoningExportText");
+
+      if (!exportBox) {
+        alert("No strategic reasoning memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Strategic reasoning memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
+    window.runStrategicReasoningDebug = async function runStrategicReasoningDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("strategicReasoningResults");
+      container.innerHTML = "<p>Building strategic reasoning brief...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/strategic-reasoning", {
+          memories: serializedMemories,
+          limit: 8,
+        });
+        const primaryInsight = data.primaryInsight || {};
+        const primaryQuestion = data.primaryQuestion || {};
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Strategic Brief Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Insights reviewed: ${escapeHtml(data.insightCount ?? 0)} |
+              Phase coverage: ${escapeHtml((data.synthesisSummary?.phaseCoverage || []).join(", ") || "none")}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Primary Pattern</h3>
+            <p><strong>${escapeHtml(primaryInsight.title || "No primary pattern")}</strong></p>
+            <p class="meta">
+              Type: ${escapeHtml(primaryInsight.patternType || "n/a")} |
+              Usefulness: ${escapeHtml(primaryInsight.usefulnessLabel || "n/a")} (${escapeHtml(primaryInsight.usefulnessScore ?? "n/a")}) |
+              Evidence: ${escapeHtml(primaryInsight.evidenceCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Most Useful Question</h3>
+            <p><strong>${escapeHtml(primaryQuestion.question || "No prioritized question")}</strong></p>
+            <p class="meta">
+              Priority: ${escapeHtml(primaryQuestion.priority || "n/a")} |
+              Score: ${escapeHtml(primaryQuestion.score ?? "n/a")}
+            </p>
+            <p><strong>Reasons:</strong> ${escapeHtml((primaryQuestion.reasons || []).join(", ") || "n/a")}</p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Reasoning</h3>
+            <p>${escapeHtml(data.reasoning || "")}</p>
+            <p><strong>Possible next operator review:</strong> ${escapeHtml(data.possibleNextOperatorReview || "")}</p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Guardrails</h3>
+            ${
+              Array.isArray(data.guardrails) && data.guardrails.length
+                ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+                : "<p>No guardrails returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderStrategicReasoningExport(data.exportText)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Strategic reasoning dry run failed:", err);
+        container.innerHTML = `<p>Strategic reasoning dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
