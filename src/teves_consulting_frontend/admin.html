@@ -216,6 +216,15 @@
       <div id="memoryMaintenancePlanResults"></div>
     </details>
     <details>
+      <summary><strong>Knowledge Synthesis Dry Run</strong></summary>
+
+      <p>Inspect Phase 5.1 grounded memory synthesis without changing memories or live retrieval.</p>
+
+      <button onclick="runKnowledgeSynthesisDebug()">Synthesize Knowledge</button>
+
+      <div id="knowledgeSynthesisResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -1991,6 +2000,140 @@
       } catch (err) {
         console.error("Memory maintenance plan dry run failed:", err);
         container.innerHTML = `<p>Memory maintenance plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderSynthesisEvidence(memories = []) {
+      if (!Array.isArray(memories) || memories.length === 0) {
+        return "<p>No evidence memories listed.</p>";
+      }
+
+      return memories.map((memory) => `
+        <div>
+          <strong>${escapeHtml(renderMemoryRef(memory))}</strong>
+          <p class="meta">
+            Matched terms: ${escapeHtml((memory.matchedTerms || []).join(", ") || "n/a")}
+          </p>
+        </div>
+      `).join("");
+    }
+
+    function renderKnowledgeInsights(insights = []) {
+      if (!Array.isArray(insights) || insights.length === 0) {
+        return "<p>No synthesis insights met the evidence threshold.</p>";
+      }
+
+      return insights.map((insight, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(insight.title || "Grounded observation")}</strong>
+          <p class="meta">
+            Type: ${escapeHtml(insight.patternType || "pattern")} |
+            Confidence: ${escapeHtml(insight.confidence || "medium")} |
+            Evidence: ${escapeHtml(insight.evidenceCount ?? 0)}
+          </p>
+          <p>${escapeHtml(insight.observation || "")}</p>
+          <p><strong>Guardrail:</strong> ${escapeHtml(insight.guardrail || "")}</p>
+          <div>
+            <strong>Evidence Memories</strong>
+            ${renderSynthesisEvidence(insight.evidenceMemories)}
+          </div>
+          <div>
+            <strong>Suggested Questions</strong>
+            ${
+              Array.isArray(insight.suggestedQuestions) && insight.suggestedQuestions.length
+                ? `<ul>${insight.suggestedQuestions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`
+                : "<p>No suggested questions.</p>"
+            }
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderKnowledgeSynthesisExport(text = "") {
+      if (!text) {
+        return "<p>No synthesis memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="knowledgeSynthesisExportText"
+          readonly
+          style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyKnowledgeSynthesisExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyKnowledgeSynthesisExport = async function copyKnowledgeSynthesisExport() {
+      const exportBox = document.getElementById("knowledgeSynthesisExportText");
+
+      if (!exportBox) {
+        alert("No synthesis memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Synthesis memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
+    window.runKnowledgeSynthesisDebug = async function runKnowledgeSynthesisDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("knowledgeSynthesisResults");
+      container.innerHTML = "<p>Synthesizing grounded memory patterns...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/knowledge-synthesis", {
+          memories: serializedMemories,
+          limit: 8,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Knowledge Synthesis Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Insights: ${escapeHtml(data.insightCount ?? 0)} |
+              Phase coverage: ${escapeHtml((data.phaseCoverage || []).join(", ") || "none")}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Guardrails</h3>
+            ${
+              Array.isArray(data.guardrails) && data.guardrails.length
+                ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+                : "<p>No guardrails returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Grounded Observations</h3>
+            ${renderKnowledgeInsights(data.insights)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderKnowledgeSynthesisExport(data.exportText)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Knowledge synthesis dry run failed:", err);
+        container.innerHTML = `<p>Knowledge synthesis dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
