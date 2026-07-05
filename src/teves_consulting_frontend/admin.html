@@ -2023,6 +2023,29 @@
         return "<p>No synthesis insights met the evidence threshold.</p>";
       }
 
+      const renderQuestions = (insight) => {
+        if (Array.isArray(insight.prioritizedQuestions) && insight.prioritizedQuestions.length) {
+          return `
+            <ul>
+              ${insight.prioritizedQuestions.map((question) => `
+                <li>
+                  ${escapeHtml(question.question || "")}
+                  <span class="meta">
+                    Priority: ${escapeHtml(question.priority || "medium")}
+                    (${escapeHtml(question.score ?? 0)}) |
+                    Reasons: ${escapeHtml((question.reasons || []).join(", ") || "n/a")}
+                  </span>
+                </li>
+              `).join("")}
+            </ul>
+          `;
+        }
+
+        return Array.isArray(insight.suggestedQuestions) && insight.suggestedQuestions.length
+          ? `<ul>${insight.suggestedQuestions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`
+          : "<p>No suggested questions.</p>";
+      };
+
       return insights.map((insight, index) => `
         <div>
           <strong>${index + 1}. ${escapeHtml(insight.title || "Grounded observation")}</strong>
@@ -2041,11 +2064,7 @@
           </div>
           <div>
             <strong>Suggested Questions</strong>
-            ${
-              Array.isArray(insight.suggestedQuestions) && insight.suggestedQuestions.length
-                ? `<ul>${insight.suggestedQuestions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`
-                : "<p>No suggested questions.</p>"
-            }
+            ${renderQuestions(insight)}
           </div>
         </div>
       `).join("");
