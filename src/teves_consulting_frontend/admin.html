@@ -2029,10 +2029,12 @@
           <p class="meta">
             Type: ${escapeHtml(insight.patternType || "pattern")} |
             Confidence: ${escapeHtml(insight.confidence || "medium")} |
+            Usefulness: ${escapeHtml(insight.usefulnessLabel || "medium")} (${escapeHtml(insight.usefulnessScore ?? 0)}) |
             Evidence: ${escapeHtml(insight.evidenceCount ?? 0)}
           </p>
           <p>${escapeHtml(insight.observation || "")}</p>
           <p><strong>Guardrail:</strong> ${escapeHtml(insight.guardrail || "")}</p>
+          <p><strong>Usefulness reasons:</strong> ${escapeHtml((insight.usefulnessReasons || []).join(", ") || "n/a")}</p>
           <div>
             <strong>Evidence Memories</strong>
             ${renderSynthesisEvidence(insight.evidenceMemories)}
