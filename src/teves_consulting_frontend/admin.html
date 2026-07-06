@@ -24,9 +24,42 @@
       cursor: pointer;
     }
 
+    .admin-section {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 28px;
+      padding-top: 18px;
+    }
+
+    .admin-section h2 {
+      font-size: 1.1rem;
+      margin: 0 0 4px;
+    }
+
+    .section-note {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin: 0 0 12px;
+    }
+
+    details {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: #ffffff;
+    }
+
+    details[open] {
+      background: #f9fafb;
+    }
+
+    summary {
+      cursor: pointer;
+    }
+
     .memory-card {
       border: 1px solid #e5e7eb;
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 16px;
       margin: 14px 0;
       background: #f9fafb;
@@ -46,10 +79,14 @@
 
 <body>
   <h1>Teves Consulting Admin</h1>
-  <p>Private memory tools for Aion continuity testing.</p>
+  <p>Private memory tools for Aion continuity review.</p>
 
   <button id="authButton" onclick="handleAuth()">Sign In</button>
   <div id="adminContent" style="display:none;">
+
+    <section class="admin-section">
+      <h2>Memory Records</h2>
+      <p class="section-note">Review saved continuity memories and feedback.</p>
 
     <details open>
       <summary><strong>Memory Overview</strong></summary>
@@ -72,16 +109,6 @@
     </details>
 
     <details>
-      <summary><strong>Golden Tests</strong></summary>
-
-      <p id="goldenLastRun">Last run: Never</p>
-      <p id="goldenSummary">No results available.</p>
-
-      <button onclick="runGoldenTests()">Run Golden Tests</button>
-
-      <div id="goldenResults"></div>
-    </details>
-    <details>
       <summary><strong>Feedback Dashboard</strong></summary>
 
       <p>Total Feedback: <span id="feedbackTotal">0</span></p>
@@ -93,8 +120,14 @@
 
       <div id="feedbackList"></div>
     </details>
+    </section>
+
+    <section class="admin-section">
+      <h2>Retrieval And Context</h2>
+      <p class="section-note">Preview what Aion retrieves and sends as continuity context.</p>
+
     <details>
-      <summary><strong>Retrieval Debugger Final</strong></summary>
+      <summary><strong>Retrieval Preview</strong></summary>
 
       <p>Final post-filtered retrieval used by Aion.</p>
 
@@ -109,7 +142,7 @@
       <div id="retrievalResults"></div>
     </details>
     <details>
-      <summary><strong>Retrieval Debugger Raw</strong></summary>
+      <summary><strong>Raw Retrieval Preview</strong></summary>
 
       <p>Inspect raw search results before filtering and boosting.</p>
 
@@ -141,9 +174,9 @@
       <div id="contextResults"></div>
     </details>
     <details>
-      <summary><strong>Memory Ranking Dry Run</strong></summary>
+      <summary><strong>Memory Ranking Preview</strong></summary>
 
-      <p>Inspect Phase 4.1 memory ranking without changing live retrieval.</p>
+      <p>Inspect memory ranking without changing live retrieval.</p>
 
       <input
         id="memoryRankingQuery"
@@ -156,9 +189,9 @@
       <div id="memoryRankingResults"></div>
     </details>
     <details>
-      <summary><strong>Relationship Expansion Dry Run</strong></summary>
+      <summary><strong>Relationship Expansion Preview</strong></summary>
 
-      <p>Inspect Phase 4.2 relationship-aware expansion without changing live retrieval.</p>
+      <p>Inspect relationship-aware expansion without changing live retrieval.</p>
 
       <input
         id="relationshipExpansionQuery"
@@ -170,28 +203,34 @@
 
       <div id="relationshipExpansionResults"></div>
     </details>
-    <details>
-      <summary><strong>Memory Health Dry Run</strong></summary>
+    </section>
 
-      <p>Inspect Phase 4.3 memory graph health without changing memories or live retrieval.</p>
+    <section class="admin-section">
+      <h2>Memory Graph Maintenance</h2>
+      <p class="section-note">Inspect graph health, overlaps, relationships, and operator cleanup plans.</p>
+
+    <details>
+      <summary><strong>Memory Health Preview</strong></summary>
+
+      <p>Inspect memory graph health without changing memories or live retrieval.</p>
 
       <button onclick="runMemoryHealthDebug()">Analyze Memory Health</button>
 
       <div id="memoryHealthResults"></div>
     </details>
     <details>
-      <summary><strong>Memory Consolidation Dry Run</strong></summary>
+      <summary><strong>Memory Consolidation Preview</strong></summary>
 
-      <p>Inspect Phase 4.3.2 consolidation suggestions without changing memories or live retrieval.</p>
+      <p>Inspect consolidation suggestions without changing memories or live retrieval.</p>
 
       <button onclick="runMemoryConsolidationDebug()">Suggest Consolidations</button>
 
       <div id="memoryConsolidationResults"></div>
     </details>
     <details>
-      <summary><strong>Decision Evolution Dry Run</strong></summary>
+      <summary><strong>Decision Evolution Preview</strong></summary>
 
-      <p>Inspect Phase 4.3.3 decision evolution without changing memories or live retrieval.</p>
+      <p>Inspect decision evolution without changing memories or live retrieval.</p>
 
       <button onclick="runDecisionEvolutionDebug()">Analyze Decision Evolution</button>
 
@@ -200,75 +239,98 @@
     <details>
       <summary><strong>Memory Health Dashboard</strong></summary>
 
-      <p>Review Phase 4.3 health, consolidation, and decision-evolution status in one operator view.</p>
+      <p>Review health, consolidation, and decision-evolution status in one operator view.</p>
 
       <button onclick="runMemoryHealthDashboard()">Build Dashboard</button>
 
       <div id="memoryHealthDashboardResults"></div>
     </details>
     <details>
-      <summary><strong>Memory Maintenance Plan Dry Run</strong></summary>
+      <summary><strong>Memory Maintenance Plan</strong></summary>
 
-      <p>Build a Phase 4.4 operator action plan without changing memories or live retrieval.</p>
+      <p>Build an operator action plan without changing memories or live retrieval.</p>
 
       <button onclick="runMemoryMaintenancePlanDebug()">Build Action Plan</button>
 
       <div id="memoryMaintenancePlanResults"></div>
     </details>
     <details>
-      <summary><strong>Knowledge Synthesis Dry Run</strong></summary>
+      <summary><strong>Relationship Confidence Preview</strong></summary>
 
-      <p>Inspect Phase 5.1 grounded memory synthesis without changing memories or live retrieval.</p>
+      <p>Inspect computed relationship confidence without changing memories or live retrieval.</p>
+
+      <button onclick="runRelationshipConfidenceDebug()">Analyze Relationship Confidence</button>
+
+      <div id="relationshipConfidenceResults"></div>
+    </details>
+    </section>
+
+    <section class="admin-section">
+      <h2>Insight And Reasoning</h2>
+      <p class="section-note">Review grounded patterns, questions, assumptions, and operator reports.</p>
+
+    <details>
+      <summary><strong>Knowledge Synthesis</strong></summary>
+
+      <p>Inspect grounded memory synthesis without changing memories or live retrieval.</p>
 
       <button onclick="runKnowledgeSynthesisDebug()">Synthesize Knowledge</button>
 
       <div id="knowledgeSynthesisResults"></div>
     </details>
     <details>
-      <summary><strong>Strategic Reasoning Dry Run</strong></summary>
+      <summary><strong>Strategic Reasoning Brief</strong></summary>
 
-      <p>Build a Phase 5.2 operator reasoning brief without changing memories or live retrieval.</p>
+      <p>Build an operator reasoning brief without changing memories or live retrieval.</p>
 
       <button onclick="runStrategicReasoningDebug()">Build Strategic Brief</button>
 
       <div id="strategicReasoningResults"></div>
     </details>
     <details>
-      <summary><strong>Assumption Evolution Dry Run</strong></summary>
+      <summary><strong>Assumption Review</strong></summary>
 
-      <p>Inspect Phase 5.3 stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
+      <p>Inspect stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
 
       <button onclick="runAssumptionEvolutionDebug()">Analyze Assumptions</button>
 
       <div id="assumptionEvolutionResults"></div>
     </details>
     <details>
-      <summary><strong>Reflective Intelligence Dry Run</strong></summary>
+      <summary><strong>Reflective Intelligence</strong></summary>
 
-      <p>Build a Phase 5.4 grounded reflection without changing memories or live retrieval.</p>
+      <p>Build a grounded reflection without changing memories or live retrieval.</p>
 
       <button onclick="runReflectiveIntelligenceDebug()">Build Reflection</button>
 
       <div id="reflectiveIntelligenceResults"></div>
     </details>
     <details>
-      <summary><strong>Operator Insight Report Dry Run</strong></summary>
+      <summary><strong>Operator Insight Report</strong></summary>
 
-      <p>Build a Phase 5.5 operator insight report without changing memories or live retrieval.</p>
+      <p>Build an operator insight report without changing memories or live retrieval.</p>
 
       <button onclick="runOperatorInsightReportDebug()">Build Report</button>
 
       <div id="operatorInsightReportResults"></div>
     </details>
+    </section>
+
+    <section class="admin-section">
+      <h2>System Checks</h2>
+      <p class="section-note">Run validation checks used to monitor answer quality.</p>
+
     <details>
-      <summary><strong>Relationship Confidence Dry Run</strong></summary>
+      <summary><strong>Golden Tests</strong></summary>
 
-      <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
+      <p id="goldenLastRun">Last run: Never</p>
+      <p id="goldenSummary">No results available.</p>
 
-      <button onclick="runRelationshipConfidenceDebug()">Analyze Relationship Confidence</button>
+      <button onclick="runGoldenTests()">Run Golden Tests</button>
 
-      <div id="relationshipConfidenceResults"></div>
+      <div id="goldenResults"></div>
     </details>
+    </section>
   </div>
 
   <script type="module">
