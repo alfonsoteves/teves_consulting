@@ -243,6 +243,15 @@
       <div id="assumptionEvolutionResults"></div>
     </details>
     <details>
+      <summary><strong>Reflective Intelligence Dry Run</strong></summary>
+
+      <p>Build a Phase 5.4 grounded reflection without changing memories or live retrieval.</p>
+
+      <button onclick="runReflectiveIntelligenceDebug()">Build Reflection</button>
+
+      <div id="reflectiveIntelligenceResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -2441,6 +2450,122 @@
       } catch (err) {
         console.error("Assumption evolution dry run failed:", err);
         container.innerHTML = `<p>Assumption evolution dry run failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderLearningStatements(statements = []) {
+      if (!Array.isArray(statements) || statements.length === 0) {
+        return "<p>No reflective learning statements returned.</p>";
+      }
+
+      return statements.map((statement, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(statement.statement || "Untitled reflection")}</strong>
+          <p class="meta">
+            Confidence: ${escapeHtml(statement.confidence || "medium")} |
+            Sources: ${escapeHtml((statement.sources || []).join(", ") || "n/a")}
+          </p>
+          ${
+            statement.sourceInsight
+              ? `<p class="meta"><strong>Source insight:</strong> ${escapeHtml(statement.sourceInsight.title || "Untitled insight")}</p>`
+              : ""
+          }
+        </div>
+      `).join("");
+    }
+
+    function renderReflectiveIntelligenceExport(text = "") {
+      if (!text) {
+        return "<p>No reflection memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="reflectiveIntelligenceExportText"
+          readonly
+          style="width: 100%; min-height: 300px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyReflectiveIntelligenceExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyReflectiveIntelligenceExport = async function copyReflectiveIntelligenceExport() {
+      const exportBox = document.getElementById("reflectiveIntelligenceExportText");
+
+      if (!exportBox) {
+        alert("No reflection memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Reflection memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
+    window.runReflectiveIntelligenceDebug = async function runReflectiveIntelligenceDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("reflectiveIntelligenceResults");
+      container.innerHTML = "<p>Building reflective intelligence summary...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/reflective-intelligence", {
+          memories: serializedMemories,
+          limit: 10,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Reflective Intelligence Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Learning statements: ${escapeHtml(data.learningStatementCount ?? 0)} |
+              Synthesis insights: ${escapeHtml(data.sourceSummary?.synthesisInsightCount ?? 0)} |
+              Questioned assumptions: ${escapeHtml(data.sourceSummary?.questionedAssumptionCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>What Aion Appears To Be Learning</h3>
+            ${renderLearningStatements(data.learningStatements)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Reflection</h3>
+            <p>${escapeHtml(data.reflection || "")}</p>
+            <p><strong>Suggested operator reflection:</strong> ${escapeHtml(data.suggestedOperatorReflection || "")}</p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Guardrails</h3>
+            ${
+              Array.isArray(data.guardrails) && data.guardrails.length
+                ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+                : "<p>No guardrails returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderReflectiveIntelligenceExport(data.exportText)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Reflective intelligence dry run failed:", err);
+        container.innerHTML = `<p>Reflective intelligence dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
