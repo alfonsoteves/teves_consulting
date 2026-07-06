@@ -2289,7 +2289,7 @@
 
     function renderAssumptionEvidence(memories = []) {
       if (!Array.isArray(memories) || memories.length === 0) {
-        return "<p>No direct memory evidence listed.</p>";
+        return "<p>No evidence memories listed.</p>";
       }
 
       return memories.map((memory) => `
@@ -2313,7 +2313,9 @@
           <p class="meta">
             Category: ${escapeHtml(assumption.category || "n/a")} |
             Confidence: ${escapeHtml(assumption.confidence || "medium")} |
-            Evidence: ${escapeHtml(assumption.evidenceCount ?? 0)}
+            Direct evidence: ${escapeHtml(assumption.evidenceCount ?? 0)} |
+            Inherited evidence: ${escapeHtml(assumption.sourceEvidenceCount ?? 0)} |
+            Mode: ${escapeHtml(assumption.evidenceMode || "direct")}
           </p>
           <p>${escapeHtml(assumption.reasoning || "")}</p>
           <p><strong>Suggested operator question:</strong> ${escapeHtml(assumption.suggestedOperatorQuestion || "")}</p>
@@ -2328,8 +2330,12 @@
               : ""
           }
           <div>
-            <strong>Evidence Memories</strong>
+            <strong>Direct Evidence Memories</strong>
             ${renderAssumptionEvidence(assumption.evidenceMemories)}
+          </div>
+          <div>
+            <strong>Inherited Source Evidence</strong>
+            ${renderAssumptionEvidence(assumption.sourceEvidenceMemories)}
           </div>
         </div>
       `).join("");
