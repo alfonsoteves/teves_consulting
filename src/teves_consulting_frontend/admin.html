@@ -252,6 +252,15 @@
       <div id="reflectiveIntelligenceResults"></div>
     </details>
     <details>
+      <summary><strong>Operator Insight Report Dry Run</strong></summary>
+
+      <p>Build a Phase 5.5 operator insight report without changing memories or live retrieval.</p>
+
+      <button onclick="runOperatorInsightReportDebug()">Build Report</button>
+
+      <div id="operatorInsightReportResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -2566,6 +2575,127 @@
       } catch (err) {
         console.error("Reflective intelligence dry run failed:", err);
         container.innerHTML = `<p>Reflective intelligence dry run failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderOperatorInsightFindings(findings = []) {
+      if (!Array.isArray(findings) || findings.length === 0) {
+        return "<p>No operator insight findings returned.</p>";
+      }
+
+      return findings.map((finding, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(finding.finding || "Untitled finding")}</strong>
+          <p class="meta">
+            Type: ${escapeHtml(finding.type || "insight")} |
+            Confidence: ${escapeHtml(finding.confidence || "medium")} |
+            Sources: ${escapeHtml((finding.sources || []).join(", ") || "n/a")}
+          </p>
+          <p><strong>Operator question:</strong> ${escapeHtml(finding.operatorQuestion || "")}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderOperatorInsightReportExport(text = "") {
+      if (!text) {
+        return "<p>No operator insight report memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="operatorInsightReportExportText"
+          readonly
+          style="width: 100%; min-height: 340px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyOperatorInsightReportExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyOperatorInsightReportExport = async function copyOperatorInsightReportExport() {
+      const exportBox = document.getElementById("operatorInsightReportExportText");
+
+      if (!exportBox) {
+        alert("No operator insight report memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Operator insight report memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
+    window.runOperatorInsightReportDebug = async function runOperatorInsightReportDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("operatorInsightReportResults");
+      container.innerHTML = "<p>Building operator insight report...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/operator-insight-report", {
+          memories: serializedMemories,
+          limit: 10,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Operator Insight Report Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Status: ${escapeHtml(data.reportStatus || "n/a")} |
+              Key findings: ${escapeHtml(data.keyFindingCount ?? 0)} |
+              Questioned assumptions: ${escapeHtml(data.sourceSummary?.questionedAssumptionCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Key Findings</h3>
+            ${renderOperatorInsightFindings(data.keyFindings)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Next Review Focus</h3>
+            <p>${escapeHtml(data.nextReviewFocus || "")}</p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Operator Notes</h3>
+            ${
+              Array.isArray(data.operatorNotes) && data.operatorNotes.length
+                ? `<ul>${data.operatorNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`
+                : "<p>No operator notes returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Guardrails</h3>
+            ${
+              Array.isArray(data.guardrails) && data.guardrails.length
+                ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+                : "<p>No guardrails returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderOperatorInsightReportExport(data.exportText)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Operator insight report dry run failed:", err);
+        container.innerHTML = `<p>Operator insight report dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
