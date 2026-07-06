@@ -234,6 +234,15 @@
       <div id="strategicReasoningResults"></div>
     </details>
     <details>
+      <summary><strong>Assumption Evolution Dry Run</strong></summary>
+
+      <p>Inspect Phase 5.3 stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
+
+      <button onclick="runAssumptionEvolutionDebug()">Analyze Assumptions</button>
+
+      <div id="assumptionEvolutionResults"></div>
+    </details>
+    <details>
       <summary><strong>Relationship Confidence Dry Run</strong></summary>
 
       <p>Inspect Phase 4.3.5 computed relationship confidence without changing memories or live retrieval.</p>
@@ -2275,6 +2284,157 @@
       } catch (err) {
         console.error("Strategic reasoning dry run failed:", err);
         container.innerHTML = `<p>Strategic reasoning dry run failed: ${escapeHtml(err.message || err)}</p>`;
+      }
+    };
+
+    function renderAssumptionEvidence(memories = []) {
+      if (!Array.isArray(memories) || memories.length === 0) {
+        return "<p>No direct memory evidence listed.</p>";
+      }
+
+      return memories.map((memory) => `
+        <div>
+          <strong>${escapeHtml(renderMemoryRef(memory))}</strong>
+          <p class="meta">
+            Matched terms: ${escapeHtml((memory.matchedTerms || []).join(", ") || "n/a")}
+          </p>
+        </div>
+      `).join("");
+    }
+
+    function renderAssumptionEntries(assumptions = []) {
+      if (!Array.isArray(assumptions) || assumptions.length === 0) {
+        return "<p>No assumptions in this category.</p>";
+      }
+
+      return assumptions.map((assumption, index) => `
+        <div>
+          <strong>${index + 1}. ${escapeHtml(assumption.assumption || "Untitled assumption")}</strong>
+          <p class="meta">
+            Category: ${escapeHtml(assumption.category || "n/a")} |
+            Confidence: ${escapeHtml(assumption.confidence || "medium")} |
+            Evidence: ${escapeHtml(assumption.evidenceCount ?? 0)}
+          </p>
+          <p>${escapeHtml(assumption.reasoning || "")}</p>
+          <p><strong>Suggested operator question:</strong> ${escapeHtml(assumption.suggestedOperatorQuestion || "")}</p>
+          ${
+            assumption.sourceInsight
+              ? `<p class="meta"><strong>Source insight:</strong> ${escapeHtml(assumption.sourceInsight.title || "Untitled insight")}</p>`
+              : ""
+          }
+          ${
+            assumption.sourceQuestion
+              ? `<p class="meta"><strong>Source question:</strong> ${escapeHtml(assumption.sourceQuestion.question || "")}</p>`
+              : ""
+          }
+          <div>
+            <strong>Evidence Memories</strong>
+            ${renderAssumptionEvidence(assumption.evidenceMemories)}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderAssumptionEvolutionExport(text = "") {
+      if (!text) {
+        return "<p>No assumption memo available.</p>";
+      }
+
+      return `
+        <textarea
+          id="assumptionEvolutionExportText"
+          readonly
+          style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+        >${escapeHtml(text)}</textarea>
+        <button onclick="copyAssumptionEvolutionExport()">Copy Memo</button>
+      `;
+    }
+
+    window.copyAssumptionEvolutionExport = async function copyAssumptionEvolutionExport() {
+      const exportBox = document.getElementById("assumptionEvolutionExportText");
+
+      if (!exportBox) {
+        alert("No assumption memo is available yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+        alert("Assumption memo copied.");
+      } catch (err) {
+        exportBox.focus();
+        exportBox.select();
+        alert("Copy failed. The memo is selected so you can copy it manually.");
+      }
+    };
+
+    window.runAssumptionEvolutionDebug = async function runAssumptionEvolutionDebug() {
+      if (!isAuthenticated) {
+        alert("Please sign in first.");
+        return;
+      }
+
+      const container = document.getElementById("assumptionEvolutionResults");
+      container.innerHTML = "<p>Analyzing assumption evolution...</p>";
+
+      try {
+        const memories = await window.adminActor.getMyAllSummaries();
+        latestMemories = memories;
+
+        const serializedMemories = memories.map(serializeMemoryForRanking);
+        const data = await postMemoryDryRun("/admin/assumption-evolution", {
+          memories: serializedMemories,
+          limit: 10,
+        });
+
+        container.innerHTML = `
+          <div class="memory-card">
+            <h3>Assumption Evolution Summary</h3>
+            <p class="meta">
+              Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+              Assumptions: ${escapeHtml(data.assumptionCount ?? 0)} |
+              Synthesis insights: ${escapeHtml(data.sourceSummary?.synthesisInsightCount ?? 0)}
+            </p>
+          </div>
+
+          <div class="memory-card">
+            <h3>Category Counts</h3>
+            ${renderCountMap(data.categoryCounts)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Stable Assumptions</h3>
+            ${renderAssumptionEntries(data.stableAssumptions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Evolving Assumptions</h3>
+            ${renderAssumptionEntries(data.evolvingAssumptions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Questioned Assumptions</h3>
+            ${renderAssumptionEntries(data.questionedAssumptions)}
+          </div>
+
+          <div class="memory-card">
+            <h3>Guardrails</h3>
+            ${
+              Array.isArray(data.guardrails) && data.guardrails.length
+                ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+                : "<p>No guardrails returned.</p>"
+            }
+          </div>
+
+          <div class="memory-card">
+            <h3>Export Memo</h3>
+            ${renderAssumptionEvolutionExport(data.exportText)}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error("Assumption evolution dry run failed:", err);
+        container.innerHTML = `<p>Assumption evolution dry run failed: ${escapeHtml(err.message || err)}</p>`;
       }
     };
 
