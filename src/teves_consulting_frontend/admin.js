@@ -2613,6 +2613,141 @@ window.runProviderInspectionDebug = async function runProviderInspectionDebug() 
   }
 };
 
+function renderProviderEvidence(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No evidence entries returned.</p>";
+  }
+
+  return `<ul>${entries.map((entry) => `
+    <li>
+      <strong>${escapeHtml(entry.source || "Unknown source")}</strong>
+      <span class="meta">${escapeHtml(entry.status || "")}</span>
+      ${entry.notes ? `<br>${escapeHtml(entry.notes)}` : ""}
+    </li>
+  `).join("")}</ul>`;
+}
+
+function renderInterfaceCompletenessChecklist(items = []) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "<p>No completeness checklist returned.</p>";
+  }
+
+  return items.map((item, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(item.item || "Unknown item")}</strong>
+      <p class="meta">
+        Status: ${escapeHtml(item.status || "n/a")} |
+        Evidence: ${escapeHtml(item.evidenceMode || "n/a")} |
+        Blocks 6.4: ${item.blocksHarness ? "yes" : "no"}
+      </p>
+      <p><strong>Value:</strong> ${escapeHtml(item.value || "n/a")}</p>
+      <p>${escapeHtml(item.notes || "")}</p>
+    </div>
+  `).join("");
+}
+
+window.runIcpLlmCandidInspectionDebug = async function runIcpLlmCandidInspectionDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("icpLlmCandidInspectionResults");
+  container.innerHTML = "<p>Inspecting ICP LLM Candid interface...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/icp-llm-candid-inspection"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const candidate = data.candidate || {};
+    const iface = data.interface || {};
+    const readiness = data.parallelPipelineReadiness || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "ICP LLM Candid Interface Inspection")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.3.1")} |
+          Continuity owner: ${escapeHtml(data.continuityOwner || "Aion")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
+          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Candidate</h3>
+        ${renderCountMap(candidate)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Expected Interface</h3>
+        ${renderCountMap({
+          verificationStatus: iface.verificationStatus,
+          expectedMethod: iface.expectedMethod,
+          methodType: iface.methodType,
+          expectedResponseShape: iface.expectedResponseShape,
+        })}
+        <h4>Request Shape</h4>
+        <pre>${escapeHtml(JSON.stringify(iface.expectedRequestShape || {}, null, 2))}</pre>
+        <h4>Message Shape</h4>
+        <pre>${escapeHtml(JSON.stringify(iface.expectedMessageShape || {}, null, 2))}</pre>
+        <h4>Known Limits</h4>
+        ${renderCountMap(iface.knownLimits || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Interface Completeness</h3>
+        ${renderCountMap(data.interfaceCompleteness || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Completeness Checklist</h3>
+        ${renderInterfaceCompletenessChecklist(data.completenessChecklist)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Parallel Pipeline Readiness</h3>
+        ${renderCountMap(readiness)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Evidence</h3>
+        ${renderProviderEvidence(data.evidence)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Operator Checklist</h3>
+        ${
+          Array.isArray(data.operatorChecklist) && data.operatorChecklist.length
+            ? `<ul>${data.operatorChecklist.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No checklist returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("ICP LLM Candid inspection dry run failed:", err);
+    container.innerHTML = `<p>ICP LLM Candid inspection dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {
