@@ -2748,6 +2748,121 @@ window.runIcpLlmCandidInspectionDebug = async function runIcpLlmCandidInspection
   }
 };
 
+function valueFromInput(id) {
+  const element = document.getElementById(id);
+  return element ? element.value.trim() : "";
+}
+
+function renderVerificationFields(fields = []) {
+  if (!Array.isArray(fields) || fields.length === 0) {
+    return "<p>No verification fields returned.</p>";
+  }
+
+  return fields.map((field, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(field.label || field.key || "Unknown field")}</strong>
+      <p class="meta">
+        Status: ${escapeHtml(field.status || "n/a")} |
+        Required for 6.4: ${field.requiredForHarness ? "yes" : "no"} |
+        Expected: ${escapeHtml(field.expected || "n/a")}
+      </p>
+      <p><strong>Value:</strong> ${escapeHtml(field.value || "pending")}</p>
+    </div>
+  `).join("");
+}
+
+window.runIcpLlmCandidVerificationNotesDebug = async function runIcpLlmCandidVerificationNotesDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("icpLlmCandidVerificationNotesResults");
+  container.innerHTML = "<p>Evaluating verification notes...</p>";
+
+  const payload = {
+    v0ChatExists: valueFromInput("icpVerifyV0ChatExists"),
+    methodType: valueFromInput("icpVerifyMethodType"),
+    requestShapeVerified: valueFromInput("icpVerifyRequestShape"),
+    responseShapeVerified: valueFromInput("icpVerifyResponseShape"),
+    costCyclesNotes: valueFromInput("icpVerifyCostCyclesNotes"),
+    timeoutNotes: valueFromInput("icpVerifyTimeoutNotes"),
+    errorNotes: valueFromInput("icpVerifyErrorNotes"),
+    streamingNotes: valueFromInput("icpVerifyStreamingNotes"),
+    modelIdentityNotes: valueFromInput("icpVerifyModelIdentityNotes"),
+    verifiedBy: valueFromInput("icpVerifyVerifiedBy"),
+    verifiedAt: valueFromInput("icpVerifyVerifiedAt"),
+  };
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/icp-llm-candid-verification-notes",
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "ICP LLM Live Candid Verification Notes")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.3.2")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
+          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"} |
+          Memory writes: ${data.memoryWrites ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Candidate</h3>
+        ${renderCountMap(data.candidate || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Verification Summary</h3>
+        ${renderCountMap(data.verificationSummary || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Remaining Blockers</h3>
+        ${
+          Array.isArray(data.remainingBlockers) && data.remainingBlockers.length
+            ? `<ul>${data.remainingBlockers.map((blocker) => `<li>${escapeHtml(blocker)}</li>`).join("")}</ul>`
+            : "<p>No remaining blockers returned.</p>"
+        }
+        <p><strong>Next action:</strong> ${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Verification Fields</h3>
+        ${renderVerificationFields(data.verificationFields)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("ICP LLM Candid verification notes dry run failed:", err);
+    container.innerHTML = `<p>ICP LLM Candid verification notes dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {
