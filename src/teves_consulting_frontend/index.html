@@ -1,33 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Teves Consulting — Clarity in Complex Times</title>
-
-   <meta name="description" content="Practical consulting for financial clarity, resilience planning, and calm decision-making." />
-
-  <meta name="keywords" content="resilience consulting, financial clarity, water security, power resilience, food planning, calm decision-making" />
-  <meta name="author" content="Teves Consulting" />
-  <link rel="canonical" href="https://www.tevesconsulting.com/" />
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Teves Consulting — Clarity in Complex Times" />
-  <meta property="og:description" content="Practical consulting for financial clarity, resilience planning, and calm decision-making." />
-  <meta property="og:url" content="https://www.tevesconsulting.com/" />
-  <meta property="og:site_name" content="Teves Consulting" />
-  <meta property="og:image" content="https://www.tevesconsulting.com/assets/images/og-home.jpg" />
-  <meta property="og:image:alt" content="Teves Consulting — Clarity in Complex Times" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Teves Consulting — Clarity in Complex Times" />
-  <meta name="twitter:description" content="Practical consulting for financial clarity, resilience planning, and calm decision-making." />
-  <meta name="twitter:image" content="https://www.tevesconsulting.com/assets/images/og-home.jpg" />
-
-  <script src="https://cdn.tailwindcss.com"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aion — Think better over time</title>
   <!-- GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
   <script>
@@ -37,241 +13,625 @@
     gtag('config', 'G-WMZ9MD4EY4');
   </script>
   <style>
-    html { scroll-behavior: smooth; }
-    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    :root {
+      --ink: #071844;
+      --blue: #214be8;
+      --blue-soft: #eef5ff;
+      --violet: #6656e8;
+      --green: #24a889;
+      --muted: #31415f;
+      --line: #dce7f8;
+      --card: rgba(255,255,255,0.82);
+      --shadow: 0 24px 70px rgba(35, 75, 150, 0.13);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 8%, rgba(214,235,255,.9), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #f8fbff 52%, #ffffff 100%);
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+
+    .site-header {
+      width: 100%;
+      padding: 34px clamp(28px, 7vw, 92px) 0;
+      position: absolute;
+      top: 0;
+      z-index: 20;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: flex-end;
+      gap: clamp(34px, 5.5vw, 78px);
+      align-items: center;
+      font-size: 17px;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      position: relative;
+      padding-bottom: 8px;
+    }
+
+    .nav-link.active,
+    .nav-link:hover { color: var(--blue); }
+
+    .nav-link.lang { margin-left: clamp(8px, 2vw, 28px); }
+
+    .nav-link.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 42px;
+      height: 2px;
+      background: var(--blue);
+      box-shadow: 0 5px 18px rgba(33,75,232,.35);
+    }
+
+    .hero {
+      min-height: 710px;
+      padding: 128px clamp(28px, 7vw, 92px) 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 3;
+      max-width: 620px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(96px, 14vw, 186px);
+      line-height: .84;
+      letter-spacing: -0.045em;
+      color: #071947;
+    }
+
+    .tagline {
+      margin: 24px 0 22px;
+      font-size: clamp(34px, 5vw, 54px);
+      font-weight: 650;
+      line-height: 1.04;
+      color: var(--blue);
+      letter-spacing: -0.045em;
+    }
+
+    .hero-copy {
+      max-width: 540px;
+      font-size: 20px;
+      line-height: 1.65;
+      color: #101f45;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 30px;
+      margin-top: 28px;
+      padding: 17px 32px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: white;
+      background: linear-gradient(135deg, #2453f1, #1732b8);
+      font-size: 22px;
+      font-weight: 600;
+      box-shadow: 0 18px 45px rgba(33,75,232,.25);
+      transition: transform .22s ease, box-shadow .22s ease, filter .22s ease;
+      animation: buttonPulse 5.5s ease-in-out infinite;
+    }
+
+    .cta:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.04);
+      box-shadow: 0 22px 58px rgba(33,75,232,.36);
+    }
+
+    .cta span { transition: transform .22s ease; }
+    .cta:hover span { transform: translateX(5px); }
+
+    /* Moving wave field */
+    .wave-field {
+      position: absolute;
+      right: -10vw;
+      top: 76px;
+      width: 78vw;
+      height: 520px;
+      opacity: .68;
+      pointer-events: none;
+      z-index: 1;
+      transform: translateZ(0);
+    }
+
+    .wave-layer {
+      position: absolute;
+      inset: 0;
+      background-repeat: repeat-x;
+      background-size: 1200px 420px;
+      will-change: transform, opacity;
+      filter: blur(.1px);
+    }
+
+    .wave-layer.one {
+      background-image: url("data:image/svg+xml,%3Csvg width='1200' height='420' viewBox='0 0 1200 420' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 240 C160 145 320 340 500 235 C700 120 790 215 960 130 C1080 70 1140 95 1200 65' stroke='%23214be8' stroke-opacity='.22' stroke-width='2.6'/%3E%3Cpath d='M0 260 C170 170 330 360 520 255 C720 145 820 238 990 150 C1100 92 1160 118 1200 94' stroke='%236a9cff' stroke-opacity='.18' stroke-width='2'/%3E%3Cpath d='M0 282 C190 200 350 380 560 292 C740 218 870 280 1040 190 C1125 145 1168 148 1200 132' stroke='%238bb8ff' stroke-opacity='.16' stroke-width='1.4'/%3E%3C/g%3E%3C/svg%3E");
+      animation: waveDriftOne 32s linear infinite;
+    }
+
+    .wave-layer.two {
+      background-image: url("data:image/svg+xml,%3Csvg width='1200' height='420' viewBox='0 0 1200 420' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 225 C155 120 315 325 505 225 C690 130 810 190 960 112 C1070 55 1140 75 1200 48' stroke='%233d7bff' stroke-opacity='.12' stroke-width='1.2'/%3E%3Cpath d='M0 306 C160 250 325 360 520 315 C720 270 820 330 1000 260 C1110 218 1165 230 1200 205' stroke='%236656e8' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E");
+      animation: waveDriftTwo 54s linear infinite reverse;
+      opacity: .95;
+    }
+
+    .wave-layer.three {
+      background-image: url("data:image/svg+xml,%3Csvg width='1200' height='420' viewBox='0 0 1200 420' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 250 C130 210 250 305 380 260 C540 205 630 255 790 205 C920 160 1040 180 1200 120' stroke='%23bcd7ff' stroke-opacity='.26' stroke-width='1'/%3E%3Cpath d='M0 330 C160 288 300 370 470 330 C660 290 770 340 940 300 C1070 270 1140 290 1200 255' stroke='%23bcd7ff' stroke-opacity='.20' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E");
+      animation: waveDriftThree 76s linear infinite;
+      opacity: .85;
+    }
+
+    .sparkle-field {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(65, 131, 255, .45);
+      box-shadow: 0 0 15px rgba(65,131,255,.24);
+      animation: sparkleFloat 7s ease-in-out infinite;
+    }
+
+    .sparkle.s1 { left: 56%; top: 31%; animation-delay: -1s; }
+    .sparkle.s2 { left: 68%; top: 23%; animation-delay: -3s; }
+    .sparkle.s3 { left: 79%; top: 34%; animation-delay: -5s; }
+    .sparkle.s4 { left: 90%; top: 43%; animation-delay: -2s; }
+
+    .judgment {
+      text-align: center;
+      padding: 12px 24px 58px;
+      font-size: clamp(24px, 3vw, 31px);
+      font-weight: 650;
+      letter-spacing: -0.035em;
+    }
+
+    .features {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 28px 64px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .feature {
+      padding: 20px 48px 10px;
+      border-left: 1px solid var(--line);
+    }
+
+    .feature:first-child { border-left: none; }
+
+    .icon,
+    .pillar-icon {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #edf5ff, #f8f7ff);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px rgba(35, 75, 232, .05);
+      transition: transform .24s ease, box-shadow .24s ease;
+    }
+
+    .icon svg,
+    .pillar-icon svg {
+      width: 46px;
+      height: 46px;
+      stroke-width: 2.1;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-shield svg { stroke: var(--blue); }
+    .icon-network svg { stroke: var(--green); }
+    .icon-search svg { stroke: var(--violet); }
+    .pillar-icon svg { stroke: var(--blue); }
+
+    .feature:hover .icon {
+      transform: translateY(-4px) scale(1.025);
+      box-shadow: 0 18px 40px rgba(35, 75, 232, .13);
+    }
+
+    .icon-network circle {
+      transform-origin: center;
+      animation: nodeBreath 4.8s ease-in-out infinite;
+    }
+
+    .icon-search:hover svg { transform: scale(1.05); }
+    .icon svg { transition: transform .24s ease; }
+
+    .feature h2,
+    .pillars-card h2 {
+      font-size: 27px;
+      letter-spacing: -0.035em;
+      margin: 30px 0 18px;
+    }
+
+    .feature h2::after {
+      content: "";
+      display: block;
+      width: 42px;
+      height: 2px;
+      background: var(--blue);
+      margin-top: 18px;
+    }
+
+    .feature p {
+      font-size: 17px;
+      line-height: 1.65;
+      color: #122344;
+    }
+
+    .pillars-card {
+      max-width: 1110px;
+      margin: 10px auto 56px;
+      padding: 28px 36px;
+      display: grid;
+      grid-template-columns: 108px 1fr auto;
+      align-items: center;
+      gap: 28px;
+      border: 1px solid #e3ecfb;
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .pillars-card h2 { margin: 0 0 12px; }
+
+    .pillars-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .pillars-card a {
+      color: var(--blue);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .brand-close {
+      position: relative;
+      text-align: center;
+      padding: 0 24px 46px;
+      overflow: hidden;
+    }
+
+    .footer-wave {
+      position: absolute;
+      inset: auto 0 72px 0;
+      height: 125px;
+      opacity: .42;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='1200' height='120' viewBox='0 0 1200 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23214be8' stroke-linecap='round'%3E%3Cpath d='M0 70 C160 20 300 115 470 62 C640 8 770 92 940 43 C1070 8 1130 42 1200 22' stroke-opacity='.20' stroke-width='1.4'/%3E%3Cpath d='M0 92 C170 48 330 122 520 82 C690 40 820 104 1000 64 C1110 38 1160 54 1200 46' stroke-opacity='.16' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: 1200px 120px;
+      background-repeat: repeat-x;
+      animation: footerWaveMove 44s linear infinite;
+    }
+
+    .brand-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .mark {
+      margin: 0 auto 12px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      border: 1px solid #bed2ff;
+      background: rgba(255,255,255,.76);
+    }
+
+    .mark svg {
+      width: 46px;
+      height: 46px;
+      stroke: var(--blue);
+      fill: none;
+      stroke-width: 1.15;
+      animation: slowRotate 42s linear infinite;
+    }
+
+    .brand-close h2 {
+      font-size: 46px;
+      line-height: 1;
+      margin: 0;
+      letter-spacing: -0.05em;
+    }
+
+    .brand-close p {
+      margin: 8px 0 6px;
+      color: var(--blue);
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .brand-close small { color: var(--muted); font-size: 16px; }
+
+    .footer {
+      max-width: none;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 5vw, 72px) 36px;
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      color: #10214b;
+      font-size: 15px;
+    }
+
+    .footer a {
+      color: var(--blue);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    @keyframes waveDriftOne {
+      from { transform: translateX(0) translateY(0); }
+      to { transform: translateX(-520px) translateY(-8px); }
+    }
+
+    @keyframes waveDriftTwo {
+      from { transform: translateX(-160px) translateY(8px); }
+      to { transform: translateX(420px) translateY(-5px); }
+    }
+
+    @keyframes waveDriftThree {
+      from { transform: translateX(0) translateY(0); }
+      to { transform: translateX(-360px) translateY(10px); }
+    }
+
+    @keyframes sparkleFloat {
+      0%, 100% { opacity: .16; transform: translateY(0) scale(.8); }
+      50% { opacity: .85; transform: translateY(-12px) scale(1.18); }
+    }
+
+    @keyframes footerWaveMove {
+      from { background-position-x: 0; }
+      to { background-position-x: -1200px; }
+    }
+
+    @keyframes slowRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes nodeBreath {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes orbPulse {
+      0%, 100% { opacity: .78; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.045); }
+    }
+
+    @keyframes buttonPulse {
+      0%, 80%, 100% { box-shadow: 0 18px 45px rgba(33,75,232,.25); }
+      88% { box-shadow: 0 18px 58px rgba(33,75,232,.38); }
+    }
+
+    @media (max-width: 850px) {
+      .site-header {
+        position: relative;
+        padding: 24px;
+      }
+
+      .nav {
+        justify-content: center;
+        gap: 28px;
+      }
+
+      .hero {
+        min-height: auto;
+        padding: 54px 26px 40px;
+      }
+
+      .wave-field {
+        width: 120vw;
+        height: 340px;
+        right: -62vw;
+        top: 180px;
+        opacity: .42;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .feature {
+        border-left: none;
+        border-top: 1px solid var(--line);
+        padding: 34px 12px;
+      }
+
+      .feature:first-child { border-top: none; }
+
+      .pillars-card {
+        margin: 10px 24px 50px;
+        grid-template-columns: 1fr;
+      }
+
+      .pillars-card a { white-space: normal; }
+
+      .footer {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   </style>
-    <!-- Basic Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <!-- Apple Touch Icon (for iPhone/iPad home screen) -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">    
-    <!-- Android/Chrome -->
-    <link rel="icon" href="/android-chrome-192x192.png" sizes="192x192">
 </head>
-<body class="bg-white text-slate-800">
-  <!-- Header -->
-  <header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-slate-200">
-    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-      <a href="#home" class="font-semibold text-lg tracking-tight">Teves Consulting</a>
-      <button id="navToggle" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm">Menu</button>
-      <nav id="nav" class="hidden md:flex items-center gap-6 text-sm">
-        <a href="#home" class="hover:text-slate-900">Home</a>
-        <a href="#objectives" class="hover:text-slate-900">Objectives</a>
-        <a href="#insights" class="hover:text-slate-900">Insights</a>        
-        <a href="https://www.tevesconsulting.com/principles.html" class="hover:text-slate-900">Principles</a>        
-        <a href="https://www.tevesconsulting.com/about.html" class="hover:text-slate-900">About</a>
-        <span class="ml-4"></span> 
-        <a href="https://www.tevesconsulting.com/index.html" class="hover:underline">EN</a>
-         |
-        <a href="https://www.tevesconsulting.com/es/index.html" class="hover:underline">ES</a>
-      </nav>
-    </div>
-    <div id="mobileNav" class="md:hidden hidden border-t border-slate-200">
-      <div class="px-4 py-3 flex flex-col gap-3 text-sm">
-        <a href="#home" class="hover:text-slate-900">Home</a>
-        <a href="#objectives" class="hover:text-slate-900">Objectives</a>
-        <a href="#insights" class="hover:text-slate-900">Insights</a>
-        <a href="https://www.tevesconsulting.com/principles.html" class="hover:text-slate-900">Principles</a>
-        <a href="https://www.tevesconsulting.com/about.html" class="hover:text-slate-900">About</a>
-        <span class="ml-4"></span> 
-        <a href="https://www.tevesconsulting.com/index.html" class="hover:underline">EN</a>
-         |
-        <a href="https://www.tevesconsulting.com/es/index.html" class="hover:underline">ES</a>
-      </div>
-    </div>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <a class="nav-link active" href="/index.html">Aion</a>
+      <a class="nav-link" href="insights.html">Insights</a>
+      <a class="nav-link" href="about.html">About</a>
+      <a class="nav-link lang" href="/es/index.html">ES</a>
+    </nav>
   </header>
 
-  <!-- Hero -->
-  <section id="home" class="relative overflow-hidden">
-    <div class="mx-auto max-w-6xl px-4 pt-16 pb-20 md:pt-24 md:pb-28">
-      <div class="grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900">Clarity in Complex Times</h1>
-          <p class="mt-5 text-lg text-slate-700 leading-relaxed"></p> 
-            Helping individuals and families prepare, adapt, and thrive in uncertain conditions.
-            Calm, structured strategies for financial, personal, and practical decisions.
-          </p>
-          <p class="mt-5 text-lg text-slate-700 leading-relaxed"></p> 
-            This site explores clarity, resilience, and practical skills through three layers: <i><a href="https://www.tevesconsulting.com/principles.html">principles</a></i>, 
-            understanding, and real-world practice.
-          </p> 
-        </div> 
-        <div class="relative">
-          <div class="rounded-3xl border border-slate-200 p-6 md:p-8 shadow-sm bg-white">
-            <ul class="space-y-4 text-sm leading-6 text-slate-700">
-              <li class="flex gap-3"><span class="mt-1 h-2 w-2 rounded-full bg-emerald-500"></span> Financial clarity for volatile environments</li>
-              <li class="flex gap-3"><span class="mt-1 h-2 w-2 rounded-full bg-emerald-500"></span> Resilience planning: food, water, energy — scaled to your reality</li>
-              <li class="flex gap-3"><span class="mt-1 h-2 w-2 rounded-full bg-emerald-500"></span> Calm decision-making & stress navigation</li>
-            </ul>
-          </div>
+  <main>
+    <section class="hero">
+      <div class="wave-field" aria-hidden="true">
+        <div class="wave-layer one"></div>
+        <div class="wave-layer two"></div>
+        <div class="wave-layer three"></div>
+        <div class="sparkle-field">
+          <span class="sparkle s1"></span>
+          <span class="sparkle s2"></span>
+          <span class="sparkle s3"></span>
+          <span class="sparkle s4"></span>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Objectives -->
-  <section id="objectives" class="bg-slate-50 border-y border-slate-200">
-    <div class="mx-auto max-w-6xl px-4 py-16 md:py-20">
-      <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Objectives</h2>
-      <div class="mt-10 grid md:grid-cols-3 gap-6">
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold text-slate-900">Financial Clarity</h3>
-          <p class="mt-2 text-sm text-slate-700">Simplify complex decisions about budgeting, savings, and risk.</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold text-slate-900">Resilience Planning</h3>
-          <p class="mt-2 text-sm text-slate-700">Guidance on food, water, and energy preparation that scales with your needs.</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold text-slate-900">Clarity Conversations</h3>
-          <p class="mt-2 text-sm text-slate-700">AI assisted conversations for thinking through challenges with clarity. Practical tools for navigating uncertainty.</p>
-        </div>
+      <div class="hero-content">
+        <h1>Aion</h1>
+        <p class="tagline">Think better over time.</p>
+        <p class="hero-copy">
+          A continuity-aware thinking companion that helps you preserve context,
+          recognize patterns, and explore better questions—while you remain in control.
+        </p>
+        <a class="cta" href="agent.html">Start Aion <span>→</span></a>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Insights teaser -->
-<!-- Insights -->
-<section id="insights" class="border-y border-slate-200 bg-slate-50">
-  <div class="mx-auto max-w-6xl px-4 py-16 md:py-20">
-    <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-      Insights
-    </h2>
-    <p class="mt-3 text-slate-700 max-w-2xl">
-      Practical, grounded guides on resilience, clarity, and calm decision-making.
-      Each section goes deeper than what fits on a single page.
-    </p>
+    <section class="judgment">
+      <p>Aion doesn’t replace your judgment. It strengthens it.</p>
+    </section>
 
-    <!-- Insight category cards -->
-    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      
-      <!-- Water -->
-      <a href="/water.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/water.jpg"
-               alt="Home water storage and rain barrel"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
+    <section class="features">
+      <article class="feature">
+        <div class="icon icon-shield" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <path d="M24 5 L38 11 V22 C38 31.5 32.2 38.8 24 43 C15.8 38.8 10 31.5 10 22 V11 Z" />
+          </svg>
         </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Water Resilience</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Baselines, storage, filtration, and realistic planning for water access.
-          </p>
-        </div>
-      </a>
+        <h2>Preserve continuity</h2>
+        <p>Your conversations shouldn’t begin from zero.</p>
+        <p>Aion helps preserve important context, decisions, and relationships across time so your thinking can build naturally instead of constantly restarting.</p>
+        <p>Rather than remembering everything, Aion focuses on remembering what matters.</p>
+      </article>
 
-      <!-- Power -->
-      <a href="/power.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/power.jpg"
-               alt="Backup power and home energy setup"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
+      <article class="feature">
+        <div class="icon icon-network" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <circle cx="15" cy="24" r="5" />
+            <circle cx="29" cy="13" r="5" />
+            <circle cx="33" cy="34" r="5" />
+            <circle cx="40" cy="22" r="3.5" />
+            <path d="M19 21 L25 16" />
+            <path d="M19.5 26 L28.5 32" />
+            <path d="M33 17 L37 20" />
+            <path d="M35 30 L39 24.5" />
+          </svg>
         </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Power Resilience</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Batteries, generators, solar, and choosing what actually fits your life.
-          </p>
-        </div>
-      </a>
+        <h2>Discover patterns</h2>
+        <p>Memory becomes more useful when ideas connect.</p>
+        <p>Aion organizes information into meaningful relationships, helping you recognize recurring themes, long-term trends, and connections that might otherwise remain hidden.</p>
+        <p>The goal isn’t more information. It’s better understanding.</p>
+      </article>
 
-      <!-- Food -->
-      <a href="/food.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/food.jpg"
-               alt="Food preparedness and pantry planning"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
+      <article class="feature">
+        <div class="icon icon-search" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <circle cx="21" cy="21" r="13" />
+            <path d="M31 31 L41 41" />
+          </svg>
         </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Food Resilience</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Pantry foundations, rotation systems, and flexible meal strategies.
-          </p>
-        </div>
-      </a>
+        <h2>Think with evidence</h2>
+        <p>Aion doesn’t replace your judgment.</p>
+        <p>It helps you think through complex questions by surfacing grounded observations, highlighting assumptions, and suggesting useful questions backed by evidence from your continuity.</p>
+        <p>You remain the decision maker. Always.</p>
+      </article>
+    </section>
 
-      <!-- financial -->
-      <a href="/financial.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/financial.jpg"
-               alt="Financial resilience and preparedness tools"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
-        </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Financial Resilience</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Cash flow clarity, buffers, and reducing fragility under uncertainty.
-          </p>
-        </div>
-      </a>
-
-      <!-- Calm -->
-      <a href="/calm.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/calm.jpg"
-               alt="Calm decision-making and reflection"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
-        </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Calm Decision-Making</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Staying grounded, clear-headed, and intentional during stress.
-          </p>
-        </div>
-      </a>
-      <!-- Aion -->
-      <a href="/agent.html"
-         class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
-        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
-          <img src="/assets/images/aion.jpg"
-               alt="Aion"
-               class="h-full w-full object-cover group-hover:scale-[1.02] transition" />
-        </div>
-        <div class="p-5">
-          <h3 class="text-lg font-semibold text-slate-900">Aion</h3>
-          <p class="mt-2 text-sm text-slate-700">
-            Explore the knowledge base through grounded conversation.
-          </p>
-        </div>
-      </a>
-
-    </div>
-
-    <!-- CTA -->
-    <div class="mt-10">
-      <a href="/insights.html"
-         class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-white">
-        View the full Insights library →
-      </a>
-    </div>
-</div>
-</section>
-
-  <!-- Footer -->
-  <footer class="py-10">
-    <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
-      <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
-      <div class="flex items-center gap-4">
-        <a class="hover:text-slate-700" href="/about.html">About this site</a>
+    <section class="pillars-card">
+      <div class="pillar-icon" aria-hidden="true">
+        <svg viewBox="0 0 56 56">
+          <path d="M7 16 C11 10 45 10 49 16 C47 19 44 20 40 20 H16 C12 20 9 19 7 16 Z" />
+          <path d="M10 44 H46" />
+          <path d="M8 49 H48" />
+          <path d="M14 20 V44" />
+          <path d="M21 20 V44" />
+          <path d="M28 20 V44" />
+          <path d="M35 20 V44" />
+          <path d="M42 20 V44" />
+          <circle cx="28" cy="15.5" r="1.6" />
+        </svg>
       </div>
-    </div>
+      <div>
+        <h2>Built on Five Pillars of Resilient Thinking</h2>
+        <p>
+          Aion is built upon the Five Resilience Pillars developed through Teves Consulting.
+          These pillars provide the philosophy behind how Aion approaches continuity,
+          reasoning, and long-term thinking.
+        </p>
+      </div>
+      <a href="pillars.html">Explore the Five Resilience Pillars <span>→</span></a>
+    </section>
+
+    <section class="brand-close">
+      <div class="footer-wave" aria-hidden="true"></div>
+      <div class="brand-inner">
+        <div class="mark aion-orb" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="25" />
+            <circle cx="32" cy="32" r="3.5" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(30 32 32)" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(60 32 32)" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(90 32 32)" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(120 32 32)" />
+            <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(150 32 32)" />
+          </svg>
+        </div>
+        <h2>Aion</h2>
+        <p>Think better over time.</p>
+        <small>Built by Teves Consulting.</small>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© 2026 Teves Consulting LLC. All rights reserved.</p>
+    <a href="about-aion.html">About Aion <span>→</span></a>
   </footer>
-
-  <script>
-    // Mobile nav toggle
-    const navToggle = document.getElementById('navToggle');
-    const mobileNav = document.getElementById('mobileNav');
-    if (navToggle) {
-      navToggle.addEventListener('click', () => {
-        mobileNav.classList.toggle('hidden');
-      });
-    }
-    // Year
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
 </body>
 </html>

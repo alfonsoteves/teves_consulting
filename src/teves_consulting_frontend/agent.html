@@ -65,6 +65,10 @@
       align-items: center;
       font-size: 0.87rem;
     }
+    .header-inner-nav-only {
+      justify-content: flex-end;
+    }
+
 
     .footer-links {
       display: flex;
@@ -299,11 +303,8 @@
 
 <body>
 <header class="site-header">
-  <div class="header-inner">
-    <a class="brand-link" href="/">Teves Consulting</a>
-    <div class="header-links">
-      <a href="https://www.tevesconsulting.com/agent.html">EN</a>
-      <span>|</span>
+  <div class="header-inner header-inner-nav-only">
+<div class="header-links">
       <a href="https://www.tevesconsulting.com/es/agent.html">ES</a>
       <span>|</span>
       <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">

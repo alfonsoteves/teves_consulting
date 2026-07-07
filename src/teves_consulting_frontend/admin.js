@@ -1,0 +1,2565 @@
+import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
+import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
+import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
+
+const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
+
+let authClient = null;
+let isAuthenticated = false;
+let identity = null;
+
+const idlFactory = ({ IDL }) => {
+  const Relationship = IDL.Record({
+    subject: IDL.Text,
+    predicate: IDL.Text,
+    target: IDL.Text,
+    category: IDL.Text,
+  });
+
+  const MemorySummary = IDL.Record({
+    id: IDL.Nat,
+    owner: IDL.Principal,
+    createdAt: IDL.Int,
+    updatedAt: IDL.Int,
+    title: IDL.Text,
+    summary: IDL.Text,
+    topics: IDL.Vec(IDL.Text),
+    tags: IDL.Vec(IDL.Text),
+    keyDecisions: IDL.Vec(IDL.Text),
+    relationships: IDL.Vec(Relationship),
+    milestone: IDL.Bool,
+    importance: IDL.Nat,
+    memoryType: IDL.Text,
+    sourceSessionId: IDL.Text,
+    confidence: IDL.Nat,
+    status: IDL.Text,
+  });
+
+  return IDL.Service({
+    whoami: IDL.Func([], [IDL.Text], []),
+
+    getMyAllSummaries: IDL.Func(
+      [],
+      [IDL.Vec(MemorySummary)],
+      ["query"]
+    ),
+
+    deleteSummaryById: IDL.Func([IDL.Nat], [IDL.Bool], []),
+
+    getFeedbackCount: IDL.Func([], [IDL.Nat], ["query"]),
+
+    getRecentFeedback: IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(IDL.Record({
+        id: IDL.Nat,
+        rating: IDL.Text,
+        question: IDL.Text,
+        answer: IDL.Text,
+        timestamp: IDL.Text,
+        receivedAt: IDL.Int,
+      }))],
+      ["query"]
+    ),
+  });
+};
+
+const agent = new HttpAgent({
+  host: "https://ic0.app",
+});
+
+window.adminActor = Actor.createActor(idlFactory, {
+  agent,
+  canisterId: BACKEND_CANISTER_ID,
+});
+
+async function initAuth() {
+  authClient = await AuthClient.create();
+  isAuthenticated = await authClient.isAuthenticated();
+
+  if (isAuthenticated) {
+    identity = authClient.getIdentity();
+    await createAuthenticatedActor();
+  }
+
+  updateAuthUI();
+}
+
+async function createAuthenticatedActor() {
+  const authenticatedAgent = new HttpAgent({
+    identity,
+    host: "https://ic0.app",
+  });
+
+  window.adminActor = Actor.createActor(idlFactory, {
+    agent: authenticatedAgent,
+    canisterId: BACKEND_CANISTER_ID,
+  });
+
+  const principal = await window.adminActor.whoami();
+  console.log("Authenticated principal:", principal);
+}
+
+function updateAuthUI() {
+  const authButton = document.getElementById("authButton");
+  authButton.textContent = isAuthenticated ? "Logout" : "Sign In";
+
+  updateAdminVisibility();
+}
+
+function updateAdminVisibility() {
+  const adminContent = document.getElementById("adminContent");
+
+  if (!adminContent) return;
+
+  adminContent.style.display =
+    isAuthenticated ? "block" : "none";
+}
+
+window.handleAuth = async function handleAuth() {
+  if (!authClient) {
+    authClient = await AuthClient.create();
+  }
+
+  if (isAuthenticated) {
+    await authClient.logout();
+    isAuthenticated = false;
+    identity = null;
+
+    window.adminActor = Actor.createActor(idlFactory, {
+      agent,
+      canisterId: BACKEND_CANISTER_ID,
+    });
+
+    latestMemories = [];
+    updateAuthUI();
+    document.getElementById("memoryList").innerHTML = "";
+    return;
+  }
+
+  await authClient.login({
+    identityProvider: "https://identity.ic0.app",
+    onSuccess: async () => {
+      isAuthenticated = true;
+      identity = authClient.getIdentity();
+
+      await createAuthenticatedActor();
+
+      updateAuthUI();
+
+      await loadMemories();
+      await loadGoldenTests();
+      await loadFeedback();
+    },
+  });
+};
+
+function getMainTopic(tags = []) {
+  const topicTag = tags.find(tag => tag.startsWith("topic:"));
+
+  if (!topicTag) return "Unclassified";
+
+  const topicMap = {
+    "topic:food": "Food",
+    "topic:water": "Water",
+    "topic:power": "Power",
+    "topic:financial": "Financial",
+    "topic:calm": "Calm",
+    "topic:identity-memory": "Identity & Memory",
+  };
+
+  return topicMap[topicTag] || "Unclassified";
+}
+
+function getVisibleTags(tags = []) {
+  return tags.filter(tag => !tag.startsWith("topic:"));
+}
+
+function renderKeyDecisions(decisions = []) {
+  if (!decisions || decisions.length === 0) {
+    return "";
+  }
+
+  return `
+    <div>
+      <strong>Key Decisions</strong>
+      <ul>
+        ${decisions
+          .map(decision => `<li>${escapeHtml(decision)}</li>`)
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderRelationships(relationships = []) {
+  if (!relationships || relationships.length === 0) {
+    return "";
+  }
+
+  return `
+    <div>
+      <strong>Relationships</strong>
+      <ul>
+        ${relationships
+          .map((relationship) => `
+            <li>
+              ${escapeHtml(relationship.subject)}
+              ${escapeHtml(relationship.predicate)}
+              ${escapeHtml(relationship.target)}
+              ${relationship.category ? `(${escapeHtml(relationship.category)})` : ""}
+            </li>
+          `)
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+window.loadMemories = async function loadMemories() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const memories = await window.adminActor.getMyAllSummaries();
+  latestMemories = memories;
+
+  const total = memories.length;
+  const milestones = memories.filter(m => m.milestone).length;
+  const regular = total - milestones;
+
+  document.getElementById("totalMemories").textContent = total;
+  document.getElementById("totalMilestones").textContent = milestones;
+  document.getElementById("totalRegular").textContent = regular;
+
+  if (memories.length > 0) {
+    const latest = memories[memories.length - 1];
+
+    document.getElementById("latestMemory").textContent =
+      latest.title;
+
+    const latestMilestone = memories
+      .slice()
+      .reverse()
+      .find(m => m.milestone);
+
+    document.getElementById("latestMilestone").textContent =
+      latestMilestone ? latestMilestone.title : "None";
+  }
+  const list = document.getElementById("memoryList");
+  list.innerHTML = "";
+
+  memories
+    .slice()
+    .reverse()
+    .forEach((m) => {
+      const createdDate = new Date(
+        Number(m.createdAt) / 1_000_000
+      );
+
+      const createdText = createdDate.toLocaleString();
+      const card = document.createElement("div");
+      card.className = "memory-card";
+
+      card.innerHTML = `
+        <h3>#${m.id.toString()} — ${escapeHtml(m.title)}</h3>
+        <p class="meta">
+          Main Topic: ${escapeHtml(getMainTopic(m.tags))} |
+          Milestone: ${m.milestone ? "true" : "false"} |
+          Type: ${escapeHtml(m.memoryType || "session")} |
+          Importance: ${m.importance?.toString?.() || "n/a"} |
+          Confidence: ${m.confidence?.toString?.() || "n/a"} |
+          Status: ${escapeHtml(m.status || "active")} |
+          Tags: ${escapeHtml(getVisibleTags(m.tags).join(", ") || "None")} |
+          Created: ${escapeHtml(createdText)}
+        </p>
+        <pre>${escapeHtml(m.summary)}</pre>
+        ${renderKeyDecisions(m.keyDecisions)}
+        ${renderRelationships(m.relationships)}
+        <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
+      `;
+
+      list.appendChild(card);
+    });
+};
+
+window.deleteMemory = async function deleteMemory(id) {
+  if (!confirm(`Delete memory #${id}?`)) return;
+
+  const ok = await window.adminActor.deleteSummaryById(BigInt(id));
+
+  if (ok) {
+    await loadMemories();
+  } else {
+    alert("Delete failed or memory not found.");
+  }
+};
+
+let latestMemories = [];
+let latestFeedback = [];
+
+window.loadFeedback = async function loadFeedback() {
+  const list = document.getElementById("feedbackList");
+  list.innerHTML = "<p>Loading feedback...</p>";
+
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  try {
+    console.log("Loading ICP feedback...");
+    const feedback = await window.adminActor.getRecentFeedback(BigInt(100));
+    console.log("Feedback loaded:", feedback);
+
+    latestFeedback = feedback;
+
+    document.getElementById("feedbackTotal").textContent = feedback.length;
+    document.getElementById("feedbackUp").textContent =
+      feedback.filter(f => f.rating === "up").length;
+    document.getElementById("feedbackDown").textContent =
+      feedback.filter(f => f.rating === "down").length;
+
+    if (feedback.length === 0) {
+      list.innerHTML = "<p>No feedback yet.</p>";
+      return;
+    }
+
+    list.innerHTML = feedback.slice().reverse().map(f => {
+      const receivedText =
+        f.receivedAt
+          ? new Date(Number(f.receivedAt) / 1_000_000).toLocaleString()
+          : "Unknown";
+
+      return `
+        <div class="memory-card">
+          <h3>${f.rating === "up" ? "👍" : "👎"} Feedback #${f.id.toString()}</h3>
+          <p class="meta">
+            Rating: ${escapeHtml(f.rating)} |
+            Submitted: ${escapeHtml(f.timestamp || "Unknown")} |
+            Received: ${escapeHtml(receivedText)}
+          </p>
+          <strong>Question</strong>
+          <pre>${escapeHtml(f.question || "")}</pre>
+          <strong>Answer</strong>
+          <pre>${escapeHtml(f.answer || "")}</pre>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error("Failed to load feedback:", err);
+    list.innerHTML =
+      `<p>Failed to load feedback. ${escapeHtml(err.message || String(err))}</p>`;
+  }
+};
+
+window.exportFeedback = function exportFeedback() {
+  const plainFeedback = latestFeedback.map(f => ({
+    id: f.id.toString(),
+    rating: f.rating,
+    question: f.question,
+    answer: f.answer,
+    timestamp: f.timestamp,
+    receivedAt: f.receivedAt.toString(),
+  }));
+
+  const blob = new Blob(
+    [JSON.stringify(plainFeedback, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = `aion-feedback-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+};
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+window.loadGoldenTests = async function loadGoldenTests() {
+  if (!isAuthenticated) {
+    return;
+  }
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/golden-tests/last"
+    );
+
+    const data = await res.json();
+    if (data && Array.isArray(data.results) && data.results.length > 0) {
+      renderGoldenTests(data, { save: true });
+    } else {
+      const savedGolden = loadSavedGoldenResults();
+      if (savedGolden) {
+        renderGoldenTests(savedGolden, { save: false });
+      }
+    }
+
+  } catch (err) {
+    console.error("Failed to load golden tests:", err);
+  }
+};
+
+window.runGoldenTests = async function runGoldenTests() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+  const button = event.target;
+  button.disabled = true;
+  button.textContent = "Running...";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/golden-tests/run",
+      { method: "POST" }
+    );
+
+    const data = await res.json();
+    renderGoldenTests(data, { save: true });
+
+  } catch (err) {
+    console.error("Failed to run golden tests:", err);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Run Golden Tests";
+  }
+};
+
+window.runRetrievalDebug = async function runRetrievalDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query = document.getElementById("retrievalQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container = document.getElementById("retrievalResults");
+
+  container.innerHTML = "<p>Searching...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/retrieval-debug",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML =
+        `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const results = data.results || [];
+
+    if (results.length === 0) {
+      container.innerHTML = "<p>No chunks found.</p>";
+      return;
+    }
+
+    container.innerHTML = results
+      .map((r) => `
+        <div class="memory-card">
+          <h3>Rank ${escapeHtml(r.rank)}</h3>
+
+          <p class="meta">
+            Document: ${escapeHtml(r.document_id || "Unknown")} |
+            Title: ${escapeHtml(r.title || "Untitled")} |
+            Score: ${escapeHtml(r.score ?? "N/A")} |
+            Boosted: ${escapeHtml(r.boosted_score ?? "N/A")} |
+            Type: ${escapeHtml(r.source_type || "Unknown")}
+          </p>
+
+          <pre>${escapeHtml(r.text || "")}</pre>
+        </div>
+      `)
+      .join("");
+
+  } catch (err) {
+    console.error("Retrieval debug failed:", err);
+    container.innerHTML = "<p>Retrieval debug failed.</p>";
+  }
+};
+
+window.runRawRetrievalDebug = async function () {
+
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query =
+    document.getElementById("retrievalRawQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container =
+    document.getElementById("retrievalRawResults");
+
+  container.innerHTML = "<p>Searching...</p>";
+
+  try {
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/retrieval-debug-raw",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    const data = await res.json();
+
+    const results = data.results || [];
+
+    container.innerHTML = results
+      .map(r => `
+        <div class="memory-card">
+          <h3>Rank ${r.rank}</h3>
+
+          <p class="meta">
+            ${escapeHtml(r.document_id)}
+            |
+            Score: ${escapeHtml(r.score)}
+          </p>
+
+          <pre>${escapeHtml(r.text)}</pre>
+        </div>
+      `)
+      .join("");
+
+  } catch (err) {
+    console.error(err);
+    container.innerHTML =
+      "<p>Raw retrieval failed.</p>";
+  }
+};
+
+window.runContextDebug = async function runContextDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query = document.getElementById("contextQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container = document.getElementById("contextResults");
+  container.innerHTML = "<p>Building context...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/context-debug",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Retrieved Chunks</h3>
+        <pre>${escapeHtml(JSON.stringify(data.retrieved_chunks || [], null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Knowledge Context</h3>
+        <pre>${escapeHtml(data.knowledge_context || "")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Final Prompt Preview</h3>
+        <pre>${escapeHtml(data.final_prompt_preview || "")}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Context debug failed:", err);
+    container.innerHTML = "<p>Context debug failed.</p>";
+  }
+};
+
+function serializeNat(value, fallback = "0") {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (typeof value?.toString === "function") {
+    return value.toString();
+  }
+
+  return String(value);
+}
+
+function serializeArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map(item => String(item));
+}
+
+function serializeRelationships(relationships = []) {
+  if (!Array.isArray(relationships)) {
+    return [];
+  }
+
+  return relationships.map(relationship => ({
+    subject: String(relationship.subject || ""),
+    predicate: String(relationship.predicate || ""),
+    target: String(relationship.target || ""),
+    category: String(relationship.category || ""),
+  }));
+}
+
+function serializeMemoryForRanking(memory) {
+  return {
+    id: serializeNat(memory.id),
+    createdAt: serializeNat(memory.createdAt),
+    updatedAt: serializeNat(memory.updatedAt),
+    title: String(memory.title || ""),
+    summary: String(memory.summary || ""),
+    topics: serializeArray(memory.topics),
+    tags: serializeArray(memory.tags),
+    keyDecisions: serializeArray(memory.keyDecisions),
+    relationships: serializeRelationships(memory.relationships),
+    milestone: Boolean(memory.milestone),
+    importance: Number(memory.importance || 5),
+    memoryType: String(memory.memoryType || "session"),
+    sourceSessionId: String(memory.sourceSessionId || ""),
+    confidence: Number(memory.confidence || 80),
+    status: String(memory.status || "active"),
+  };
+}
+
+function summarizeMemoryTypes(memories = []) {
+  const counts = {};
+
+  memories.forEach((memory) => {
+    const type = String(memory.memoryType || "session").toLowerCase();
+    counts[type] = (counts[type] || 0) + 1;
+  });
+
+  const entries = Object.entries(counts)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (entries.length === 0) {
+    return "None";
+  }
+
+  return entries
+    .map(([type, count]) => `${type}: ${count}`)
+    .join(" | ");
+}
+
+function renderRankingReasons(reasons = []) {
+  if (!Array.isArray(reasons) || reasons.length === 0) {
+    return "None";
+  }
+
+  return reasons.join(", ");
+}
+
+function renderRankingTrace(trace = []) {
+  if (!Array.isArray(trace) || trace.length === 0) {
+    return "<p>No trace returned.</p>";
+  }
+
+  return trace
+    .map((entry) => `
+      <div>
+        <strong>
+          #${escapeHtml(entry.rank ?? "?")}
+          ${escapeHtml(entry.title || "Untitled")}
+        </strong>
+        <p class="meta">
+          ID: ${escapeHtml(entry.id ?? "n/a")} |
+          Type: ${escapeHtml(entry.memoryType || "session")} |
+          Score: ${escapeHtml(entry.score ?? "N/A")} |
+          Importance: ${escapeHtml(entry.importance ?? "n/a")} |
+          Confidence: ${escapeHtml(entry.confidence ?? "n/a")} |
+          Milestone: ${entry.milestone ? "true" : "false"} |
+          Relationships: ${escapeHtml(entry.relationshipCount ?? 0)} |
+          Status: ${escapeHtml(entry.status || "active")}
+        </p>
+        <p class="meta">
+          Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+        </p>
+      </div>
+    `)
+    .join("");
+}
+
+window.runMemoryRankingDebug = async function runMemoryRankingDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query = document.getElementById("memoryRankingQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container = document.getElementById("memoryRankingResults");
+  container.innerHTML = "<p>Ranking memories...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/ranked-continuity-context",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          limit: 5,
+          memories: serializedMemories,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const ranked = data.rankedMemories || [];
+    const trace = data.rankingTrace || [];
+
+    if (ranked.length === 0) {
+      container.innerHTML = `
+        <div class="memory-card">
+          <h3>Selection Trace</h3>
+          <p class="meta">
+            Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+            Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+            Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+          </p>
+          ${renderRankingTrace(trace)}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Selection Summary</h3>
+        <p class="meta">
+          Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Selected: ${escapeHtml(ranked.length)} |
+          Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Selected Memories</h3>
+        ${ranked.map((entry, index) => `
+          <div>
+            <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
+            <p class="meta">
+              ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+              Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
+              Score: ${escapeHtml(entry.score ?? "N/A")} |
+              Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+            </p>
+            <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="memory-card">
+        <h3>Full Selection Trace</h3>
+        ${renderRankingTrace(trace)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Context Text Preview</h3>
+        <pre>${escapeHtml(data.contextText || "")}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Memory ranking dry run failed:", err);
+    container.innerHTML = "<p>Memory ranking dry run failed.</p>";
+  }
+};
+
+function renderSelectedMemoryEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No selected memories.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
+      <p class="meta">
+        ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+        Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
+        Score: ${escapeHtml(entry.score ?? "N/A")} |
+        Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+      </p>
+      <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
+    </div>
+  `).join("");
+}
+
+function renderContextMemoryEntries(memories = []) {
+  if (!Array.isArray(memories) || memories.length === 0) {
+    return "<p>No memories selected for final context.</p>";
+  }
+
+  return memories.map((memory, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(memory?.title || "Untitled")}</strong>
+      <p class="meta">
+        ID: ${escapeHtml(memory?.id ?? "n/a")} |
+        Type: ${escapeHtml(memory?.memoryType || "session")} |
+        Status: ${escapeHtml(memory?.status || "active")}
+      </p>
+      <pre>${escapeHtml(memory?.summary || "")}</pre>
+    </div>
+  `).join("");
+}
+
+function renderExpandedMemoryEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No relationship expansions selected.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(entry.memory?.title || "Untitled")}</strong>
+      <p class="meta">
+        ID: ${escapeHtml(entry.memory?.id ?? "n/a")} |
+        Type: ${escapeHtml(entry.memory?.memoryType || "session")} |
+        Expansion Score: ${escapeHtml(entry.score ?? "N/A")} |
+        Reasons: ${escapeHtml(renderRankingReasons(entry.reasons))}
+      </p>
+      <p class="meta">
+        Source memories:
+        ${escapeHtml((entry.sourceMemoryTitles || []).join(", ") || "Unknown")}
+      </p>
+      <pre>${escapeHtml(entry.memory?.summary || "")}</pre>
+    </div>
+  `).join("");
+}
+
+window.runRelationshipExpansionDebug = async function runRelationshipExpansionDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query = document.getElementById("relationshipExpansionQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container = document.getElementById("relationshipExpansionResults");
+  container.innerHTML = "<p>Expanding related memories...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/relationship-expanded-continuity-context",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          rankedLimit: 5,
+          expansionLimit: 2,
+          memories: serializedMemories,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const ranked = data.rankedMemories || [];
+    const contextSelected = data.contextSelectedMemories || data.selectedMemories || [];
+    const expanded = data.expandedRelatedMemories || [];
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Expansion Summary</h3>
+        <p class="meta">
+          Query intent: ${escapeHtml(data.queryIntent || "unknown")} |
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Ranked selected: ${escapeHtml(ranked.length)} |
+          Context selected: ${escapeHtml(contextSelected.length)} |
+          Relationship expansions: ${escapeHtml(expanded.length)} |
+          Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Ranked Selected Memories</h3>
+        ${renderSelectedMemoryEntries(ranked)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Context Selected Memories</h3>
+        ${renderContextMemoryEntries(contextSelected)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Expanded Related Memories</h3>
+        ${renderExpandedMemoryEntries(expanded)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Context Text Preview</h3>
+        <pre>${escapeHtml(data.contextText || "")}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Relationship expansion dry run failed:", err);
+    container.innerHTML = "<p>Relationship expansion dry run failed.</p>";
+  }
+};
+
+function renderCountMap(counts = {}) {
+  const entries = Object.entries(counts || {});
+
+  if (entries.length === 0) {
+    return "<p>No counts available.</p>";
+  }
+
+  return `
+    <ul>
+      ${entries.map(([label, count]) => `
+        <li>${escapeHtml(label)}: ${escapeHtml(count)}</li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+function renderStrongClusters(clusters = []) {
+  if (!Array.isArray(clusters) || clusters.length === 0) {
+    return "<p>No strong clusters detected.</p>";
+  }
+
+  return clusters.map((cluster, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(cluster.label || "Untitled cluster")}</strong>
+      <p class="meta">
+        Memories: ${escapeHtml(cluster.memoryCount ?? 0)} |
+        Relationships: ${escapeHtml(cluster.relationshipCount ?? 0)}
+      </p>
+      <pre>${escapeHtml((cluster.memoryTitles || []).join("\n"))}</pre>
+    </div>
+  `).join("");
+}
+
+function renderPotentialDuplicates(duplicates = []) {
+  if (!Array.isArray(duplicates) || duplicates.length === 0) {
+    return "<p>No duplicate candidates detected.</p>";
+  }
+
+  return duplicates.map((duplicate, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(duplicate.memoryA?.title || "Memory A")} / ${escapeHtml(duplicate.memoryB?.title || "Memory B")}</strong>
+      <p class="meta">
+        Score: ${escapeHtml(duplicate.score ?? "n/a")} |
+        Classification: ${escapeHtml(duplicate.classification || "unclassified")} |
+        Reasons: ${escapeHtml((duplicate.reasons || []).join(", ") || "n/a")}
+      </p>
+      <p>${escapeHtml(duplicate.recommendation || "")}</p>
+      <pre>${escapeHtml((duplicate.sharedTerms || []).join(", "))}</pre>
+    </div>
+  `).join("");
+}
+
+function renderOrphanMemories(orphans = []) {
+  if (!Array.isArray(orphans) || orphans.length === 0) {
+    return "<p>No orphan memories detected.</p>";
+  }
+
+  return orphans.map((orphan, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(orphan.title || "Untitled")}</strong>
+      <p class="meta">
+        ID: ${escapeHtml(orphan.id ?? "n/a")} |
+        Type: ${escapeHtml(orphan.type || "session")} |
+        Status: ${escapeHtml(orphan.status || "active")}
+      </p>
+      <p>${escapeHtml(orphan.reason || "")}</p>
+    </div>
+  `).join("");
+}
+
+function renderSupersededDecisions(decisions = []) {
+  if (!Array.isArray(decisions) || decisions.length === 0) {
+    return "<p>No superseded decisions detected.</p>";
+  }
+
+  return decisions.map((decision, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(decision.olderMemory?.title || "Older memory")} -> ${escapeHtml(decision.newerMemory?.title || "Newer memory")}</strong>
+      <p class="meta">
+        Predicate: ${escapeHtml(decision.predicate || "n/a")} |
+        Source: ${escapeHtml(decision.sourceMemoryTitle || "n/a")} |
+        Inferred: ${decision.inferred ? "true" : "false"}
+      </p>
+    </div>
+  `).join("");
+}
+
+window.runMemoryHealthDebug = async function runMemoryHealthDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("memoryHealthResults");
+  container.innerHTML = "<p>Analyzing memory health...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/memory-health",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          memories: serializedMemories,
+          clusterLimit: 8,
+          duplicateLimit: 8,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Memory Health Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+          Average relationships per memory: ${escapeHtml(data.averageRelationshipsPerMemory ?? 0)} |
+          Local memory types: ${escapeHtml(summarizeMemoryTypes(serializedMemories))}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Memory Type Counts</h3>
+        ${renderCountMap(data.memoryTypeCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Relationship Predicate Frequency</h3>
+        ${renderCountMap(data.predicateFrequency)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Strong Clusters</h3>
+        ${renderStrongClusters(data.strongClusters)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Potential Duplicates</h3>
+        ${renderPotentialDuplicates(data.potentialDuplicates)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Orphan Memories</h3>
+        ${renderOrphanMemories(data.orphanMemories)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Superseded Decisions</h3>
+        ${renderSupersededDecisions(data.supersededDecisions)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Memory health dry run failed:", err);
+    container.innerHTML = "<p>Memory health dry run failed.</p>";
+  }
+};
+
+function renderMemoryRef(memory = {}) {
+  if (!memory) {
+    return "None";
+  }
+
+  return `${memory.title || "Untitled"} (ID: ${memory.id ?? "n/a"}, Type: ${memory.type || "session"})`;
+}
+
+function renderConsolidationSuggestions(suggestions = []) {
+  if (!Array.isArray(suggestions) || suggestions.length === 0) {
+    return "<p>No consolidation suggestions.</p>";
+  }
+
+  return suggestions.map((suggestion, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(suggestion.action || "needs_review")}</strong>
+      <p class="meta">
+        Confidence: ${escapeHtml(suggestion.confidence || "n/a")} |
+        Source: ${escapeHtml(suggestion.source || "n/a")} |
+        Duplicate score: ${escapeHtml(suggestion.duplicateScore ?? "n/a")} |
+        Classification: ${escapeHtml(suggestion.duplicateClassification || "n/a")}
+      </p>
+      <p>${escapeHtml(suggestion.reason || "")}</p>
+      <p><strong>Keep:</strong> ${escapeHtml(renderMemoryRef(suggestion.keepMemory || suggestion.newerMemory || null))}</p>
+      <p><strong>Deprecate / review:</strong> ${escapeHtml(renderMemoryRef(suggestion.deprecateMemory || suggestion.olderMemory || null))}</p>
+      <p>${escapeHtml(suggestion.recommendation || "")}</p>
+      <pre>${escapeHtml((suggestion.sharedTerms || []).join(", "))}</pre>
+    </div>
+  `).join("");
+}
+
+window.runMemoryConsolidationDebug = async function runMemoryConsolidationDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("memoryConsolidationResults");
+  container.innerHTML = "<p>Building consolidation suggestions...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/memory-consolidations",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          memories: serializedMemories,
+          limit: 8,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Consolidation Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Suggestions: ${escapeHtml(data.suggestionCount ?? 0)} |
+          Relationships: ${escapeHtml(data.healthSummary?.relationshipCount ?? 0)} |
+          Potential duplicates: ${escapeHtml(data.healthSummary?.potentialDuplicateCount ?? 0)} |
+          Superseded decisions: ${escapeHtml(data.healthSummary?.supersededDecisionCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Suggested Actions</h3>
+        ${renderConsolidationSuggestions(data.suggestions)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Memory consolidation dry run failed:", err);
+    container.innerHTML = "<p>Memory consolidation dry run failed.</p>";
+  }
+};
+
+function renderCurrentDecisionEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No current decision memories detected.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(renderMemoryRef(entry.memory))}</strong>
+      <p class="meta">
+        Key decisions: ${escapeHtml(entry.decisionCount ?? 0)} |
+        Relationships: ${escapeHtml(entry.relationshipCount ?? 0)} |
+        Signals: ${escapeHtml((entry.signals || []).join(", ") || "n/a")}
+      </p>
+    </div>
+  `).join("");
+}
+
+function renderSupersessionEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No superseded decisions detected.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(renderMemoryRef(entry.olderMemory))} -> ${escapeHtml(renderMemoryRef(entry.newerMemory))}</strong>
+      <p class="meta">
+        Predicate: ${escapeHtml(entry.predicate || "n/a")} |
+        Source: ${escapeHtml(entry.sourceMemoryTitle || "n/a")} |
+        Inferred: ${entry.inferred ? "true" : "false"}
+      </p>
+    </div>
+  `).join("");
+}
+
+function renderRecommendedRelationships(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No relationship recommendations.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(entry.subject || "subject")} ${escapeHtml(entry.predicate || "predicate")} ${escapeHtml(entry.target || "target")}</strong>
+      <p class="meta">
+        Category: ${escapeHtml(entry.category || "decision")} |
+        Confidence: ${escapeHtml(entry.confidence || "n/a")} |
+        Older resolved: ${entry.resolvedOlderMemory ? "true" : "false"} |
+        Newer resolved: ${entry.resolvedNewerMemory ? "true" : "false"}
+      </p>
+      <p>${escapeHtml(entry.recommendation || "")}</p>
+    </div>
+  `).join("");
+}
+
+window.runDecisionEvolutionDebug = async function runDecisionEvolutionDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("decisionEvolutionResults");
+  container.innerHTML = "<p>Analyzing decision evolution...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/decision-evolution",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          memories: serializedMemories,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Decision Evolution Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Current decisions: ${escapeHtml(data.currentDecisionCount ?? 0)} |
+          Superseded decisions: ${escapeHtml(data.supersededDecisionCount ?? 0)} |
+          Inferred supersessions: ${escapeHtml(data.inferredSupersessionCount ?? 0)} |
+          Unresolved older references: ${escapeHtml(data.unresolvedOlderDecisionReferenceCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Current Decisions</h3>
+        ${renderCurrentDecisionEntries(data.currentDecisions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Superseded Decisions</h3>
+        ${renderSupersessionEntries(data.supersededDecisions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Unresolved Older Decision References</h3>
+        ${renderSupersessionEntries(data.unresolvedOlderDecisionReferences)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Recommended Relationships</h3>
+        ${renderRecommendedRelationships(data.recommendedRelationships)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Decision evolution dry run failed:", err);
+    container.innerHTML = "<p>Decision evolution dry run failed.</p>";
+  }
+};
+
+async function postMemoryDryRun(path, payload) {
+  const res = await fetch(
+    `https://aionic-agent-api.onrender.com${path}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+  const data = await res.json();
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}
+
+function countSuggestionsByAction(suggestions = []) {
+  return (suggestions || []).reduce((counts, suggestion) => {
+    const action = suggestion.action || "unknown";
+    counts[action] = (counts[action] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function buildDashboardStatus(health, consolidation, decisionEvolution) {
+  const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+  const mergeCount = actionCounts.merge_candidate || 0;
+  const deprecateCount = actionCounts.deprecate_candidate || 0;
+  const orphanCount = (health.orphanMemories || []).length;
+  const unresolvedDecisionCount = decisionEvolution.unresolvedOlderDecisionReferenceCount || 0;
+
+  if (mergeCount || deprecateCount || orphanCount) {
+    return {
+      label: "Needs Manual Cleanup",
+      reason: "Review merge, deprecation, or orphan-memory items before proceeding.",
+    };
+  }
+
+  if (unresolvedDecisionCount || (actionCounts.needs_review || 0)) {
+    return {
+      label: "Review Recommended",
+      reason: "No immediate cleanup is required, but some items need human judgment.",
+    };
+  }
+
+  return {
+    label: "Looks Stable",
+    reason: "No high-priority memory graph issues were detected.",
+  };
+}
+
+function buildDashboardNextAction(health, consolidation, decisionEvolution) {
+  const suggestions = consolidation.suggestions || [];
+  const merge = suggestions.find((suggestion) => suggestion.action === "merge_candidate");
+  const deprecate = suggestions.find((suggestion) => suggestion.action === "deprecate_candidate");
+  const orphan = (health.orphanMemories || [])[0];
+  const unresolved = (decisionEvolution.unresolvedOlderDecisionReferences || [])[0];
+  const review = suggestions.find((suggestion) => suggestion.action === "needs_review");
+
+  if (merge) {
+    return `Review merge candidate: keep ${renderMemoryRef(merge.keepMemory)} and review ${renderMemoryRef(merge.deprecateMemory)}.`;
+  }
+
+  if (deprecate) {
+    return deprecate.recommendation || "Review deprecation candidate.";
+  }
+
+  if (orphan) {
+    return `Review orphan memory: ${orphan.title || "Untitled"}.`;
+  }
+
+  if (unresolved) {
+    return `Resolve older decision reference: ${renderMemoryRef(unresolved.olderMemory)}.`;
+  }
+
+  if (review) {
+    return review.recommendation || "Review remaining possible duplicate.";
+  }
+
+  return "No immediate manual action is recommended.";
+}
+
+function renderTopDashboardRisks(health, consolidation, decisionEvolution) {
+  const risks = [];
+  const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+
+  if (actionCounts.merge_candidate) {
+    risks.push(`${actionCounts.merge_candidate} merge candidate(s)`);
+  }
+
+  if (actionCounts.deprecate_candidate) {
+    risks.push(`${actionCounts.deprecate_candidate} deprecation candidate(s)`);
+  }
+
+  if ((health.orphanMemories || []).length) {
+    risks.push(`${health.orphanMemories.length} orphan memory item(s)`);
+  }
+
+  if (decisionEvolution.unresolvedOlderDecisionReferenceCount) {
+    risks.push(`${decisionEvolution.unresolvedOlderDecisionReferenceCount} unresolved older decision reference(s)`);
+  }
+
+  if (actionCounts.needs_review) {
+    risks.push(`${actionCounts.needs_review} needs-review item(s)`);
+  }
+
+  if (risks.length === 0) {
+    return "<p>No top risks detected.</p>";
+  }
+
+  return `
+    <ul>
+      ${risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+window.runMemoryHealthDashboard = async function runMemoryHealthDashboard() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("memoryHealthDashboardResults");
+  container.innerHTML = "<p>Building memory health dashboard...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const [health, consolidation, decisionEvolution] = await Promise.all([
+      postMemoryDryRun("/admin/memory-health", {
+        memories: serializedMemories,
+        clusterLimit: 8,
+        duplicateLimit: 8,
+      }),
+      postMemoryDryRun("/admin/memory-consolidations", {
+        memories: serializedMemories,
+        limit: 8,
+      }),
+      postMemoryDryRun("/admin/decision-evolution", {
+        memories: serializedMemories,
+      }),
+    ]);
+    const status = buildDashboardStatus(health, consolidation, decisionEvolution);
+    const actionCounts = countSuggestionsByAction(consolidation.suggestions || []);
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Dashboard Status</h3>
+        <p><strong>${escapeHtml(status.label)}</strong></p>
+        <p>${escapeHtml(status.reason)}</p>
+        <p class="meta">
+          Memories: ${escapeHtml(health.memoryCount ?? serializedMemories.length)} |
+          Relationships: ${escapeHtml(health.relationshipCount ?? 0)} |
+          Avg relationships/memory: ${escapeHtml(health.averageRelationshipsPerMemory ?? 0)} |
+          Current decisions: ${escapeHtml(decisionEvolution.currentDecisionCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Action Counts</h3>
+        ${renderCountMap(actionCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Top Risks</h3>
+        ${renderTopDashboardRisks(health, consolidation, decisionEvolution)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Recommended Next Manual Action</h3>
+        <p>${escapeHtml(buildDashboardNextAction(health, consolidation, decisionEvolution))}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Decision Evolution</h3>
+        <p class="meta">
+          Superseded decisions: ${escapeHtml(decisionEvolution.supersededDecisionCount ?? 0)} |
+          Inferred supersessions: ${escapeHtml(decisionEvolution.inferredSupersessionCount ?? 0)} |
+          Unresolved older references: ${escapeHtml(decisionEvolution.unresolvedOlderDecisionReferenceCount ?? 0)}
+        </p>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Memory health dashboard failed:", err);
+    container.innerHTML = `<p>Memory health dashboard failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderMaintenanceRelationship(relationship = {}) {
+  if (!relationship || !relationship.subject) {
+    return "None";
+  }
+
+  return `${relationship.subject || "subject"} ${relationship.predicate || "predicate"} ${relationship.target || "target"}`;
+}
+
+function renderOperatorGuidance(guidance = {}) {
+  if (!guidance || !guidance.mode) {
+    return "<p>No operator guidance available.</p>";
+  }
+
+  const steps = Array.isArray(guidance.manualSteps)
+    ? guidance.manualSteps
+    : [];
+
+  return `
+    <p class="meta">
+      Guidance: ${escapeHtml(guidance.mode || "manual_review")} |
+      Automatic action: ${guidance.canApplyAutomatically ? "yes" : "no"}
+    </p>
+    <p><strong>Outcome:</strong> ${escapeHtml(guidance.recommendedOutcome || "")}</p>
+    ${
+      guidance.blockedBy
+        ? `<p><strong>Blocked by:</strong> ${escapeHtml(guidance.blockedBy)}</p>`
+        : ""
+    }
+    ${
+      steps.length
+        ? `<ul>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ul>`
+        : ""
+    }
+  `;
+}
+
+function renderMaintenanceActions(actions = []) {
+  if (!Array.isArray(actions) || actions.length === 0) {
+    return "<p>No maintenance actions suggested.</p>";
+  }
+
+  return actions.map((action, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(action.title || action.actionType || "Review action")}</strong>
+      <p class="meta">
+        Type: ${escapeHtml(action.actionType || "n/a")} |
+        Priority: ${escapeHtml(action.priority || "n/a")} |
+        Safety: ${escapeHtml(action.safety || "n/a")} |
+        Confidence: ${escapeHtml(action.confidence || "n/a")} |
+        Sources: ${escapeHtml((action.sourceAnalyses || []).join(", ") || "n/a")}
+      </p>
+      <p>${escapeHtml(action.reason || "")}</p>
+      <p><strong>Keep:</strong> ${escapeHtml(renderMemoryRef(action.keepMemory || null))}</p>
+      <p><strong>Review:</strong> ${escapeHtml(renderMemoryRef(action.reviewMemory || null))}</p>
+      <p><strong>Relationship:</strong> ${escapeHtml(renderMaintenanceRelationship(action.relationship))}</p>
+      <p>${escapeHtml(action.recommendation || "")}</p>
+      <div>
+        <strong>Operator Guidance</strong>
+        ${renderOperatorGuidance(action.operatorGuidance)}
+      </div>
+      <pre>${escapeHtml((action.sharedTerms || []).join(", "))}</pre>
+    </div>
+  `).join("");
+}
+
+function renderMaintenanceExport(text = "") {
+  if (!text) {
+    return "<p>No export memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="memoryMaintenanceExportText"
+      readonly
+      style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyMemoryMaintenanceExport()">Copy Memo</button>
+  `;
+}
+
+function renderSeveritySummary(summary = {}) {
+  if (!summary || !summary.recommendedStatus) {
+    return "<p>No severity summary available.</p>";
+  }
+
+  return `
+    <p><strong>${escapeHtml(summary.recommendedStatus || "Looks Stable")}</strong></p>
+    <p>${escapeHtml(summary.reason || "")}</p>
+    <p class="meta">
+      Immediate blockers: ${escapeHtml(summary.immediateBlockerCount ?? 0)} |
+      Manual review items: ${escapeHtml(summary.manualReviewCount ?? 0)} |
+      No-action items: ${escapeHtml(summary.noActionCount ?? 0)}
+    </p>
+    <p><strong>Next action:</strong> ${escapeHtml(summary.nextAction || "No immediate manual action is recommended.")}</p>
+  `;
+}
+
+window.copyMemoryMaintenanceExport = async function copyMemoryMaintenanceExport() {
+  const exportBox = document.getElementById("memoryMaintenanceExportText");
+
+  if (!exportBox) {
+    alert("No maintenance memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Maintenance memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runMemoryMaintenancePlanDebug = async function runMemoryMaintenancePlanDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("memoryMaintenancePlanResults");
+  container.innerHTML = "<p>Building memory maintenance action plan...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/memory-maintenance-plan", {
+      memories: serializedMemories,
+      limit: 10,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Maintenance Plan Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+          Actions: ${escapeHtml(data.actionCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Severity Summary</h3>
+        ${renderSeveritySummary(data.severitySummary)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety Counts</h3>
+        ${renderCountMap(data.safetyCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Priority Counts</h3>
+        ${renderCountMap(data.priorityCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Action Type Counts</h3>
+        ${renderCountMap(data.actionTypeCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Source Summary</h3>
+        ${renderCountMap(data.sourceSummary)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Operator Checklist</h3>
+        ${renderMaintenanceActions(data.actions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderMaintenanceExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Memory maintenance plan dry run failed:", err);
+    container.innerHTML = `<p>Memory maintenance plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderSynthesisEvidence(memories = []) {
+  if (!Array.isArray(memories) || memories.length === 0) {
+    return "<p>No evidence memories listed.</p>";
+  }
+
+  return memories.map((memory) => `
+    <div>
+      <strong>${escapeHtml(renderMemoryRef(memory))}</strong>
+      <p class="meta">
+        Matched terms: ${escapeHtml((memory.matchedTerms || []).join(", ") || "n/a")}
+      </p>
+    </div>
+  `).join("");
+}
+
+function renderKnowledgeInsights(insights = []) {
+  if (!Array.isArray(insights) || insights.length === 0) {
+    return "<p>No synthesis insights met the evidence threshold.</p>";
+  }
+
+  const renderQuestions = (insight) => {
+    if (Array.isArray(insight.prioritizedQuestions) && insight.prioritizedQuestions.length) {
+      return `
+        <ul>
+          ${insight.prioritizedQuestions.map((question) => `
+            <li>
+              ${escapeHtml(question.question || "")}
+              <span class="meta">
+                Priority: ${escapeHtml(question.priority || "medium")}
+                (${escapeHtml(question.score ?? 0)}) |
+                Reasons: ${escapeHtml((question.reasons || []).join(", ") || "n/a")}
+              </span>
+            </li>
+          `).join("")}
+        </ul>
+      `;
+    }
+
+    return Array.isArray(insight.suggestedQuestions) && insight.suggestedQuestions.length
+      ? `<ul>${insight.suggestedQuestions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`
+      : "<p>No suggested questions.</p>";
+  };
+
+  return insights.map((insight, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(insight.title || "Grounded observation")}</strong>
+      <p class="meta">
+        Type: ${escapeHtml(insight.patternType || "pattern")} |
+        Confidence: ${escapeHtml(insight.confidence || "medium")} |
+        Usefulness: ${escapeHtml(insight.usefulnessLabel || "medium")} (${escapeHtml(insight.usefulnessScore ?? 0)}) |
+        Evidence: ${escapeHtml(insight.evidenceCount ?? 0)}
+      </p>
+      <p>${escapeHtml(insight.observation || "")}</p>
+      <p><strong>Guardrail:</strong> ${escapeHtml(insight.guardrail || "")}</p>
+      <p><strong>Usefulness reasons:</strong> ${escapeHtml((insight.usefulnessReasons || []).join(", ") || "n/a")}</p>
+      <div>
+        <strong>Evidence Memories</strong>
+        ${renderSynthesisEvidence(insight.evidenceMemories)}
+      </div>
+      <div>
+        <strong>Suggested Questions</strong>
+        ${renderQuestions(insight)}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderKnowledgeSynthesisExport(text = "") {
+  if (!text) {
+    return "<p>No synthesis memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="knowledgeSynthesisExportText"
+      readonly
+      style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyKnowledgeSynthesisExport()">Copy Memo</button>
+  `;
+}
+
+window.copyKnowledgeSynthesisExport = async function copyKnowledgeSynthesisExport() {
+  const exportBox = document.getElementById("knowledgeSynthesisExportText");
+
+  if (!exportBox) {
+    alert("No synthesis memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Synthesis memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runKnowledgeSynthesisDebug = async function runKnowledgeSynthesisDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("knowledgeSynthesisResults");
+  container.innerHTML = "<p>Synthesizing grounded memory patterns...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/knowledge-synthesis", {
+      memories: serializedMemories,
+      limit: 8,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Knowledge Synthesis Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Insights: ${escapeHtml(data.insightCount ?? 0)} |
+          Phase coverage: ${escapeHtml((data.phaseCoverage || []).join(", ") || "none")}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Grounded Observations</h3>
+        ${renderKnowledgeInsights(data.insights)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderKnowledgeSynthesisExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Knowledge synthesis dry run failed:", err);
+    container.innerHTML = `<p>Knowledge synthesis dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderStrategicReasoningExport(text = "") {
+  if (!text) {
+    return "<p>No strategic reasoning memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="strategicReasoningExportText"
+      readonly
+      style="width: 100%; min-height: 260px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyStrategicReasoningExport()">Copy Memo</button>
+  `;
+}
+
+window.copyStrategicReasoningExport = async function copyStrategicReasoningExport() {
+  const exportBox = document.getElementById("strategicReasoningExportText");
+
+  if (!exportBox) {
+    alert("No strategic reasoning memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Strategic reasoning memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runStrategicReasoningDebug = async function runStrategicReasoningDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("strategicReasoningResults");
+  container.innerHTML = "<p>Building strategic reasoning brief...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/strategic-reasoning", {
+      memories: serializedMemories,
+      limit: 8,
+    });
+    const primaryInsight = data.primaryInsight || {};
+    const primaryQuestion = data.primaryQuestion || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Strategic Brief Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Insights reviewed: ${escapeHtml(data.insightCount ?? 0)} |
+          Phase coverage: ${escapeHtml((data.synthesisSummary?.phaseCoverage || []).join(", ") || "none")}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Primary Pattern</h3>
+        <p><strong>${escapeHtml(primaryInsight.title || "No primary pattern")}</strong></p>
+        <p class="meta">
+          Type: ${escapeHtml(primaryInsight.patternType || "n/a")} |
+          Usefulness: ${escapeHtml(primaryInsight.usefulnessLabel || "n/a")} (${escapeHtml(primaryInsight.usefulnessScore ?? "n/a")}) |
+          Evidence: ${escapeHtml(primaryInsight.evidenceCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Most Useful Question</h3>
+        <p><strong>${escapeHtml(primaryQuestion.question || "No prioritized question")}</strong></p>
+        <p class="meta">
+          Priority: ${escapeHtml(primaryQuestion.priority || "n/a")} |
+          Score: ${escapeHtml(primaryQuestion.score ?? "n/a")}
+        </p>
+        <p><strong>Reasons:</strong> ${escapeHtml((primaryQuestion.reasons || []).join(", ") || "n/a")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Reasoning</h3>
+        <p>${escapeHtml(data.reasoning || "")}</p>
+        <p><strong>Possible next operator review:</strong> ${escapeHtml(data.possibleNextOperatorReview || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderStrategicReasoningExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Strategic reasoning dry run failed:", err);
+    container.innerHTML = `<p>Strategic reasoning dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderAssumptionEvidence(memories = []) {
+  if (!Array.isArray(memories) || memories.length === 0) {
+    return "<p>No evidence memories listed.</p>";
+  }
+
+  return memories.map((memory) => `
+    <div>
+      <strong>${escapeHtml(renderMemoryRef(memory))}</strong>
+      <p class="meta">
+        Matched terms: ${escapeHtml((memory.matchedTerms || []).join(", ") || "n/a")}
+      </p>
+    </div>
+  `).join("");
+}
+
+function renderAssumptionEntries(assumptions = []) {
+  if (!Array.isArray(assumptions) || assumptions.length === 0) {
+    return "<p>No assumptions in this category.</p>";
+  }
+
+  return assumptions.map((assumption, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(assumption.assumption || "Untitled assumption")}</strong>
+      <p class="meta">
+        Category: ${escapeHtml(assumption.category || "n/a")} |
+        Confidence: ${escapeHtml(assumption.confidence || "medium")} |
+        Direct evidence: ${escapeHtml(assumption.evidenceCount ?? 0)} |
+        Inherited evidence: ${escapeHtml(assumption.sourceEvidenceCount ?? 0)} |
+        Mode: ${escapeHtml(assumption.evidenceMode || "direct")}
+      </p>
+      <p>${escapeHtml(assumption.reasoning || "")}</p>
+      <p><strong>Suggested operator question:</strong> ${escapeHtml(assumption.suggestedOperatorQuestion || "")}</p>
+      ${
+        assumption.sourceInsight
+          ? `<p class="meta"><strong>Source insight:</strong> ${escapeHtml(assumption.sourceInsight.title || "Untitled insight")}</p>`
+          : ""
+      }
+      ${
+        assumption.sourceQuestion
+          ? `<p class="meta"><strong>Source question:</strong> ${escapeHtml(assumption.sourceQuestion.question || "")}</p>`
+          : ""
+      }
+      <div>
+        <strong>Direct Evidence Memories</strong>
+        ${renderAssumptionEvidence(assumption.evidenceMemories)}
+      </div>
+      <div>
+        <strong>Inherited Source Evidence</strong>
+        ${renderAssumptionEvidence(assumption.sourceEvidenceMemories)}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderAssumptionEvolutionExport(text = "") {
+  if (!text) {
+    return "<p>No assumption memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="assumptionEvolutionExportText"
+      readonly
+      style="width: 100%; min-height: 320px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyAssumptionEvolutionExport()">Copy Memo</button>
+  `;
+}
+
+window.copyAssumptionEvolutionExport = async function copyAssumptionEvolutionExport() {
+  const exportBox = document.getElementById("assumptionEvolutionExportText");
+
+  if (!exportBox) {
+    alert("No assumption memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Assumption memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runAssumptionEvolutionDebug = async function runAssumptionEvolutionDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("assumptionEvolutionResults");
+  container.innerHTML = "<p>Analyzing assumption evolution...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/assumption-evolution", {
+      memories: serializedMemories,
+      limit: 10,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Assumption Evolution Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Assumptions: ${escapeHtml(data.assumptionCount ?? 0)} |
+          Synthesis insights: ${escapeHtml(data.sourceSummary?.synthesisInsightCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Category Counts</h3>
+        ${renderCountMap(data.categoryCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Stable Assumptions</h3>
+        ${renderAssumptionEntries(data.stableAssumptions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Evolving Assumptions</h3>
+        ${renderAssumptionEntries(data.evolvingAssumptions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Questioned Assumptions</h3>
+        ${renderAssumptionEntries(data.questionedAssumptions)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderAssumptionEvolutionExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Assumption evolution dry run failed:", err);
+    container.innerHTML = `<p>Assumption evolution dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderLearningStatements(statements = []) {
+  if (!Array.isArray(statements) || statements.length === 0) {
+    return "<p>No reflective learning statements returned.</p>";
+  }
+
+  return statements.map((statement, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(statement.statement || "Untitled reflection")}</strong>
+      <p class="meta">
+        Confidence: ${escapeHtml(statement.confidence || "medium")} |
+        Sources: ${escapeHtml((statement.sources || []).join(", ") || "n/a")}
+      </p>
+      ${
+        statement.sourceInsight
+          ? `<p class="meta"><strong>Source insight:</strong> ${escapeHtml(statement.sourceInsight.title || "Untitled insight")}</p>`
+          : ""
+      }
+    </div>
+  `).join("");
+}
+
+function renderReflectiveIntelligenceExport(text = "") {
+  if (!text) {
+    return "<p>No reflection memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="reflectiveIntelligenceExportText"
+      readonly
+      style="width: 100%; min-height: 300px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyReflectiveIntelligenceExport()">Copy Memo</button>
+  `;
+}
+
+window.copyReflectiveIntelligenceExport = async function copyReflectiveIntelligenceExport() {
+  const exportBox = document.getElementById("reflectiveIntelligenceExportText");
+
+  if (!exportBox) {
+    alert("No reflection memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Reflection memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runReflectiveIntelligenceDebug = async function runReflectiveIntelligenceDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("reflectiveIntelligenceResults");
+  container.innerHTML = "<p>Building reflective intelligence summary...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/reflective-intelligence", {
+      memories: serializedMemories,
+      limit: 10,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Reflective Intelligence Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Learning statements: ${escapeHtml(data.learningStatementCount ?? 0)} |
+          Synthesis insights: ${escapeHtml(data.sourceSummary?.synthesisInsightCount ?? 0)} |
+          Questioned assumptions: ${escapeHtml(data.sourceSummary?.questionedAssumptionCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>What Aion Appears To Be Learning</h3>
+        ${renderLearningStatements(data.learningStatements)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Reflection</h3>
+        <p>${escapeHtml(data.reflection || "")}</p>
+        <p><strong>Suggested operator reflection:</strong> ${escapeHtml(data.suggestedOperatorReflection || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderReflectiveIntelligenceExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Reflective intelligence dry run failed:", err);
+    container.innerHTML = `<p>Reflective intelligence dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderOperatorInsightFindings(findings = []) {
+  if (!Array.isArray(findings) || findings.length === 0) {
+    return "<p>No operator insight findings returned.</p>";
+  }
+
+  return findings.map((finding, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(finding.finding || "Untitled finding")}</strong>
+      <p class="meta">
+        Type: ${escapeHtml(finding.type || "insight")} |
+        Confidence: ${escapeHtml(finding.confidence || "medium")} |
+        Sources: ${escapeHtml((finding.sources || []).join(", ") || "n/a")}
+      </p>
+      <p><strong>Operator question:</strong> ${escapeHtml(finding.operatorQuestion || "")}</p>
+    </div>
+  `).join("");
+}
+
+function renderOperatorInsightReportExport(text = "") {
+  if (!text) {
+    return "<p>No operator insight report memo available.</p>";
+  }
+
+  return `
+    <textarea
+      id="operatorInsightReportExportText"
+      readonly
+      style="width: 100%; min-height: 340px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
+    >${escapeHtml(text)}</textarea>
+    <button onclick="copyOperatorInsightReportExport()">Copy Memo</button>
+  `;
+}
+
+window.copyOperatorInsightReportExport = async function copyOperatorInsightReportExport() {
+  const exportBox = document.getElementById("operatorInsightReportExportText");
+
+  if (!exportBox) {
+    alert("No operator insight report memo is available yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(exportBox.value);
+    alert("Operator insight report memo copied.");
+  } catch (err) {
+    exportBox.focus();
+    exportBox.select();
+    alert("Copy failed. The memo is selected so you can copy it manually.");
+  }
+};
+
+window.runOperatorInsightReportDebug = async function runOperatorInsightReportDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("operatorInsightReportResults");
+  container.innerHTML = "<p>Building operator insight report...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/operator-insight-report", {
+      memories: serializedMemories,
+      limit: 10,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Operator Insight Report Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Status: ${escapeHtml(data.reportStatus || "n/a")} |
+          Key findings: ${escapeHtml(data.keyFindingCount ?? 0)} |
+          Questioned assumptions: ${escapeHtml(data.sourceSummary?.questionedAssumptionCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Key Findings</h3>
+        ${renderOperatorInsightFindings(data.keyFindings)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Review Focus</h3>
+        <p>${escapeHtml(data.nextReviewFocus || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Operator Notes</h3>
+        ${
+          Array.isArray(data.operatorNotes) && data.operatorNotes.length
+            ? `<ul>${data.operatorNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`
+            : "<p>No operator notes returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Export Memo</h3>
+        ${renderOperatorInsightReportExport(data.exportText)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Operator insight report dry run failed:", err);
+    container.innerHTML = `<p>Operator insight report dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderRelationshipConfidenceEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No relationships in this section.</p>";
+  }
+
+  return entries.map((entry, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(entry.subject || "subject")} ${escapeHtml(entry.predicate || "predicate")} ${escapeHtml(entry.target || "target")}</strong>
+      <p class="meta">
+        Confidence: ${escapeHtml(entry.confidence ?? "n/a")} |
+        Label: ${escapeHtml(entry.confidenceLabel || "n/a")} |
+        Frequency: ${escapeHtml(entry.frequency ?? 1)} |
+        Source: ${escapeHtml(entry.source || "n/a")} |
+        Inferred: ${entry.inferred ? "true" : "false"}
+      </p>
+      <p class="meta">
+        Source memory: ${escapeHtml(entry.sourceMemoryTitle || "n/a")}
+      </p>
+      <pre>${escapeHtml((entry.reasons || []).join(", "))}</pre>
+    </div>
+  `).join("");
+}
+
+window.runRelationshipConfidenceDebug = async function runRelationshipConfidenceDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("relationshipConfidenceResults");
+  container.innerHTML = "<p>Analyzing relationship confidence...</p>";
+
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    latestMemories = memories;
+
+    const serializedMemories = memories.map(serializeMemoryForRanking);
+    const data = await postMemoryDryRun("/admin/relationship-confidence", {
+      memories: serializedMemories,
+      limit: 12,
+    });
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Relationship Confidence Summary</h3>
+        <p class="meta">
+          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
+          Relationships: ${escapeHtml(data.relationshipCount ?? 0)} |
+          Stored: ${escapeHtml(data.storedRelationshipCount ?? 0)} |
+          Inferred: ${escapeHtml(data.inferredRelationshipCount ?? 0)} |
+          Low confidence: ${escapeHtml(data.lowConfidenceCount ?? 0)}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Confidence Counts</h3>
+        ${renderCountMap(data.confidenceCounts)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Lowest Confidence Relationships</h3>
+        ${renderRelationshipConfidenceEntries(data.lowConfidenceRelationships)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Highest Confidence Relationships</h3>
+        ${renderRelationshipConfidenceEntries(data.highConfidenceRelationships)}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Relationship confidence dry run failed:", err);
+    container.innerHTML = `<p>Relationship confidence dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
+
+function saveGoldenResults(data) {
+  localStorage.setItem(
+    GOLDEN_RESULTS_KEY,
+    JSON.stringify(data)
+  );
+}
+
+function loadSavedGoldenResults() {
+  try {
+    const raw = localStorage.getItem(GOLDEN_RESULTS_KEY);
+
+    if (!raw) return null;
+
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("Could not load saved golden results:", err);
+    return null;
+  }
+}
+
+function renderGoldenTests(data, options = {}) {
+
+  const shouldSave =
+    options.save === true &&
+    data &&
+    Array.isArray(data.results) &&
+    data.results.length > 0;
+
+  if (shouldSave) {
+    saveGoldenResults(data);
+  }
+
+  document.getElementById("goldenLastRun").textContent =
+    `Last run: ${data.last_run_at || "Never"}`;
+
+  document.getElementById("goldenSummary").textContent =
+    `${data.passed || 0}/${data.total || 0} passed`;
+
+  document.getElementById("goldenResults").innerHTML =
+    (data.results || [])
+      .map((r) => `
+        <div class="memory-card">
+          <strong>${r.passed ? "✅" : "❌"} ${escapeHtml(r.name)}</strong>
+          <p class="meta">${escapeHtml(r.query || "")}</p>
+          <details>
+            <summary>View answer</summary>
+            <pre>${escapeHtml(r.answer || "")}</pre>
+          </details>
+
+          <pre>${escapeHtml(r.notes || "")}</pre>
+        </div>
+      `)
+      .join("");
+}
+const savedGolden = loadSavedGoldenResults();
+
+if (savedGolden) {
+  renderGoldenTests(savedGolden);
+}
+initAuth();
