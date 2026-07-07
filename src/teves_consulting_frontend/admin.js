@@ -2506,7 +2506,24 @@ function renderProviderInspectionEntries(providers = []) {
     return "<p>No provider inspection entries returned.</p>";
   }
 
-  return providers.map((provider, index) => `
+  return providers.map((provider, index) => {
+    const metadata = provider.metadata || {};
+    const sourceNotes = Array.isArray(metadata.sourceNotes)
+      ? metadata.sourceNotes
+      : [];
+    const detailRows = [
+      provider.interfaceStatus ? `Interface: ${provider.interfaceStatus}` : "",
+      provider.expectedChatMethod ? `Expected method: ${provider.expectedChatMethod}` : "",
+      provider.candidateSource ? `Source: ${provider.candidateSource}` : "",
+      provider.nextAction ? `Next action: ${provider.nextAction}` : "",
+      Object.prototype.hasOwnProperty.call(provider, "configuredFromEnvironment")
+        ? `Configured from environment: ${provider.configuredFromEnvironment ? "yes" : "no"}`
+        : "",
+      metadata.candidInspectionRequired ? "Candid inspection required before integration." : "",
+      metadata.liveCallsEnabled === false ? "Live calls enabled: no" : "",
+    ].filter(Boolean);
+
+    return `
     <div>
       <strong>${index + 1}. ${escapeHtml(provider.provider || "Unknown provider")}</strong>
       <p class="meta">
@@ -2522,9 +2539,19 @@ function renderProviderInspectionEntries(providers = []) {
           : ""
       }
       <p>${escapeHtml(provider.role || "")}</p>
-      <pre>${escapeHtml(JSON.stringify(provider.metadata || {}, null, 2))}</pre>
+      ${
+        detailRows.length
+          ? `<ul>${detailRows.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul>`
+          : ""
+      }
+      ${
+        sourceNotes.length
+          ? `<p class="meta">Source notes:</p><ul>${sourceNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`
+          : ""
+      }
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 window.runProviderInspectionDebug = async function runProviderInspectionDebug() {
@@ -2552,7 +2579,7 @@ window.runProviderInspectionDebug = async function runProviderInspectionDebug() 
         <h3>${escapeHtml(data.title || "Provider Inspection Dry Run")}</h3>
         <p>${escapeHtml(data.summary || "")}</p>
         <p class="meta">
-          Phase: ${escapeHtml(data.phase || "6.1")} |
+          Phase: ${escapeHtml(data.phase || "6.2")} |
           Active provider: ${escapeHtml(data.activeProvider || "n/a")} |
           Candidate provider: ${escapeHtml(data.candidateProvider || "n/a")} |
           Continuity owner: ${escapeHtml(data.continuityOwner || "Aion")} |
