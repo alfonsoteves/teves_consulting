@@ -1,29 +1,57 @@
-# Teves Consulting
+Teves Consulting
 
 Clarity in Complex Times.
 
-Teves Consulting is a structured framework for maintaining clarity, stability, and decision quality in uncertain environments. It combines practical systems, resilience, and calm decision-making into a unified approach.
+Teves Consulting is the company behind Aion, a continuity-aware thinking companion designed to help people preserve context, recognize patterns, and think better over time.
 
-## Core Pillars
-- Food — practical, low-waste cooking systems
-- Water — reliable access and treatment
-- Power — continuity and independence
-- Calm — clear thinking under pressure
-- Financial — preserving optionality
+Originally built around practical resilience, the project has evolved into a broader platform that combines continuity, evidence-grounded reasoning, and human judgment while preserving user sovereignty.
 
-## Philosophy
-- Clarity over noise
-- Calm over reaction
-- Literacy before optimization
-- Practical next steps
-- Optionality over rigidity
+Aion
 
-Clarity compounds. So does confusion.
+Think better over time.
 
-## Status
-- Articles complete in English and Spanish
-- Ongoing optimization of Aion
-- Continuous refinement of structure and content
+Aion helps users:
 
-## Website
+* preserve continuity across conversations
+* recognize meaningful patterns
+* organize knowledge through relationships
+* surface grounded questions
+* support better decisions while leaving the final judgment to the user
+
+The Foundation
+
+Aion is built on five practical pillars:
+
+* Food — practical, low-waste cooking systems
+* Water — reliable access and treatment
+* Power — continuity and resilience
+* Financial — preserving optionality
+* Calm — clear thinking under uncertainty
+
+These pillars remain the philosophical foundation of the project.
+
+Design Principles
+
+* Continuity over isolated conversations
+* Clarity over complexity
+* Evidence before conclusions
+* Explainable reasoning over hidden decisions
+* User sovereignty over automation
+
+Current Status
+
+* ✅ Public website available in English and Spanish
+* ✅ Aion continuity platform operational
+* ✅ Memory intelligence completed (Phase 4)
+* ✅ Advisor-style reasoning completed (Phase 5)
+* 🚧 Phase 6: Model Independence
+
+Long-Term Vision
+
+The goal is to build a practical thinking companion that helps people preserve continuity, organize knowledge, examine assumptions, and make better decisions over time.
+
+Aion is designed to remain grounded, explainable, and non-directive, supporting human judgment rather than replacing it.
+
+Website
+
 https://www.tevesconsulting.com
