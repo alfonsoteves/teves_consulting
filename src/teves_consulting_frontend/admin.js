@@ -2501,6 +2501,91 @@ window.runRelationshipConfidenceDebug = async function runRelationshipConfidence
   }
 };
 
+function renderProviderInspectionEntries(providers = []) {
+  if (!Array.isArray(providers) || providers.length === 0) {
+    return "<p>No provider inspection entries returned.</p>";
+  }
+
+  return providers.map((provider, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(provider.provider || "Unknown provider")}</strong>
+      <p class="meta">
+        Environment: ${escapeHtml(provider.environment || "n/a")} |
+        Model: ${escapeHtml(provider.model || provider.canisterModel || "n/a")} |
+        Continuity owner: ${escapeHtml(provider.continuityOwner || "Aion")} |
+        Status: ${escapeHtml(provider.status || "n/a")} |
+        Configured: ${provider.configured ? "yes" : "no"}
+      </p>
+      ${
+        provider.canisterId
+          ? `<p class="meta">Canister: ${escapeHtml(provider.canisterId)}</p>`
+          : ""
+      }
+      <p>${escapeHtml(provider.role || "")}</p>
+      <pre>${escapeHtml(JSON.stringify(provider.metadata || {}, null, 2))}</pre>
+    </div>
+  `).join("");
+}
+
+window.runProviderInspectionDebug = async function runProviderInspectionDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("providerInspectionResults");
+  container.innerHTML = "<p>Inspecting provider paths...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/provider-inspection"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Provider Inspection Dry Run")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.1")} |
+          Active provider: ${escapeHtml(data.activeProvider || "n/a")} |
+          Candidate provider: ${escapeHtml(data.candidateProvider || "n/a")} |
+          Continuity owner: ${escapeHtml(data.continuityOwner || "Aion")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Provider Paths</h3>
+        ${renderProviderInspectionEntries(data.providers)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Aion Interface Check</h3>
+        ${renderCountMap(data.comparison || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Provider inspection dry run failed:", err);
+    container.innerHTML = `<p>Provider inspection dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {
