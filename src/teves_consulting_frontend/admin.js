@@ -3230,6 +3230,155 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
   }
 };
 
+function numericValueFromInput(id) {
+  const value = valueFromInput(id);
+  if (!value) return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
+}
+
+function renderAionFitCriteria(criteria = []) {
+  if (!Array.isArray(criteria) || criteria.length === 0) {
+    return "<p>No Aion fit criteria returned.</p>";
+  }
+
+  return `<ul>${criteria.map((criterion) => `
+    <li>
+      <strong>${criterion.passed ? "pass" : "review"}: ${escapeHtml(criterion.name || "criterion")}</strong>
+      ${criterion.reason ? `<br>${escapeHtml(criterion.reason)}` : ""}
+    </li>
+  `).join("")}</ul>`;
+}
+
+function renderProviderComparisonResult(result = {}) {
+  const aionFit = result.aionFit || {};
+  const normalizedError = result.normalizedError || null;
+
+  return `
+    <div>
+      <strong>${escapeHtml(result.provider || "Unknown provider")}</strong>
+      <p class="meta">
+        Environment: ${escapeHtml(result.environment || "n/a")} |
+        Model: ${escapeHtml(result.model || "n/a")} |
+        Status: ${escapeHtml(result.status || "n/a")} |
+        Success: ${result.success ? "yes" : "no"} |
+        Latency: ${escapeHtml(String(result.latencyMs ?? "n/a"))}ms |
+        Aion fit: ${escapeHtml(aionFit.label || "n/a")} (${escapeHtml(String(aionFit.score ?? 0))})
+      </p>
+      <h4>Response</h4>
+      ${
+        result.response
+          ? `<p>${escapeHtml(result.response)}</p>`
+          : "<p>No response supplied.</p>"
+      }
+      <h4>Normalized Error</h4>
+      ${normalizedError ? renderCountMap(normalizedError) : "<p>No normalized error.</p>"}
+      <h4>Aion Fit Criteria</h4>
+      ${renderAionFitCriteria(aionFit.criteria)}
+    </div>
+  `;
+}
+
+window.runProviderComparisonReportDebug = async function runProviderComparisonReportDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("providerComparisonReportResults");
+  container.innerHTML = "<p>Building provider comparison report...</p>";
+
+  const payload = {
+    prompt: valueFromInput("providerComparisonPrompt"),
+    context: valueFromInput("providerComparisonContext"),
+    openaiResponse: valueFromInput("providerComparisonOpenaiResponse"),
+    openaiLatencyMs: numericValueFromInput("providerComparisonOpenaiLatency"),
+    openaiError: valueFromInput("providerComparisonOpenaiError"),
+    icpResponse: valueFromInput("providerComparisonIcpResponse"),
+    icpLatencyMs: numericValueFromInput("providerComparisonIcpLatency"),
+    icpError: valueFromInput("providerComparisonIcpError"),
+    operatorNotes: valueFromInput("providerComparisonNotes"),
+  };
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/provider-comparison-report",
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Provider Comparison Report")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.5.1")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
+          Provider calls made: ${data.providerCallsMade ? "yes" : "no"} |
+          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Prompt</h3>
+        <p>${escapeHtml(data.prompt || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Context</h3>
+        ${renderCountMap(data.context || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Comparison Summary</h3>
+        ${renderCountMap(data.comparisonSummary || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Provider Results</h3>
+        ${
+          Array.isArray(data.providerResults) && data.providerResults.length
+            ? data.providerResults.map(renderProviderComparisonResult).join("")
+            : "<p>No provider results returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Operator Notes</h3>
+        <p>${escapeHtml(data.operatorNotes || "No notes supplied.")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Phase</h3>
+        ${renderCountMap(data.nextPhase || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Provider comparison report dry run failed:", err);
+    container.innerHTML = `<p>Provider comparison report dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {

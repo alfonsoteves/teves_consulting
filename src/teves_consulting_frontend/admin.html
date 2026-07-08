@@ -429,6 +429,52 @@
 
       <div id="manualCandidateCallResults"></div>
     </details>
+    <details>
+      <summary><strong>Provider Comparison Report</strong></summary>
+
+      <p>Compare manual OpenAI and ICP LLM candidate outputs without making provider calls or changing production behavior.</p>
+
+      <label>Prompt
+        <textarea id="providerComparisonPrompt" rows="3" placeholder="Prompt used for both providers."></textarea>
+      </label>
+
+      <label>Aion context
+        <textarea id="providerComparisonContext" rows="5" placeholder="Context supplied to both providers, if any."></textarea>
+      </label>
+
+      <div class="form-grid">
+        <label>OpenAI latency ms
+          <input id="providerComparisonOpenaiLatency" type="number" min="0">
+        </label>
+        <label>ICP latency ms
+          <input id="providerComparisonIcpLatency" type="number" min="0">
+        </label>
+      </div>
+
+      <label>OpenAI baseline response
+        <textarea id="providerComparisonOpenaiResponse" rows="5"></textarea>
+      </label>
+
+      <label>ICP candidate response
+        <textarea id="providerComparisonIcpResponse" rows="5"></textarea>
+      </label>
+
+      <label>OpenAI error, if any
+        <textarea id="providerComparisonOpenaiError" rows="2"></textarea>
+      </label>
+
+      <label>ICP error, if any
+        <textarea id="providerComparisonIcpError" rows="2"></textarea>
+      </label>
+
+      <label>Operator notes
+        <textarea id="providerComparisonNotes" rows="3"></textarea>
+      </label>
+
+      <button onclick="runProviderComparisonReportDebug()">Build Comparison Report</button>
+
+      <div id="providerComparisonReportResults"></div>
+    </details>
     </section>
 
     <section class="admin-section">
