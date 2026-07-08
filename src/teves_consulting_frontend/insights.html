@@ -1,216 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Insights — Teves Consulting</title>
-<meta content="Practical, low-profile insights across Water, Power, Food, Finance, and Calm Decision-Making." name="description"/>
-<meta content="resilience insights, water security, solar backup, food storage, financial clarity, calm decision-making" name="keywords"/>
-<meta content="Teves Consulting" name="author"/>
-<link href="https://www.tevesconsulting.com/insights.html" rel="canonical"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insights — Aion</title>
+<meta name="description" content="Insights and guides behind Aion: the Aion Papers, Five Pillars, Principles, practical guides, and trusted resources for resilient thinking.">
+<meta name="author" content="Teves Consulting">
+<link rel="canonical" href="https://www.tevesconsulting.com/insights.html">
 
-<!-- Open Graph -->
-<meta content="article" property="og:type"/>
-<meta content="Insights — Teves Consulting" property="og:title"/>
-<meta content="Practical, low-profile insights across Water, Power, Food, Finance, and Calm Decision-Making." property="og:description"/>
-<meta content="https://www.tevesconsulting.com/insights.html" property="og:url"/>
-<meta content="Teves Consulting" property="og:site_name"/>
-<meta content="https://www.tevesconsulting.com/assets/images/og-insights.jpg" property="og:image"/>
-<meta content="Teves Consulting Insights" property="og:image:alt"/>
+<script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Twitter Card -->
-<meta content="summary_large_image" name="twitter:card"/>
-<meta content="Insights — Teves Consulting" name="twitter:title"/>
-<meta content="Practical, low-profile insights across Water, Power, Food, Finance, and Calm Decision-Making." name="twitter:description"/>
-<meta content="https://www.tevesconsulting.com/assets/images/og-insights.jpg" name="twitter:image"/>
+<style>
+html { scroll-behavior: smooth; }
+body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+</style>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- GA4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-WMZ9MD4EY4');
-  </script>
-
-  <style>
-    html { scroll-behavior: smooth; }
-    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-  </style>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+<link rel="icon" href="/android-chrome-192x192.png" sizes="192x192">
 </head>
+
 <body class="bg-white text-slate-800">
-<header class="border-b border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-end">
-<nav class="hidden sm:flex gap-6 text-sm">
-      <a class="hover:text-slate-600" href="/index.html">Aion</a>
-      <a class="hover:text-slate-600" href="/insights.html">Insights</a>
-      <a class="hover:text-slate-600" href="/about.html">About</a>
+<header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-end">
+    <button id="navToggle" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm">Menu</button>
+
+    <nav id="nav" class="hidden md:flex items-center gap-6 text-sm">
+      <a href="/index.html" class="hover:text-slate-900">Aion</a>
+      <a href="/insights.html" class="font-semibold text-slate-950">Insights</a>
+      <a href="/about.html" class="hover:text-slate-900">About</a>
       <span class="ml-4"></span>
       <a href="https://www.tevesconsulting.com/es/insights.html" class="hover:underline">ES</a>
     </nav>
   </div>
+
+  <div id="mobileNav" class="md:hidden hidden border-t border-slate-200">
+    <div class="px-4 py-3 flex flex-col gap-3 text-sm">
+      <a href="/index.html" class="hover:text-slate-900">Aion</a>
+      <a href="/insights.html" class="font-semibold text-slate-950">Insights</a>
+      <a href="/about.html" class="hover:text-slate-900">About</a>
+      <a href="https://www.tevesconsulting.com/es/insights.html" class="hover:underline">ES</a>
+    </div>
+  </div>
 </header>
 
-<section class="mx-auto max-w-6xl px-4 py-10">
-  <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Insights for Resilience</h1>
-  <p class="mt-3 text-slate-700 max-w-3xl leading-relaxed">
-    Resilience is built in layers. These guides offer practical steps you can take now—without hype—across five pillars:
-    Water, Power, Food, Finance, and Calm Decision-Making.
-  </p>
-</section>
-
-<section class="mx-auto max-w-6xl px-4 pb-12">
-  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Rain barrel and distiller" class="h-40 w-full object-cover" loading="lazy" src="assets/images/water.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Water Resilience</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Rain capture + pre-filtration + distillation for robust last-mile purity. Store 30–60 days at 1–1.5 gal/person/day.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/water.html">Water →</a>
-      </div>
-    </article>
-
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Solar panels" class="h-40 w-full object-cover" loading="lazy" src="assets/images/power.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Power Resilience</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Layer batteries (hours), generator (days), and solar (indefinite). Test real loads; protect batteries with auto-shutdown.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/power.html">Power →</a>
-      </div>
-    </article>
-
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Pantry staples" class="h-40 w-full object-cover" loading="lazy" src="assets/images/food.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Food Resilience</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Short/medium/long-term layers; calories, nutrition, and morale foods. Store what you’ll actually eat; rotate FIFO.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/food.html">Food →</a>
-      </div>
-    </article>
-
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Financial tools on desk" class="h-40 w-full object-cover" loading="lazy" src="assets/images/financial.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Financial Resilience</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Liquidity first, tangible hedges second, long-arc positioning last. Clarity beats speed during turbulence.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/financial.html">Financial →</a>
-      </div>
-    </article>
-
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Serene lakeside sunrise" class="h-40 w-full object-cover" loading="lazy" src="assets/images/calm.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Calm Decision-Making</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Short protocols (3-question filter; Pause–Frame–Act) prevent costly mistakes and keep you steady.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/calm.html">Calm →</a>
-      </div>
-    </article>
-
-    <article class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-      <img alt="Aion" class="h-40 w-full object-cover" loading="lazy" src="assets/images/aion.jpg"/>
-      <div class="p-5">
-        <h2 class="text-lg font-semibold text-slate-900">Aion</h2>
-        <p class="mt-2 text-sm text-slate-700">
-          Ask practical questions and explore the Teves Consulting knowledge base through grounded conversation.
-        </p>
-        <a class="inline-block mt-3 text-sm font-medium text-slate-900 hover:underline" href="/agent.html">Aion →</a>
-      </div>
-    </article>
-  </div>
-</section>
-
-<div class="mx-auto max-w-6xl px-4"><hr class="border-slate-200 my-8"/></div>
-
-<section class="mt-4 pb-16" id="resources">
-  <div class="max-w-3xl mx-auto px-4">
-    <h2 class="text-2xl font-semibold text-gray-900 mb-6">Resources</h2>
-
-    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Water Resources</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/water-emergency/about/how-to-create-and-store-an-emergency-water-supply.html" target="_blank" rel="noopener noreferrer">• How to create and store an emergency water supply (CDC)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.fema.gov/pdf/library/f&web.pdf" target="_blank" rel="noopener noreferrer">• Emergency water supply and storage recommendations (FEMA)</a></li>
-      </ul>
-      </div>
-
-    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Power Resources</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://www.ready.gov/power-outages" target="_blank" rel="noopener noreferrer">• Power outages preparedness (Ready.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.ready.gov/sites/default/files/2024-03/ready.gov_power-outage_hazard-info-sheet.pdf" target="_blank" rel="noopener noreferrer">• Power outage info sheet (Ready.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.redcross.org/content/dam/redcross/atg/PDF_s/Preparedness___Disaster_Recovery/Disaster_Preparedness/Power_Outage/PowerOutage.pdf" target="_blank" rel="noopener noreferrer">• Power outage planning guide (Red Cross)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.redcross.org/get-help/how-to-prepare-for-emergencies/types-of-emergencies/power-outage.html" target="_blank" rel="noopener noreferrer">• How to prepare for power outages (Red Cross)</a></li>
-      </ul>
+<main>
+  <!-- Hero -->
+  <section class="relative overflow-hidden border-b border-slate-200">
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute -right-40 top-0 h-80 w-80 rounded-full bg-blue-100 blur-3xl opacity-70"></div>
+      <div class="absolute right-40 bottom-0 h-56 w-56 rounded-full bg-sky-100 blur-3xl opacity-60"></div>
     </div>
 
-    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Food Resources</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/food-safety/foods/keep-food-safe-after-emergency.html" target="_blank" rel="noopener noreferrer">• Keep food safe after an emergency (CDC)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.fcs.uga.edu/extension/preparing-an-emergency-food-supply-short-term-food-storage" target="_blank" rel="noopener noreferrer">• Preparing an emergency food supply (UGA)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.fda.gov/food/nutrition-facts-label/how-understand-and-use-nutrition-facts-label">• How to understand and use the nutrition facts label (FDA)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.fda.gov/files/food/published/Food-Labeling-Guide-%28PDF%29.pdf">• Food labeling guide (FDA)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.nhlbi.nih.gov/resources/nutrition-facts-label-guide">• Nutrition facts label guide (NIH)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.nutrition.gov/topics/shopping-cooking-and-meal-planning/food-labels">• Food labels (Nutrition.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.heart.org/en/healthy-living/healthy-eating/eat-smart/nutrition-basics/understanding-ingredients-on-food-labels">• Understanding ingredients on food labels (American Heart Association)</a></li>      
-      </ul>
-    </div>
-
-    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Financial Resources</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://consumer.gov/your-money/making-budget" target="_blank" rel="noopener noreferrer">• How to build a budget &amp; track finances (Consumer.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.mymoney.gov/tools" target="_blank" rel="noopener noreferrer">• Tools &amp; planning resources (MyMoney.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://turbosircloud.azurewebsites.net/Services/AiTools/AiBudgetPlanner" target="_blank" rel="noopener noreferrer">• Budget planner &amp; financial calculators (Turbosir)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9982767/" target="_blank" rel="noopener noreferrer">• Determinants of financial resilience (NIH)</a></li>
-      </ul>
-    </div>
-
-    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Calm Resources</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/mental-health/living-with/index.html" target="_blank" rel="noopener noreferrer">• Managing stress (CDC)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/howrightnow/wellbeing/index.html" target="_blank" rel="noopener noreferrer">• Tips to improve your emotional well-being (CDC)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.nccih.nih.gov/health/stress" target="_blank" rel="noopener noreferrer">• Stress and mind-body practices (NIH)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.apa.org/topics/stress" target="_blank" rel="noopener">• Stress (APA)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/mental-health/about/" target="_blank" rel="noopener">• About mental health (CDC)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.who.int/health-topics/mental-health" target="_blank" rel="noopener">• Mental health (WHO)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.nimh.nih.gov/health/topics/coping-with-traumatic-events" target="_blank" rel="noopener">• Coping with traumatic events (NIMH)</a></li>  
-      </ul>
-    </div>
-        <div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Emergency Preparedness</h3>
-      <ul class="mt-2 space-y-2 text-sm">
-        <li><a class="text-blue-700 hover:underline" href="https://ec.europa.eu/commission/presscorner/detail/en/ip_25_856" target="_blank" rel="noopener noreferrer">• Strengthening disaster preparedness and civil protection (European Commission)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.ready.gov" target="_blank" rel="noopener noreferrer">• Empower the american people to prepare for and respond to emergencies (Ready.gov)</a></li>
-        <li><a class="text-blue-700 hover:underline" href="https://www.cdc.gov/emergency/index.html" target="_blank" rel="noopener noreferrer">• Emergency preparedness and response (CDC)</a></li>
-      </ul>
+    <div class="relative max-w-6xl mx-auto px-4 py-20 md:py-24">
+      <div class="max-w-3xl">
+        <p class="uppercase tracking-[0.18em] text-blue-700 text-sm font-semibold">Insights</p>
+        <h1 class="mt-4 text-4xl md:text-6xl font-extrabold tracking-tight text-slate-950">
+          Insights & Guides
+        </h1>
+        <p class="mt-6 text-lg md:text-xl text-slate-700 leading-relaxed">
+          A library for the ideas behind Aion: foundational papers, practical frameworks,
+          timeless principles, applied guides, and trusted resources for building resilient systems
+          and better decisions.
+        </p>
       </div>
-  </div>
-</section>
-
-<footer class="py-10">
-  <div class="mx-auto max-w-6xl px-4 text-sm text-slate-500 flex flex-col md:flex-row items-center justify-between gap-2">
-    <p>© <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
-    <div class="flex items-center gap-4">
-      <a class="hover:text-slate-700" href="/about-aion.html">About Aion</a>
     </div>
+  </section>
+
+  <!-- Aion Papers -->
+  <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
+    <div class="rounded-3xl border border-slate-200 bg-slate-950 text-white p-8 md:p-10 shadow-sm">
+      <div class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-300">Foundational Documents</p>
+        <h2 class="mt-4 text-3xl md:text-4xl font-bold tracking-tight">The Aion Papers</h2>
+        <p class="mt-4 text-slate-300 leading-relaxed">
+          The Aion Papers will describe the vision, principles, architecture, and long-term direction
+          behind Aion as a continuity-aware system for better thinking.
+        </p>
+      </div>
+
+      <div class="mt-8 grid gap-4 md:grid-cols-4">
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h3 class="font-semibold">Paper I</h3>
+          <p class="mt-2 text-sm text-slate-300">The Aion Vision</p>
+          <p class="mt-4 text-sm text-slate-500">Coming soon</p>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h3 class="font-semibold">Paper II</h3>
+          <p class="mt-2 text-sm text-slate-300">The Aion Constitution</p>
+          <p class="mt-4 text-sm text-slate-500">Coming soon</p>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h3 class="font-semibold">Paper III</h3>
+          <p class="mt-2 text-sm text-slate-300">The Aion Architecture</p>
+          <p class="mt-4 text-sm text-slate-500">Coming soon</p>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h3 class="font-semibold">Paper IV</h3>
+          <p class="mt-2 text-sm text-slate-300">Model Independence</p>
+          <p class="mt-4 text-sm text-slate-500">Coming soon</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Knowledge Map -->
+  <section class="bg-slate-50 border-y border-slate-200">
+    <div class="mx-auto max-w-6xl px-4 py-16 md:py-20">
+      <div class="max-w-3xl">
+        <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">Knowledge Map</h2>
+        <p class="mt-3 text-slate-700 leading-relaxed">
+          Explore the framework and philosophy that support Aion's way of thinking.
+        </p>
+      </div>
+
+      <div class="mt-10 grid gap-6 md:grid-cols-3">
+        <a href="/pillars.html" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+          <h3 class="font-semibold text-slate-950">The Five Pillars</h3>
+          <p class="mt-2 text-sm leading-6 text-slate-700">
+            A practical framework for resilient thinking across Food, Water, Power, Financial Basics, and Calm.
+          </p>
+          <p class="mt-4 text-sm font-medium text-blue-700">Explore the Pillars →</p>
+        </a>
+
+        <a href="/principles.html" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+          <h3 class="font-semibold text-slate-950">Principles of Clarity</h3>
+          <p class="mt-2 text-sm leading-6 text-slate-700">
+            Timeless ideas about clarity, simplicity, calm, and resilient living.
+          </p>
+          <p class="mt-4 text-sm font-medium text-blue-700">Read the Principles →</p>
+        </a>
+
+        <a href="/about-aion.html" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+          <h3 class="font-semibold text-slate-950">About Aion</h3>
+          <p class="mt-2 text-sm leading-6 text-slate-700">
+            Learn how Aion uses continuity and practical reasoning to help people think better over time.
+          </p>
+          <p class="mt-4 text-sm font-medium text-blue-700">About Aion →</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Practical Guides -->
+  <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
+    <div class="max-w-3xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-700">Practical Guides</p>
+      <h2 class="mt-3 text-2xl md:text-3xl font-bold tracking-tight text-slate-950">
+        Apply the ideas.
+      </h2>
+      <p class="mt-3 text-slate-700 leading-relaxed">
+        Practical resources across the Five Pillars. These guides are the applied layer of the knowledge base.
+      </p>
+    </div>
+
+    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <a href="/food.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/food.jpg" alt="Food resilience and pantry planning" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Food Resilience</h3>
+          <p class="mt-2 text-sm text-slate-700">Pantry foundations, rotation systems, and flexible meal strategies.</p>
+        </div>
+      </a>
+
+      <a href="/water.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/water.jpg" alt="Water storage and treatment" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Water Resilience</h3>
+          <p class="mt-2 text-sm text-slate-700">Baselines, storage, filtration, and realistic planning for water access.</p>
+        </div>
+      </a>
+
+      <a href="/power.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/power.jpg" alt="Power resilience and backup energy" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Power Resilience</h3>
+          <p class="mt-2 text-sm text-slate-700">Batteries, generators, solar, and choosing what actually fits your life.</p>
+        </div>
+      </a>
+
+      <a href="/financial.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/financial.jpg" alt="Financial Basics resilience and planning" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Financial Basics Resilience</h3>
+          <p class="mt-2 text-sm text-slate-700">Cash flow clarity, buffers, and reducing fragility under uncertainty.</p>
+        </div>
+      </a>
+
+      <a href="/calm.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/calm.jpg" alt="Calm decision-making and reflection" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Calm Decision-Making</h3>
+          <p class="mt-2 text-sm text-slate-700">Staying grounded, clear-headed, and intentional during stress.</p>
+        </div>
+      </a>
+
+      <a href="/agent.html" class="group block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
+        <div class="aspect-[16/9] bg-slate-100 overflow-hidden">
+          <img src="/assets/images/aion.jpg" alt="Aion" class="h-full w-full object-cover group-hover:scale-[1.02] transition">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-slate-900">Aion</h3>
+          <p class="mt-2 text-sm text-slate-700">Explore the knowledge base through grounded conversation.</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- External Reference Library -->
+  <section class="bg-slate-50 border-y border-slate-200">
+    <div class="mx-auto max-w-6xl px-4 py-16 md:py-20">
+      <div class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-700">External Reference Library</p>
+        <h2 class="mt-3 text-2xl md:text-3xl font-bold tracking-tight text-slate-950">
+          Useful materials for further reading.
+        </h2>
+        <p class="mt-3 text-slate-700 leading-relaxed">
+          These links point to external reference materials that may be useful for further reading,
+          verification, or practical planning.
+        </p>
+      </div>
+
+      <div class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Emergency Planning</h3>
+          <ul class="mt-4 space-y-2 text-sm text-slate-700">
+            <li><a class="hover:text-blue-700" href="https://www.redcross.org/" target="_blank" rel="noopener noreferrer">Disaster preparedness guides</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.ready.gov/" target="_blank" rel="noopener noreferrer">Emergency preparedness guidance</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.fema.gov/" target="_blank" rel="noopener noreferrer">Emergency management information</a></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Public Health</h3>
+          <ul class="mt-4 space-y-2 text-sm text-slate-700">
+            <li><a class="hover:text-blue-700" href="https://www.cdc.gov/" target="_blank" rel="noopener noreferrer">Public health information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.nih.gov/" target="_blank" rel="noopener noreferrer">Health research information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.who.int/" target="_blank" rel="noopener noreferrer">Global health guidance</a></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Food Safety & Nutrition</h3>
+          <ul class="mt-4 space-y-2 text-sm text-slate-700">
+            <li><a class="hover:text-blue-700" href="https://www.usda.gov/" target="_blank" rel="noopener noreferrer">Food and agriculture information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.fda.gov/" target="_blank" rel="noopener noreferrer">Food safety information</a></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Water, Weather & Environment</h3>
+          <ul class="mt-4 space-y-2 text-sm text-slate-700">
+            <li><a class="hover:text-blue-700" href="https://www.noaa.gov/" target="_blank" rel="noopener noreferrer">Weather and climate information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.epa.gov/" target="_blank" rel="noopener noreferrer">Environmental protection information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.usgs.gov/" target="_blank" rel="noopener noreferrer">Water and geological information</a></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Financial Basics</h3>
+          <ul class="mt-4 space-y-2 text-sm text-slate-700">
+            <li><a class="hover:text-blue-700" href="https://www.fdic.gov/" target="_blank" rel="noopener noreferrer">Banking and deposit insurance information</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.consumerfinance.gov/" target="_blank" rel="noopener noreferrer">Consumer finance guidance</a></li>
+            <li><a class="hover:text-blue-700" href="https://www.irs.gov/" target="_blank" rel="noopener noreferrer">Tax information</a></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-950">Local Planning</h3>
+          <p class="mt-4 text-sm leading-6 text-slate-700">
+            Local emergency management agencies, utility providers, and municipal resources are often
+            the most relevant sources for location-specific guidance.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white">
+    <div class="max-w-4xl mx-auto px-4 py-16">
+      <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">Growing with Aion</h2>
+      <p class="mt-5 text-slate-700 leading-relaxed">
+        As Aion evolves, this library will evolve with it. New papers, guides, and engineering insights
+        will be added gradually through the same disciplined process used throughout Aion's development:
+        evaluation, testing, operator review, and continuous refinement.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="border-t py-10">
+  <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-2 text-sm text-slate-500">
+    <div>© 2026 Teves Consulting LLC. All rights reserved.</div>
+    <a href="/about-aion.html" class="hover:text-slate-700">About Aion</a>
   </div>
 </footer>
+
 <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
+const navToggle = document.getElementById('navToggle');
+const mobileNav = document.getElementById('mobileNav');
+if (navToggle) {
+  navToggle.addEventListener('click', () => {
+    mobileNav.classList.toggle('hidden');
+  });
+}
 </script>
 </body>
 </html>
