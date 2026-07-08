@@ -61,12 +61,225 @@
 
     .header-links {
       display: flex;
-      gap: 16px;
+      gap: 18px;
       align-items: center;
       font-size: 0.87rem;
     }
+
+    .header-links a,
+    .header-links button {
+      flex: 0 0 auto;
+    }
+
+    .header-links .theme-toggle {
+      margin-left: 6px;
+    }
+
+    .header-links .auth-button {
+      margin-left: 2px;
+    }
+
     .header-inner-nav-only {
       justify-content: flex-end;
+    }
+
+    .aion-continuity-indicator-container {
+      min-width: 42px;
+      display: flex;
+      align-items: center;
+    }
+
+    .aion-continuity-indicator {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #93c5fd;
+      border-radius: 999px;
+      background: rgba(239, 246, 255, 0.8);
+      color: #1d4ed8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+    }
+
+    .aion-continuity-indicator[disabled] {
+      cursor: default;
+      opacity: 0.55;
+      box-shadow: none;
+    }
+
+    .aion-continuity-indicator.empty {
+      background: transparent;
+      color: #64748b;
+      border-color: #cbd5e1;
+    }
+
+    .aion-continuity-indicator.active {
+      animation: aionContinuityPulse 3.2s ease-in-out infinite;
+    }
+
+    .aion-continuity-mark {
+      position: relative;
+      z-index: 1;
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.35;
+    }
+
+    .aion-continuity-indicator.active .aion-continuity-mark {
+      animation: aionContinuityRotate 30s linear infinite;
+    }
+
+    .aion-continuity-particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: #60a5fa;
+    }
+
+    .aion-continuity-particle.one {
+      top: 8px;
+      right: 9px;
+    }
+
+    .aion-continuity-particle.two {
+      bottom: 8px;
+      left: 9px;
+      background: #22c55e;
+    }
+
+    .aion-continuity-particle.three {
+      bottom: 9px;
+      right: 10px;
+      background: #a78bfa;
+    }
+
+    @keyframes aionContinuityPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+      }
+    }
+
+    @keyframes aionContinuityRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .aion-continuity-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.38);
+    }
+
+    .aion-continuity-modal-backdrop.open {
+      display: flex;
+    }
+
+    .aion-continuity-modal {
+      width: min(420px, 100%);
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 22px;
+      box-shadow: 0 20px 70px rgba(15, 23, 42, 0.22);
+    }
+
+    .aion-continuity-modal h2 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+    }
+
+    .aion-continuity-modal p {
+      margin: 0 0 14px;
+      color: #475569;
+    }
+
+    .aion-continuity-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .aion-continuity-secondary-button,
+    .aion-continuity-delete-button {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .aion-continuity-secondary-button {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .aion-continuity-delete-button {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .aion-continuity-delete-button[disabled] {
+      opacity: 0.65;
+      cursor: default;
+    }
+
+    .aion-continuity-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 60;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 0.9rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+    }
+
+    .aion-continuity-toast.show {
+      opacity: 1;
+    }
+
+    .aion-continuity-flash {
+      animation: aionContinuityFlash 520ms ease-out;
+    }
+
+    @keyframes aionContinuityFlash {
+      0% {
+        background: rgba(219, 234, 254, 0.9);
+      }
+      100% {
+        background: transparent;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .aion-continuity-indicator.active,
+      .aion-continuity-indicator.active .aion-continuity-mark,
+      .aion-continuity-flash {
+        animation: none;
+      }
+
+      .aion-continuity-toast {
+        transition: none;
+      }
     }
 
 
@@ -133,7 +346,7 @@
     .composer button {
       margin-top: 12px;
     }
-    
+
     button {
       margin-top: 12px;
       padding: 10px 18px;
@@ -264,8 +477,13 @@
       display: none;
     }
 
+    body.dark-mode .aion-continuity-indicator-container {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
     body.dark-mode .header-inner {
-      justify-content: flex-end;
+      justify-content: space-between;
     }
 
     body.dark-mode .site-footer {
@@ -298,27 +516,64 @@
       color: #f9fafb;
       border: none;
     }
+
+    body.dark-mode .aion-continuity-indicator {
+      background: #1a1d21;
+      border-color: #60a5fa;
+      color: #bfdbfe;
+    }
+
+    body.dark-mode .aion-continuity-indicator.empty {
+      border-color: #475569;
+      color: #94a3b8;
+    }
+
+    body.dark-mode .aion-continuity-modal {
+      background: #1a1d21;
+      border-color: #2c3138;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .aion-continuity-modal p {
+      color: #cbd5e1;
+    }
+
+    body.dark-mode .aion-continuity-secondary-button {
+      background: #27303a;
+      color: #f3f4f6;
+    }
   </style>
 </head>
 
 <body>
 <header class="site-header">
-  <div class="header-inner header-inner-nav-only">
+  <div class="header-inner">
+    <div id="aionContinuityIndicatorContainer" class="aion-continuity-indicator-container"></div>
 <div class="header-links">
       <a href="https://www.tevesconsulting.com/es/index.html">Aion</a>
-      <span>|</span>
       <a href="https://www.tevesconsulting.com/aion.html">EN</a>
-      <span>|</span>
       <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
         🌙
       </button>
-      <span>|</span>
       <button id="authButton" class="auth-button" onclick="handleAuth()">
         Iniciar sesión
       </button>
     </div>
   </div>
 </header>
+
+<div id="aionContinuityModal" class="aion-continuity-modal-backdrop" aria-hidden="true">
+  <div class="aion-continuity-modal" role="dialog" aria-modal="true" aria-labelledby="aionContinuityModalTitle">
+    <h2 id="aionContinuityModalTitle">Memoria de continuidad</h2>
+    <p>Tu continuidad guardada ayuda a Aion a preservar contexto útil entre sesiones.</p>
+    <p id="aionContinuityModalStatus"></p>
+    <div class="aion-continuity-modal-actions">
+      <button class="aion-continuity-secondary-button" onclick="closeAionContinuityModal()">Cancelar</button>
+      <button id="aionContinuityDeleteButton" class="aion-continuity-delete-button" onclick="deleteAionContinuityMemory()">Eliminar toda la memoria</button>
+    </div>
+  </div>
+</div>
+<div id="aionContinuityToast" class="aion-continuity-toast" role="status" aria-live="polite"></div>
 
 <main class="page-main">
   <h1>Aion</h1>
@@ -348,14 +603,21 @@
   import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
 
   const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
-  
+
   let authClient = null;
   let isAuthenticated = false;
   let identity = null;
   let sessionSaved = false;
   let inactivityTimer = null;
   const INACTIVITY_TIMEOUT = 10 * 60 * 1000;
-  
+  const aionContinuityState = {
+    authenticated: false,
+    memoryCount: 0,
+    loading: false,
+    deleting: false,
+    error: null,
+  };
+
   window.messages = [];
   window.continuityContext = [];
 
@@ -414,6 +676,11 @@
       ),
       getMyRecentSummaries: IDL.Func(
         [IDL.Nat],
+        [IDL.Vec(MemorySummary)],
+        ["query"]
+      ),
+      getMyAllSummaries: IDL.Func(
+        [],
         [IDL.Vec(MemorySummary)],
         ["query"]
       ),
@@ -500,7 +767,142 @@
     } else {
       authButton.textContent = "Iniciar sesión";
     }
+
+    aionContinuityState.authenticated = isAuthenticated;
+    if (!isAuthenticated) {
+      aionContinuityState.memoryCount = 0;
+      aionContinuityState.loading = false;
+      aionContinuityState.deleting = false;
+      aionContinuityState.error = null;
+    }
+    renderAionContinuityIndicator();
   }
+
+  function renderAionContinuityIndicator() {
+    const container = document.getElementById("aionContinuityIndicatorContainer");
+    if (!container) return;
+
+    const active = aionContinuityState.authenticated && aionContinuityState.memoryCount > 0;
+    const empty = aionContinuityState.authenticated && aionContinuityState.memoryCount === 0;
+    const className = [
+      "aion-continuity-indicator",
+      active ? "active" : "",
+      empty ? "empty" : "",
+    ].filter(Boolean).join(" ");
+    const title = !aionContinuityState.authenticated
+      ? "Inicia sesión para activar la continuidad."
+      : aionContinuityState.memoryCount > 0
+        ? `Continuidad activa. ${aionContinuityState.memoryCount} ${aionContinuityState.memoryCount === 1 ? "memoria guardada" : "memorias guardadas"}.`
+        : "Continuidad activada. Todavía no hay memorias.";
+    const particles = active
+      ? '<span class="aion-continuity-particle one"></span><span class="aion-continuity-particle two"></span><span class="aion-continuity-particle three"></span>'
+      : "";
+
+    container.innerHTML = `
+      <button
+        class="${className}"
+        type="button"
+        title="${title}"
+        aria-label="${title}"
+        ${aionContinuityState.authenticated ? 'onclick="openAionContinuityModal()"' : "disabled"}
+      >
+        <svg class="aion-continuity-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="25"></circle>
+          <circle cx="32" cy="32" r="3.5"></circle>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24"></ellipse>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(30 32 32)"></ellipse>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(60 32 32)"></ellipse>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(90 32 32)"></ellipse>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(120 32 32)"></ellipse>
+          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(150 32 32)"></ellipse>
+        </svg>
+        ${particles}
+      </button>
+    `;
+  }
+
+  function showAionContinuityToast(message) {
+    const toast = document.getElementById("aionContinuityToast");
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.add("show");
+    window.setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2200);
+  }
+
+  window.openAionContinuityModal = function openAionContinuityModal() {
+    if (!isAuthenticated || !identity) return;
+
+    const modal = document.getElementById("aionContinuityModal");
+    const status = document.getElementById("aionContinuityModalStatus");
+    const deleteButton = document.getElementById("aionContinuityDeleteButton");
+    if (!modal || !status || !deleteButton) return;
+
+    if (aionContinuityState.memoryCount > 0) {
+      status.textContent = `¿Eliminar toda la memoria de continuidad guardada? Esto elimina ${aionContinuityState.memoryCount} ${aionContinuityState.memoryCount === 1 ? "memoria guardada" : "memorias guardadas"} entre sesiones y no se puede deshacer.`;
+      deleteButton.style.display = "inline-flex";
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Eliminar toda la memoria";
+    } else {
+      status.textContent = "La continuidad está activada. No hay memorias guardadas en este momento.";
+      deleteButton.style.display = "none";
+    }
+
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+  };
+
+  window.closeAionContinuityModal = function closeAionContinuityModal() {
+    const modal = document.getElementById("aionContinuityModal");
+    if (!modal) return;
+
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  window.deleteAionContinuityMemory = async function deleteAionContinuityMemory() {
+    if (!isAuthenticated || !identity || aionContinuityState.deleting) return;
+
+    const deleteButton = document.getElementById("aionContinuityDeleteButton");
+    aionContinuityState.deleting = true;
+    aionContinuityState.error = null;
+    if (deleteButton) {
+      deleteButton.disabled = true;
+      deleteButton.textContent = "Eliminando...";
+    }
+
+    try {
+      const ok = await window.feedbackActor.deleteAllMySummaries();
+      if (!ok) {
+        throw new Error("Delete request was not confirmed by the canister.");
+      }
+
+      window.continuityContext = [];
+      aionContinuityState.memoryCount = 0;
+      aionContinuityState.deleting = false;
+      renderAionContinuityIndicator();
+      closeAionContinuityModal();
+
+      const container = document.getElementById("aionContinuityIndicatorContainer");
+      if (container) {
+        container.classList.add("aion-continuity-flash");
+        window.setTimeout(() => container.classList.remove("aion-continuity-flash"), 560);
+      }
+
+      showAionContinuityToast("Memoria de continuidad eliminada.");
+    } catch (err) {
+      console.error("Failed to delete continuity memory:", err);
+      aionContinuityState.deleting = false;
+      aionContinuityState.error = err;
+      if (deleteButton) {
+        deleteButton.disabled = false;
+        deleteButton.textContent = "Eliminar toda la memoria";
+      }
+      showAionContinuityToast("No se pudo eliminar la memoria de continuidad. Inténtalo de nuevo.");
+    }
+  };
 
   window.handleAuth = async function handleAuth() {
     if (!authClient) {
@@ -514,6 +916,7 @@
       isAuthenticated = false;
       identity = null;
       sessionSaved = false;
+      window.continuityContext = [];
 
       window.feedbackActor = Actor.createActor(idlFactory, {
         agent,
@@ -537,7 +940,7 @@
       },
     });
   };
-   
+
     function resetInactivityTimer() {
 
     if (!isAuthenticated) {
@@ -557,8 +960,8 @@
       });
 
     }, INACTIVITY_TIMEOUT);
-  }   
-   
+  }
+
     initAuth();
 
     function appendMessage(role, text) {
@@ -672,12 +1075,12 @@
 
     button.disabled = true;
     button.innerHTML = '<img class="thinking-logo-img" src="/assets/images/t-logo-white.png" alt="Loading" />';
-    
+
     if (sessionSaved) {
       sessionSaved = false;
       window.messages = [];
     }
-    
+
     appendMessage("user", query);
     resetInactivityTimer();
 
@@ -701,7 +1104,7 @@
 
       if (!response.ok) {
         appendMessage("assistant", data.detail || "Límite de solicitudes alcanzado. Inténtalo nuevamente más tarde.");
-        return;        
+        return;
       }
       appendMessage("assistant", data.answer || "No se recibió respuesta.");
       document.getElementById("feedback").style.display = "block";
@@ -712,7 +1115,7 @@
       };
 
     } catch (err) {
-      appendMessage("assistant", "El agente está temporalmente no disponible. Inténtalo nuevamente en un momento.");      
+      appendMessage("assistant", "El agente está temporalmente no disponible. Inténtalo nuevamente en un momento.");
     } finally {
       button.disabled = false;
       button.textContent = "Preguntar";
@@ -765,29 +1168,42 @@
   window.loadContinuityContext = async function loadContinuityContext() {
     if (!isAuthenticated) {
       console.warn("Not authenticated. Continuity context not loaded.");
+      aionContinuityState.authenticated = false;
+      aionContinuityState.memoryCount = 0;
+      renderAionContinuityIndicator();
       return [];
     }
 
-        try {
-      const recent =
-        await window.feedbackActor.getMyRecentSummaries(5);
+    try {
+      aionContinuityState.loading = true;
+      renderAionContinuityIndicator();
+      let merged = [];
 
-      const milestones =
-        await window.feedbackActor.getMyMilestoneSummaries();
-      
-      const merged = [...recent];
+      try {
+        merged = await window.feedbackActor.getMyAllSummaries();
+      } catch (err) {
+        console.warn("All summaries unavailable. Falling back to recent summaries.", err);
 
-      milestones.forEach(milestone => {
+        const recent =
+          await window.feedbackActor.getMyRecentSummaries(5);
 
-        const exists = merged.some(
-          item => item.id.toString() === milestone.id.toString()
-        );
+        const milestones =
+          await window.feedbackActor.getMyMilestoneSummaries();
 
-        if (!exists) {
-          merged.push(milestone);
-        }
+        merged = [...recent];
 
-      });
+        milestones.forEach(milestone => {
+
+          const exists = merged.some(
+            item => item.id.toString() === milestone.id.toString()
+          );
+
+          if (!exists) {
+            merged.push(milestone);
+          }
+
+        });
+      }
 
       window.continuityContext = merged.map((s) => ({
         title: s.title,
@@ -803,10 +1219,18 @@
         createdAt: s.createdAt.toString(),
       }));
 
+      aionContinuityState.authenticated = true;
+      aionContinuityState.memoryCount = merged.length;
+      aionContinuityState.loading = false;
+      aionContinuityState.error = null;
+      renderAionContinuityIndicator();
       console.log("Continuity context loaded:", window.continuityContext);
       return window.continuityContext;
     } catch (err) {
       console.error("Failed to load continuity context:", err);
+      aionContinuityState.loading = false;
+      aionContinuityState.error = err;
+      renderAionContinuityIndicator();
       return [];
     }
   };
