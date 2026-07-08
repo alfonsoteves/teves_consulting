@@ -3,6 +3,10 @@ import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
 import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
 
 const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
+const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
+const LLM_CANDIDATE_MODEL = "llama3.1:8b";
+const LLM_CANDIDATE_TIMEOUT_MS = 30000;
+const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
 
 let authClient = null;
 let isAuthenticated = false;
@@ -60,6 +64,26 @@ const idlFactory = ({ IDL }) => {
       }))],
       ["query"]
     ),
+  });
+};
+
+const llmIdlFactory = ({ IDL }) => {
+  const ChatMessageV0 = IDL.Record({
+    role: IDL.Variant({
+      assistant: IDL.Null,
+      system: IDL.Null,
+      user: IDL.Null,
+    }),
+    content: IDL.Text,
+  });
+
+  const ChatRequestV0 = IDL.Record({
+    model: IDL.Text,
+    messages: IDL.Vec(ChatMessageV0),
+  });
+
+  return IDL.Service({
+    v0_chat: IDL.Func([ChatRequestV0], [IDL.Text], []),
   });
 };
 
@@ -2965,6 +2989,209 @@ window.runParallelProviderHarnessPlanDebug = async function runParallelProviderH
   } catch (err) {
     console.error("Parallel provider harness plan dry run failed:", err);
     container.innerHTML = `<p>Parallel provider harness plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function normalizeCandidateError(err) {
+  const message = String(err && (err.message || err) || "Unknown candidate error");
+  const lower = message.toLowerCase();
+
+  if (lower.includes("timeout")) return {type: "timeout", message};
+  if (lower.includes("reject")) return {type: "reject", message};
+  if (lower.includes("trap")) return {type: "trap", message};
+  if (lower.includes("decode") || lower.includes("candid")) return {type: "decode error", message};
+
+  return {type: "candidate error", message};
+}
+
+function withCandidateTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(
+        () => reject(new Error(`Candidate call timeout after ${timeoutMs}ms`)),
+        timeoutMs
+      );
+    }),
+  ]);
+}
+
+function buildCandidateMessages(prompt) {
+  return [
+    {
+      role: {system: null},
+      content: "You are Aion candidate model output. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt.",
+    },
+    {
+      role: {user: null},
+      content: prompt,
+    },
+  ];
+}
+
+function renderCandidateCallResult(data) {
+  const normalizedError = data.normalizedError || null;
+
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(data.title || "Manual Candidate Call Harness")}</h3>
+      <p>${escapeHtml(data.summary || "")}</p>
+      <p class="meta">
+        Phase: ${escapeHtml(data.phase || "6.4.2")} |
+        Candidate call made: ${data.candidateCallMade ? "yes" : "no"} |
+        Success: ${data.success ? "yes" : "no"} |
+        Latency: ${escapeHtml(String(data.latencyMs ?? "n/a"))}ms
+      </p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Candidate</h3>
+      ${renderCountMap(data.candidate || {})}
+    </div>
+
+    <div class="memory-card">
+      <h3>Prompt</h3>
+      <p>${escapeHtml(data.prompt || "")}</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Candidate Response</h3>
+      ${
+        data.candidateResponse
+          ? `<p>${escapeHtml(data.candidateResponse)}</p>`
+          : "<p>No candidate response returned.</p>"
+      }
+    </div>
+
+    <div class="memory-card">
+      <h3>Normalized Error</h3>
+      ${
+        normalizedError
+          ? renderCountMap(normalizedError)
+          : "<p>No normalized error.</p>"
+      }
+    </div>
+
+    <div class="memory-card">
+      <h3>Safety</h3>
+      ${renderCountMap(data.safety || {})}
+    </div>
+
+    <div class="memory-card">
+      <h3>Guardrails</h3>
+      ${
+        Array.isArray(data.guardrails) && data.guardrails.length
+          ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+          : "<p>No guardrails returned.</p>"
+      }
+    </div>
+  `;
+}
+
+window.runManualCandidateCallHarness = async function runManualCandidateCallHarness() {
+  if (!isAuthenticated || !identity) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("manualCandidateCallResults");
+  const prompt = valueFromInput("candidateCallPrompt");
+
+  if (!prompt) {
+    alert("Enter a short test prompt first.");
+    return;
+  }
+
+  container.innerHTML = "<p>Running one Admin-only candidate call...</p>";
+  const startedAt = performance.now();
+
+  const safety = {
+    adminOnly: true,
+    productionAnswerPath: "OpenAI only",
+    candidateOutputReturnedToUser: false,
+    memoryWrites: false,
+    continuityChanges: false,
+    automaticProviderSwitching: false,
+    browserMediated: true,
+  };
+
+  const baseResult = {
+    phase: "6.4.2",
+    title: "Manual Candidate Call Harness",
+    summary: "One Admin-only ICP LLM candidate call. Output stays in Admin and cannot affect production answers.",
+    candidate: {
+      provider: "ICP LLM canister",
+      canisterId: LLM_CANISTER_ID,
+      environment: "ICP",
+      model: LLM_CANDIDATE_MODEL,
+      method: "v0_chat",
+      methodType: "update",
+      streaming: false,
+    },
+    prompt,
+    safety,
+    guardrails: [
+      "Admin-only.",
+      "Single manual candidate call.",
+      "No production answer behavior changed.",
+      "No memory writes.",
+      "No continuity changes.",
+      "No automatic provider switching.",
+      "Candidate output remains visible only in Admin.",
+      "OpenAI remains the only user-facing answer provider.",
+    ],
+  };
+
+  try {
+    const llmAgent = new HttpAgent({
+      identity,
+      host: "https://ic0.app",
+    });
+    const llmActor = Actor.createActor(llmIdlFactory, {
+      agent: llmAgent,
+      canisterId: LLM_CANISTER_ID,
+    });
+    const response = await withCandidateTimeout(
+      llmActor.v0_chat({
+        model: LLM_CANDIDATE_MODEL,
+        messages: buildCandidateMessages(prompt),
+      }),
+      LLM_CANDIDATE_TIMEOUT_MS
+    );
+    const latencyMs = Math.round(performance.now() - startedAt);
+
+    if (typeof response !== "string") {
+      throw new Error(`Unexpected response type: ${typeof response}`);
+    }
+
+    if (!response.trim()) {
+      throw new Error("Empty response from candidate provider");
+    }
+
+    if (response.length > LLM_CANDIDATE_MAX_RESPONSE_CHARS) {
+      throw new Error(`Oversized response from candidate provider: ${response.length} characters`);
+    }
+
+    container.innerHTML = renderCandidateCallResult({
+      ...baseResult,
+      candidateCallMade: true,
+      success: true,
+      latencyMs,
+      responseLength: response.length,
+      candidateResponse: response,
+      normalizedError: null,
+    });
+
+  } catch (err) {
+    const latencyMs = Math.round(performance.now() - startedAt);
+    container.innerHTML = renderCandidateCallResult({
+      ...baseResult,
+      candidateCallMade: true,
+      success: false,
+      latencyMs,
+      candidateResponse: "",
+      normalizedError: normalizeCandidateError(err),
+    });
   }
 };
 

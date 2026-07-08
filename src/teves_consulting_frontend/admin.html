@@ -412,6 +412,19 @@
 
       <div id="parallelProviderHarnessPlanResults"></div>
     </details>
+    <details>
+      <summary><strong>Manual Candidate Call Harness</strong></summary>
+
+      <p>Run one Admin-only ICP LLM candidate call without changing production answers, memories, or continuity.</p>
+
+      <label>Operator test prompt
+        <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
+      </label>
+
+      <button onclick="runManualCandidateCallHarness()">Run Candidate Call</button>
+
+      <div id="manualCandidateCallResults"></div>
+    </details>
     </section>
 
     <section class="admin-section">
