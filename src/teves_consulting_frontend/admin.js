@@ -7,6 +7,8 @@ const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
+const HARDENED_CANDIDATE_SYSTEM_PROMPT = "You are evaluating an ICP LLM candidate for Aion. Use only the supplied Aion context. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt.";
+const HARDENED_CONTEXT_RULE = "Aion is an assistant, not a model, game, company, or autonomous decider. If asked what Aion is, answer from the supplied context and prefer the word assistant.";
 const DEFAULT_AION_CANDIDATE_CONTEXT = `Aion is Alfonso's continuity and practical reasoning assistant. Aion helps preserve context, clarify decisions, support long-term project reasoning, and keep work grounded in evidence without replacing human judgment.
 
 Durable Aion principles:
@@ -14,7 +16,8 @@ Durable Aion principles:
 - stay practical, concise, and non-directive
 - use supplied context instead of generic public assumptions
 - never claim memories or facts that were not supplied in the prompt
-- keep final judgment with Alfonso`;
+- keep final judgment with Alfonso
+- describe Aion as an assistant, not as a model, game, company, or autonomous decider`;
 
 let authClient = null;
 let isAuthenticated = false;
@@ -3028,7 +3031,11 @@ function buildCandidateMessages(prompt, contextText = "") {
   const messages = [
     {
       role: {system: null},
-      content: "You are Aion candidate model output. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt.",
+      content: HARDENED_CANDIDATE_SYSTEM_PROMPT,
+    },
+    {
+      role: {system: null},
+      content: HARDENED_CONTEXT_RULE,
     },
   ];
 
@@ -3376,6 +3383,115 @@ window.runProviderComparisonReportDebug = async function runProviderComparisonRe
   } catch (err) {
     console.error("Provider comparison report dry run failed:", err);
     container.innerHTML = `<p>Provider comparison report dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderHardeningChanges(changes = []) {
+  if (!Array.isArray(changes) || changes.length === 0) {
+    return "<p>No hardening changes returned.</p>";
+  }
+
+  return changes.map((change, index) => `
+    <div>
+      <strong>${index + 1}. ${escapeHtml(change.area || "Hardening area")}</strong>
+      <p>${escapeHtml(change.change || "")}</p>
+      <p class="meta">${escapeHtml(change.reason || "")}</p>
+    </div>
+  `).join("");
+}
+
+window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("candidateHardeningPlanResults");
+  container.innerHTML = "<p>Building candidate hardening plan...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/candidate-hardening-plan"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Candidate Hardening Plan")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.6.1")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
+          Provider calls made: ${data.providerCallsMade ? "yes" : "no"} |
+          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Target Provider</h3>
+        ${renderCountMap(data.targetProvider || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Observed Issue</h3>
+        ${renderCountMap(data.observedIssue || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Hardening Changes</h3>
+        ${renderHardeningChanges(data.hardeningChanges)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Hardened Prompt Preview</h3>
+        <h4>System Prompt</h4>
+        <p>${escapeHtml((data.hardenedPromptPreview || {}).systemPrompt || "")}</p>
+        <h4>Context Rule</h4>
+        <p>${escapeHtml((data.hardenedPromptPreview || {}).contextRule || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Expected Improvement</h3>
+        ${
+          Array.isArray(data.expectedImprovement) && data.expectedImprovement.length
+            ? `<ul>${data.expectedImprovement.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No expected improvements returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Success Criteria</h3>
+        <p><strong>Next test prompt:</strong> ${escapeHtml(data.nextTestPrompt || "")}</p>
+        ${
+          Array.isArray(data.successCriteria) && data.successCriteria.length
+            ? `<ul>${data.successCriteria.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No success criteria returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Phase</h3>
+        ${renderCountMap(data.nextPhase || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Candidate hardening plan dry run failed:", err);
+    container.innerHTML = `<p>Candidate hardening plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 
