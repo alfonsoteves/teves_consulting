@@ -2863,6 +2863,111 @@ window.runIcpLlmCandidVerificationNotesDebug = async function runIcpLlmCandidVer
   }
 };
 
+window.runParallelProviderHarnessPlanDebug = async function runParallelProviderHarnessPlanDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("parallelProviderHarnessPlanResults");
+  container.innerHTML = "<p>Building parallel provider harness plan...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/parallel-provider-harness-plan"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Parallel Provider Harness Plan")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">
+          Phase: ${escapeHtml(data.phase || "6.4.1")} |
+          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
+          Candidate calls made: ${data.candidateCallsMade ? "yes" : "no"} |
+          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}
+        </p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Readiness Basis</h3>
+        ${renderCountMap(data.readinessBasis || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Target Provider</h3>
+        ${renderCountMap(data.targetProvider || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Harness Rules</h3>
+        ${renderCountMap(data.harnessRules || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Future Call Payload</h3>
+        <pre>${escapeHtml(JSON.stringify(data.futureCallPayload || {}, null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Timeout Policy</h3>
+        ${renderCountMap(data.timeoutPolicy || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Error Normalization</h3>
+        ${
+          Array.isArray(data.errorNormalization) && data.errorNormalization.length
+            ? `<ul>${data.errorNormalization.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No error normalization entries returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Comparison Fields</h3>
+        ${
+          Array.isArray(data.comparisonFieldsForLater) && data.comparisonFieldsForLater.length
+            ? `<ul>${data.comparisonFieldsForLater.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No comparison fields returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Aion Fit Criteria</h3>
+        ${
+          Array.isArray(data.aionFitCriteria) && data.aionFitCriteria.length
+            ? `<ul>${data.aionFitCriteria.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : "<p>No Aion fit criteria returned.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Phase</h3>
+        ${renderCountMap(data.nextPhase || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${
+          Array.isArray(data.guardrails) && data.guardrails.length
+            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
+            : "<p>No guardrails returned.</p>"
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Parallel provider harness plan dry run failed:", err);
+    container.innerHTML = `<p>Parallel provider harness plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {
