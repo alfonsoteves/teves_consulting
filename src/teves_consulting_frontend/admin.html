@@ -413,15 +413,19 @@
       <div id="parallelProviderHarnessPlanResults"></div>
     </details>
     <details>
-      <summary><strong>Manual Candidate Call Harness</strong></summary>
+      <summary><strong>Context-Bound Candidate Call Harness</strong></summary>
 
-      <p>Run one Admin-only ICP LLM candidate call without changing production answers, memories, or continuity.</p>
+      <p>Run one Admin-only ICP LLM candidate call with explicit Aion context and no production changes.</p>
+
+      <label>Aion context
+        <textarea id="candidateCallContext" rows="6"></textarea>
+      </label>
 
       <label>Operator test prompt
         <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
       </label>
 
-      <button onclick="runManualCandidateCallHarness()">Run Candidate Call</button>
+      <button onclick="runManualCandidateCallHarness()">Run Context-Bound Candidate Call</button>
 
       <div id="manualCandidateCallResults"></div>
     </details>

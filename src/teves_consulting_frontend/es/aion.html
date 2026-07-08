@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aionic Agent — Teves Consulting</title>
-  <!-- GA4 -->
+  <title>Agente Aionico — Teves Consulting</title>
+    <!-- GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
   <script>
   window.dataLayer = window.dataLayer || [];
@@ -305,16 +305,16 @@
 <header class="site-header">
   <div class="header-inner header-inner-nav-only">
 <div class="header-links">
-      <a href="https://www.tevesconsulting.com/">Aion</a>
+      <a href="https://www.tevesconsulting.com/es/index.html">Aion</a>
       <span>|</span>
-      <a href="https://www.tevesconsulting.com/es/agent.html">ES</a>
+      <a href="https://www.tevesconsulting.com/aion.html">EN</a>
       <span>|</span>
       <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
         🌙
       </button>
       <span>|</span>
       <button id="authButton" class="auth-button" onclick="handleAuth()">
-        Sign In
+        Iniciar sesión
       </button>
     </div>
   </div>
@@ -324,25 +324,25 @@
   <h1>Aion</h1>
 
   <p class="subtitle">
-    Ask a practical question and get a clear, grounded answer.
+    Haz una pregunta práctica y recibe una respuesta clara y fundamentada.
   </p>
+
   <div id="conversation" class="conversation"></div>
 
   <div class="composer">
     <textarea
       id="query"
-      placeholder="Example: What foods should I always keep at home?"
+      placeholder="Ejemplo: ¿Qué alimentos debo tener siempre en casa?"
     ></textarea>
 
-    <button id="askButton" onclick="askAgent()">Ask</button>
+    <button id="askButton" onclick="askAgent()">Preguntar</button>
   </div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
-    <button onclick="sendFeedback('up')">👍 Helpful</button>
-    <button onclick="sendFeedback('down')">👎 This needs work</button>
+    <button onclick="sendFeedback('down')">👎 La respuesta necesita trabajo</button>
   </div>
 
-<script type="module">
+ <script type="module">
   import { Actor, HttpAgent } from "https://esm.sh/@dfinity/agent@2.1.3";
   import { IDL } from "https://esm.sh/@dfinity/candid@2.1.3";
   import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfinity/candid@2.1.3,@dfinity/agent@2.1.3";
@@ -358,7 +358,7 @@
   
   window.messages = [];
   window.continuityContext = [];
-  
+
   const idlFactory = ({ IDL }) => {
     const Relationship = IDL.Record({
       subject: IDL.Text,
@@ -412,14 +412,8 @@
         [IDL.Nat],
         []
       ),
-
       getMyRecentSummaries: IDL.Func(
         [IDL.Nat],
-        [IDL.Vec(MemorySummary)],
-        ["query"]
-      ),
-      getMyAllSummaries: IDL.Func(
-        [],
         [IDL.Vec(MemorySummary)],
         ["query"]
       ),
@@ -502,9 +496,9 @@
     if (!authButton) return;
 
     if (isAuthenticated) {
-      authButton.textContent = "Logout";
+      authButton.textContent = "Cerrar sesión";
     } else {
-      authButton.textContent = "Sign In";
+      authButton.textContent = "Iniciar sesión";
     }
   }
 
@@ -543,7 +537,6 @@
       },
     });
   };
-
    
     function resetInactivityTimer() {
 
@@ -622,12 +615,12 @@
           session = await response.json();
           console.log("Backend summary generated:", session);
         } else {
-          console.warn("Backend summary failed. Session was not saved.");
+          console.warn("Backend summary failed, using frontend fallback.");
           return;
         }
 
       } catch (err) {
-        console.warn("Backend summary unavailable. Session was not saved.", err);
+        console.warn("Backend summary unavailable, using frontend fallback.", err);
         return;
       }
 
@@ -646,7 +639,6 @@
           session.confidence || 80,
           session.status || "active"
         );
-
         sessionSaved = true;
         window.messages = [];
 
@@ -708,10 +700,10 @@
       const data = await response.json();
 
       if (!response.ok) {
-        appendMessage("assistant", data.detail || "Request limit reached. Please try again later.");
+        appendMessage("assistant", data.detail || "Límite de solicitudes alcanzado. Inténtalo nuevamente más tarde.");
         return;        
       }
-      appendMessage("assistant", data.answer || "No answer returned.");
+      appendMessage("assistant", data.answer || "No se recibió respuesta.");
       document.getElementById("feedback").style.display = "block";
 
       window.lastInteraction = {
@@ -720,10 +712,10 @@
       };
 
     } catch (err) {
-      appendMessage("assistant", "The agent is temporarily unavailable. Please try again in a moment.");      
+      appendMessage("assistant", "El agente está temporalmente no disponible. Inténtalo nuevamente en un momento.");      
     } finally {
       button.disabled = false;
-      button.textContent = "Ask";
+      button.textContent = "Preguntar";
     }
   };
 
@@ -731,30 +723,44 @@
     if (!window.lastInteraction) return;
 
     const timestamp = new Date().toISOString();
-    const feedbackEl = document.getElementById("feedback");
 
     try {
-      const ok = await window.feedbackActor.addFeedback(
+      await window.feedbackActor.addFeedback(
         type,
         window.lastInteraction.query,
         window.lastInteraction.answer,
         timestamp
       );
 
-      if (ok) {
-        feedbackEl.innerHTML =
-          "Thanks — this helps improve the agent.";
-      } else {
-        feedbackEl.innerHTML =
-          "Feedback failed.";
-      }
+      document.getElementById("feedback").innerHTML =
+        "Gracias — esto ayuda a mejorar el agente.";
 
-    } catch (err) {
-      console.error("Feedback failed", err);
-      feedbackEl.innerHTML =
-        "Feedback failed.";
+    } catch (icpErr) {
+      console.error("ICP feedback failed, falling back to Render", icpErr);
+
+      try {
+        await fetch("https://aionic-agent-api.onrender.com/feedback", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            rating: type,
+            query: window.lastInteraction.query,
+            answer: window.lastInteraction.answer,
+            timestamp: timestamp
+          })
+        });
+
+        document.getElementById("feedback").innerHTML =
+          "Gracias — esto ayuda a mejorar el agente.";
+
+      } catch (renderErr) {
+        console.error("Feedback failed", renderErr);
+      }
     }
   };
+
 
   window.loadContinuityContext = async function loadContinuityContext() {
     if (!isAuthenticated) {
@@ -762,34 +768,26 @@
       return [];
     }
 
-    try {
-      let merged = [];
+        try {
+      const recent =
+        await window.feedbackActor.getMyRecentSummaries(5);
 
-      try {
-        merged = await window.feedbackActor.getMyAllSummaries();
-      } catch (err) {
-        console.warn("All summaries unavailable. Falling back to recent summaries.", err);
+      const milestones =
+        await window.feedbackActor.getMyMilestoneSummaries();
+      
+      const merged = [...recent];
 
-        const recent =
-          await window.feedbackActor.getMyRecentSummaries(5);
+      milestones.forEach(milestone => {
 
-        const milestones =
-          await window.feedbackActor.getMyMilestoneSummaries();
-        
-        merged = [...recent];
+        const exists = merged.some(
+          item => item.id.toString() === milestone.id.toString()
+        );
 
-        milestones.forEach(milestone => {
+        if (!exists) {
+          merged.push(milestone);
+        }
 
-          const exists = merged.some(
-            item => item.id.toString() === milestone.id.toString()
-          );
-
-          if (!exists) {
-            merged.push(milestone);
-          }
-
-        });
-      }
+      });
 
       window.continuityContext = merged.map((s) => ({
         title: s.title,
@@ -814,15 +812,16 @@
   };
 
 </script>
+
 </main>
 <footer class="site-footer">
   <div class="footer-inner">
     <p>
-      © <span id="year"></span> Teves Consulting LLC. All rights reserved.
+      © <span id="year"></span> Teves Consulting LLC. Todos los derechos reservados.
     </p>
 
     <div class="footer-links">
-      <a href="/about-aion.html">About Aion</a>
+      <a href="/es/about-aion.html">Acerca de Aion</a>
     </div>
   </div>
 </footer>

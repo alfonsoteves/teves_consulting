@@ -7,6 +7,14 @@ const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
+const DEFAULT_AION_CANDIDATE_CONTEXT = `Aion is Alfonso's continuity and practical reasoning assistant. Aion helps preserve context, clarify decisions, support long-term project reasoning, and keep work grounded in evidence without replacing human judgment.
+
+Durable Aion principles:
+- preserve clarity, resilience, optionality, continuity, and user sovereignty
+- stay practical, concise, and non-directive
+- use supplied context instead of generic public assumptions
+- never claim memories or facts that were not supplied in the prompt
+- keep final judgment with Alfonso`;
 
 let authClient = null;
 let isAuthenticated = false;
@@ -3016,17 +3024,27 @@ function withCandidateTimeout(promise, timeoutMs) {
   ]);
 }
 
-function buildCandidateMessages(prompt) {
-  return [
+function buildCandidateMessages(prompt, contextText = "") {
+  const messages = [
     {
       role: {system: null},
       content: "You are Aion candidate model output. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt.",
     },
-    {
-      role: {user: null},
-      content: prompt,
-    },
   ];
+
+  if (contextText.trim()) {
+    messages.push({
+      role: {system: null},
+      content: `Use this Aion context when answering. If the user asks what Aion is, answer from this context instead of generic public knowledge:\n\n${contextText.trim()}`,
+    });
+  }
+
+  messages.push({
+    role: {user: null},
+    content: prompt,
+  });
+
+  return messages;
 }
 
 function renderCandidateCallResult(data) {
@@ -3037,7 +3055,7 @@ function renderCandidateCallResult(data) {
       <h3>${escapeHtml(data.title || "Manual Candidate Call Harness")}</h3>
       <p>${escapeHtml(data.summary || "")}</p>
       <p class="meta">
-        Phase: ${escapeHtml(data.phase || "6.4.2")} |
+        Phase: ${escapeHtml(data.phase || "6.4.3")} |
         Candidate call made: ${data.candidateCallMade ? "yes" : "no"} |
         Success: ${data.success ? "yes" : "no"} |
         Latency: ${escapeHtml(String(data.latencyMs ?? "n/a"))}ms
@@ -3052,6 +3070,19 @@ function renderCandidateCallResult(data) {
     <div class="memory-card">
       <h3>Prompt</h3>
       <p>${escapeHtml(data.prompt || "")}</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Context</h3>
+      ${renderCountMap({
+        contextProvided: data.contextProvided ? "yes" : "no",
+        contextLength: data.contextLength || 0,
+      })}
+      ${
+        data.contextPreview
+          ? `<p>${escapeHtml(data.contextPreview)}</p>`
+          : "<p>No context supplied.</p>"
+      }
     </div>
 
     <div class="memory-card">
@@ -3095,6 +3126,7 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
   }
 
   const container = document.getElementById("manualCandidateCallResults");
+  const contextText = valueFromInput("candidateCallContext");
   const prompt = valueFromInput("candidateCallPrompt");
 
   if (!prompt) {
@@ -3116,9 +3148,9 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
   };
 
   const baseResult = {
-    phase: "6.4.2",
-    title: "Manual Candidate Call Harness",
-    summary: "One Admin-only ICP LLM candidate call. Output stays in Admin and cannot affect production answers.",
+    phase: "6.4.3",
+    title: "Context-Bound Candidate Call Harness",
+    summary: "One Admin-only ICP LLM candidate call with explicit Aion context. Output stays in Admin and cannot affect production answers.",
     candidate: {
       provider: "ICP LLM canister",
       canisterId: LLM_CANISTER_ID,
@@ -3129,6 +3161,9 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
       streaming: false,
     },
     prompt,
+    contextProvided: Boolean(contextText),
+    contextLength: contextText.length,
+    contextPreview: contextText.slice(0, 500),
     safety,
     guardrails: [
       "Admin-only.",
@@ -3154,7 +3189,7 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     const response = await withCandidateTimeout(
       llmActor.v0_chat({
         model: LLM_CANDIDATE_MODEL,
-        messages: buildCandidateMessages(prompt),
+        messages: buildCandidateMessages(prompt, contextText),
       }),
       LLM_CANDIDATE_TIMEOUT_MS
     );
@@ -3251,9 +3286,19 @@ function renderGoldenTests(data, options = {}) {
       `)
       .join("");
 }
+
+function initializeCandidateHarnessContext() {
+  const contextInput = document.getElementById("candidateCallContext");
+
+  if (contextInput && !contextInput.value.trim()) {
+    contextInput.value = DEFAULT_AION_CANDIDATE_CONTEXT;
+  }
+}
+
 const savedGolden = loadSavedGoldenResults();
 
 if (savedGolden) {
   renderGoldenTests(savedGolden);
 }
+initializeCandidateHarnessContext();
 initAuth();
