@@ -84,15 +84,15 @@
     }
 
     .aion-continuity-indicator-container {
-      min-width: 42px;
+      min-width: 48px;
       display: flex;
       align-items: center;
     }
 
     .aion-continuity-indicator {
       position: relative;
-      width: 34px;
-      height: 34px;
+      width: 40px;
+      height: 40px;
       margin: 0;
       padding: 0;
       border: 1px solid #93c5fd;
@@ -118,57 +118,23 @@
       border-color: #cbd5e1;
     }
 
-    .aion-continuity-indicator.active {
-      animation: aionContinuityPulse 3.2s ease-in-out infinite;
-    }
-
     .aion-continuity-mark {
       position: relative;
       z-index: 1;
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       stroke: currentColor;
       fill: none;
       stroke-width: 1.35;
+      transform-box: fill-box;
+      transform-origin: center;
+      will-change: transform;
     }
 
     .aion-continuity-indicator.active .aion-continuity-mark {
-      animation: aionContinuityRotate 30s linear infinite;
+      animation: aionContinuityRotate 8s linear infinite;
     }
 
-    .aion-continuity-particle {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      border-radius: 999px;
-      background: #60a5fa;
-    }
-
-    .aion-continuity-particle.one {
-      top: 8px;
-      right: 9px;
-    }
-
-    .aion-continuity-particle.two {
-      bottom: 8px;
-      left: 9px;
-      background: #22c55e;
-    }
-
-    .aion-continuity-particle.three {
-      bottom: 9px;
-      right: 10px;
-      background: #a78bfa;
-    }
-
-    @keyframes aionContinuityPulse {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18);
-      }
-      50% {
-        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
-      }
-    }
 
     @keyframes aionContinuityRotate {
       from { transform: rotate(0deg); }
@@ -271,7 +237,6 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .aion-continuity-indicator.active,
       .aion-continuity-indicator.active .aion-continuity-mark,
       .aion-continuity-flash {
         animation: none;
@@ -427,8 +392,8 @@
     .theme-toggle {
       margin: 0;
       padding: 0;
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       border: none;
       border-radius: 0;
       background: transparent;
@@ -595,8 +560,8 @@
   </div>
 
   <div id="feedback" style="margin-top: 10px; display:none;">
-    <button onclick="sendFeedback('up')">👍 Helpful</button>
-    <button onclick="sendFeedback('down')">👎 This needs work</button>
+    <button onclick="sendFeedback('up')">Helpful</button>
+    <button onclick="sendFeedback('down')">Needs work</button>
   </div>
 
 <script type="module">
@@ -797,10 +762,6 @@
 	      : aionContinuityState.memoryCount > 0
 	        ? `Continuity active. ${aionContinuityState.memoryCount} saved ${aionContinuityState.memoryCount === 1 ? "memory" : "memories"}.`
 	        : "Continuity enabled. No memories yet.";
-	    const particles = active
-	      ? '<span class="aion-continuity-particle one"></span><span class="aion-continuity-particle two"></span><span class="aion-continuity-particle three"></span>'
-	      : "";
-
 	    container.innerHTML = `
 	      <button
 	        class="${className}"
@@ -819,7 +780,6 @@
 	          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(120 32 32)"></ellipse>
 	          <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(150 32 32)"></ellipse>
 	        </svg>
-	        ${particles}
 	      </button>
 	    `;
 	  }

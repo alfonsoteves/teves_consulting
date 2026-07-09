@@ -368,7 +368,7 @@ window.loadFeedback = async function loadFeedback() {
 
       return `
         <div class="memory-card">
-          <h3>${f.rating === "up" ? "👍" : "👎"} Feedback #${f.id.toString()}</h3>
+          <h3>Feedback #${f.id.toString()} · ${f.rating === "up" ? "Helpful" : "Needs work"}</h3>
           <p class="meta">
             Rating: ${escapeHtml(f.rating)} |
             Submitted: ${escapeHtml(f.timestamp || "Unknown")} |
