@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>La Visión de Aion — Aion</title>
+<meta name="description" content="La Visión de Aion: un documento de diseño que describe a Aion como un sistema con continuidad para pensar mejor." />
+<style>
+:root{
+  --ink:#0f172a;
+  --muted:#475569;
+  --soft:#64748b;
+  --line:#e2e8f0;
+  --blue:#2563eb;
+  --blue-soft:#dbeafe;
+  --paper:#ffffff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#f8fafc;
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height:1.65;
+}
+.page{
+  width:min(920px, calc(100% - 32px));
+  margin:32px auto;
+  background:var(--paper);
+  box-shadow:0 24px 80px rgba(15,23,42,.10);
+  border:1px solid var(--line);
+}
+.cover{
+  min-height:920px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+  padding:72px;
+}
+.wave{
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:-12%;
+  height:330px;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(37,99,235,.18), transparent 55%),
+    radial-gradient(ellipse at 70% 50%, rgba(56,189,248,.18), transparent 55%);
+  filter:blur(10px);
+}
+.cover h1{
+  font-size:76px;
+  letter-spacing:-.055em;
+  line-height:.9;
+  margin:0;
+}
+.cover h2{
+  margin:24px 0 8px;
+  font-size:34px;
+  font-weight:600;
+  letter-spacing:-.035em;
+}
+.tagline{
+  color:var(--blue);
+  font-size:22px;
+  margin:0;
+}
+.cover-quote{
+  margin-top:86px;
+  max-width:560px;
+  font-size:25px;
+  line-height:1.35;
+  color:var(--muted);
+}
+.meta{
+  position:absolute;
+  bottom:72px;
+  color:var(--soft);
+  font-size:14px;
+  letter-spacing:.02em;
+}
+.content{
+  padding:72px 92px 84px;
+}
+.paper-note{
+  border-left:4px solid var(--blue);
+  padding:18px 22px;
+  background:#f8fbff;
+  color:var(--muted);
+  margin-bottom:64px;
+}
+section{
+  margin:0 0 58px;
+}
+h3{
+  font-size:30px;
+  letter-spacing:-.035em;
+  line-height:1.15;
+  margin:0 0 18px;
+}
+p{
+  font-size:17px;
+  color:#334155;
+  margin:0 0 18px;
+}
+.lead{
+  font-size:20px;
+  color:#1e293b;
+}
+.pull{
+  margin:36px 0;
+  padding:34px 38px;
+  border-radius:28px;
+  background:linear-gradient(135deg,#eff6ff,#ffffff);
+  border:1px solid #bfdbfe;
+  font-size:29px;
+  line-height:1.28;
+  letter-spacing:-.03em;
+  color:#0f172a;
+  font-weight:650;
+}
+.principles{
+  display:grid;
+  gap:12px;
+  margin:28px 0 0;
+}
+.principle{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px 18px;
+  color:#334155;
+  background:#fff;
+}
+.flow{
+  margin:36px auto;
+  max-width:360px;
+  text-align:center;
+}
+.flow div{
+  border:1px solid #bfdbfe;
+  background:#f8fbff;
+  border-radius:999px;
+  padding:13px 18px;
+  font-weight:650;
+}
+.flow span{
+  display:block;
+  color:var(--blue);
+  font-size:24px;
+  margin:8px 0;
+}
+.not-list{
+  margin:24px 0 0;
+  padding:0;
+  list-style:none;
+}
+.not-list li{
+  padding:12px 0 12px 28px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  color:#334155;
+}
+.not-list li:before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:var(--blue);
+  position:absolute;
+  left:4px;
+  top:23px;
+}
+.closing{
+  min-height:680px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  padding:92px;
+  border-top:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+.closing h3{
+  font-size:44px;
+}
+.closing p{
+  max-width:620px;
+  font-size:21px;
+}
+.footerline{
+  margin-top:52px;
+  color:var(--blue);
+  font-weight:700;
+  font-size:23px;
+}
+@media print{
+  body{background:white}
+  .page{width:100%; margin:0; box-shadow:none; border:0}
+  .cover,.closing{min-height:100vh; page-break-after:always}
+  section{break-inside:avoid}
+  .content{padding:64px 78px}
+}
+@media(max-width:700px){
+  .cover,.content,.closing{padding:42px 28px}
+  .cover h1{font-size:56px}
+  h3{font-size:26px}
+  .pull{font-size:23px}
+}
+</style>
+</head>
+
+<body>
+<article class="page">
+  <header class="cover">
+    <div class="wave" aria-hidden="true"></div>
+    <h1>Aion</h1>
+    <h2>La Visión</h2>
+    <p class="tagline">Piensa mejor con el tiempo.</p>
+    <p class="cover-quote">El buen pensamiento se fortalece con el tiempo. Aion existe para ayudar a preservar ese proceso.</p>
+    <div class="meta">Primera Edición · Versión 1.0 · Teves Consulting · 2026</div>
+  </header>
+
+  <main class="content">
+    <div class="paper-note">
+      Los Documentos de Aion describen la filosofía, la arquitectura y la dirección a largo plazo de Aion. Son documentos vivos que evolucionan cuidadosamente a medida que el sistema madura, manteniéndose fieles a los principios que lo definen.
+    </div>
+
+    <section>
+      <h3>El Problema</h3>
+      <p class="lead">Todo proyecto significativo comienza con una serie de pequeñas decisiones. Con el tiempo, esas decisiones se convierten en comprensión. Sin embargo, la mayoría de las conversaciones digitales olvidan esa comprensión casi tan rápido como se crea.</p>
+      <p>Los sistemas modernos de IA son extraordinariamente capaces de generar respuestas. Sin embargo, muchos desafíos del mundo real no son preguntas aisladas. Se desarrollan durante semanas, meses e incluso años. Los proyectos evolucionan. Las suposiciones cambian. El contexto se acumula.</p>
+      <p><strong>Sin continuidad, toda conversación comienza con una visión incompleta.</strong></p>
+      <p>Aion fue creado para cerrar esa brecha.</p>
+    </section>
+
+    <section>
+      <h3>Por Qué Existe Aion</h3>
+      <p>Aion exists to help people think more clearly over time. Rather than treating every interaction as an isolated exchange, it preserves useful context, connects related ideas, and supports long-term collaboration while leaving final judgment with the user.</p>
+    </section>
+
+    <section>
+      <h3>Una Relación Diferente con la IA</h3>
+      <p>Many AI systems are designed around individual conversations.</p>
+      <p><strong>Aion is designed around an ongoing relationship with the user.</strong></p>
+      <p>The conversation matters. The continuity between conversations matters even more.</p>
+    </section>
+
+    <section>
+      <h3>Un Objetivo Diferente</h3>
+      <p>Aion is not designed to produce the fastest answer. Its objective is to improve the quality of thinking by organizing knowledge, presenting evidence clearly, identifying meaningful patterns, and helping people make better-informed decisions.</p>
+    </section>
+
+    <section>
+      <h3>Continuidad</h3>
+      <div class="pull">Memory stores information.<br/>Continuidad preserves understanding.</div>
+      <p>This distinction sits at the center of Aion's design. Useful continuity is not about remembering everything. It is about preserving the context, milestones, relationships, and prior decisions that allow future conversations to begin with understanding rather than repetition.</p>
+    </section>
+
+    <section>
+      <h3>Principios Rectores</h3>
+      <div class="principles">
+        <div class="principle">Clarity over noise</div>
+        <div class="principle">Evidence before conclusions</div>
+        <div class="principle">Explainable reasoning over hidden decisions</div>
+        <div class="principle">User sovereignty over automation</div>
+        <div class="principle">Practical usefulness over unnecessary complexity</div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Pensar Mejor con el Tiempo</h3>
+      <p>Thinking better over time means recognizing recurring themes, connecting related ideas, surfacing useful questions, reducing repeated effort, and helping users continue projects naturally across weeks, months, and eventually years.</p>
+    </section>
+
+    <section>
+      <h3>Del Conocimiento al Juicio</h3>
+      <div class="flow" aria-label="Conocimiento to judgment flow">
+        <div>Conocimiento</div><span>↓</span>
+        <div>Continuidad</div><span>↓</span>
+        <div>Patrones</div><span>↓</span>
+        <div>Perspectiva</div><span>↓</span>
+        <div>Juicio Humano</div>
+      </div>
+      <p>Aion is designed to support each stage of this progression while ensuring that the final judgment always remains human.</p>
+    </section>
+
+    <section>
+      <h3>Más Allá de la Memoria</h3>
+      <p>Aion began as a continuity-aware memory system. It is evolving into a structured thinking companion capable of synthesizing knowledge, recognizing assumptions, identifying patterns, and supporting reflective decision-making without becoming an autonomous decision maker.</p>
+    </section>
+
+    <section>
+      <h3>Soberanía del Usuario</h3>
+      <p>Every capability in Aion is evaluated against one question:</p>
+      <div class="pull">Does this increase the user's ability to think independently, or does it encourage dependence on the system?</div>
+      <p>Aion exists to strengthen independent thinking, not replace it.</p>
+    </section>
+
+    <section>
+      <h3>Independencia de Modelos</h3>
+      <p>Intelligence will continue to evolve. Models, providers, and deployment environments will change.</p>
+      <p>Aion should evolve with them without asking users to abandon their continuity. <strong>Continuidad belongs to Aion—not to any individual model.</strong></p>
+    </section>
+
+    <section>
+      <h3>Lo Que Aion No Es</h3>
+      <ul class="not-list">
+        <li>A replacement for human judgment</li>
+        <li>An autonomous decision maker</li>
+        <li>A perfect memory</li>
+        <li>A source of absolute truth</li>
+        <li>A system designed to maximize engagement</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Mirando Hacia Adelante</h3>
+      <p>Computers helped us calculate. The internet helped us find information. AI helps us generate answers.</p>
+      <p><strong>Aion explores a different question:</strong></p>
+      <p>Can AI help people preserve understanding over time?</p>
+      <p>The long-term vision is to build a practical companion that helps people preserve context, organize knowledge, ask better questions, and make better decisions throughout their lives.</p>
+    </section>
+
+    <section>
+      <h3>Reflexión de Diseño</h3>
+      <p>Technology evolves. Models improve. Capabilities expand.</p>
+      <div class="pull">Aion exists to strengthen human judgment, not replace it.</div>
+      <p>Every future capability should be evaluated against a simple question:</p>
+      <p><em>Does this help people think more clearly over time while preserving their sovereignty?</em></p>
+      <p>If the answer is no, it does not belong in Aion.</p>
+    </section>
+  </main>
+
+  <footer class="closing">
+    <h3>Acerca de Aion</h3>
+    <p>Aion es un compañero de pensamiento con continuidad diseñado para ayudar a las personas a preservar el contexto, reconocer patrones y tomar mejores decisiones con el tiempo.</p>
+    <p class="footerline">Piensa mejor con el tiempo.</p>
+    <p style="margin-top:32px;color:#64748b;font-size:15px;">www.tevesconsulting.com</p>
+  </footer>
+</article>
+</body>
+</html>
