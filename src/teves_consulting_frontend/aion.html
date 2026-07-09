@@ -427,17 +427,19 @@
     .theme-toggle {
       margin: 0;
       padding: 0;
-      width: auto;
-      height: auto;
+      width: 24px;
+      height: 24px;
       border: none;
       border-radius: 0;
       background: transparent;
       color: #1f2937;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 1rem;
+      line-height: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .auth-button {
@@ -552,11 +554,11 @@
 	<div class="header-links">
       <a href="https://www.tevesconsulting.com/">Aion</a>
       <a href="https://www.tevesconsulting.com/es/aion.html">ES</a>
-      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-        🌙
-      </button>
       <button id="authButton" class="auth-button" onclick="handleAuth()">
         Sign In
+      </button>
+      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        🌙
       </button>
 	  </div>
   </div>
@@ -1245,10 +1247,10 @@
   function applyTheme(theme) {
     if (theme === "dark") {
       document.body.classList.add("dark-mode");
-      document.getElementById("themeToggle").textContent = "☀️";
+      document.getElementById("themeToggle").textContent = "☀";
     } else {
       document.body.classList.remove("dark-mode");
-      document.getElementById("themeToggle").textContent = "🌙";
+      document.getElementById("themeToggle").textContent = "☾";
     }
   }
 
