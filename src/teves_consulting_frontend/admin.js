@@ -7,7 +7,131 @@ const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
-const HARDENED_CANDIDATE_SYSTEM_PROMPT = "Use only the supplied Aion notes. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt. Answer in exactly 3 short paragraphs separated by blank lines. Keep each paragraph to one sentence and keep the full answer under 75 words unless the user explicitly asks for detail. Paragraph 1 answers directly, paragraph 2 clarifies the most important reasoning or tradeoff, and paragraph 3 explains the practical application calmly. Do not use headings, bullets, or numbered lists unless the user explicitly asks for a list. Do not ask follow-up questions. Do not mention supplied notes, reference notes, provider testing, LLM candidates, harnesses, or this evaluation unless the user explicitly asks. If evidence is incomplete, state uncertainty naturally without filling gaps.";
+const DEFAULT_CANDIDATE_MODELS = [
+  LLM_CANDIDATE_MODEL,
+  "qwen3:32b",
+  "llama4-scout",
+];
+const LLM_CANDIDATE_V1_MODELS = new Set(["qwen3:32b", "llama4-scout"]);
+const MAX_CANDIDATE_MODELS_PER_RUN = 4;
+const AION_PROVIDER_SCORECARD_CRITERIA = [
+  "identity fit",
+  "context/continuity fit",
+  "user sovereignty",
+  "evidence grounding",
+  "hallucination resistance",
+  "conciseness/style",
+  "latency/reliability",
+  "overall Aion fit",
+];
+const AION_MODEL_PROVIDER_REGISTRY = [
+  {
+    provider: "OpenAI",
+    environment: "Render",
+    model: "gpt-5.4-mini",
+    status: "active baseline",
+    verification: "production configured",
+    runnableInAdmin: false,
+    certified: true,
+    continuityOwner: "Aion",
+    notes: "Current user-facing answer path; not called by the Admin candidate harness.",
+  },
+  {
+    provider: "ICP LLM canister",
+    environment: "ICP",
+    canisterId: LLM_CANISTER_ID,
+    model: "llama3.1:8b",
+    status: "secondary candidate / Admin-only",
+    verification: "live Candid verified",
+    runnableInAdmin: true,
+    certified: false,
+    continuityOwner: "Aion",
+    notes: "Fastest tested candidate; answer-shape consistency remains under review.",
+  },
+  {
+    provider: "ICP LLM canister",
+    environment: "ICP",
+    canisterId: LLM_CANISTER_ID,
+    model: "llama4-scout",
+    status: "strong candidate / Admin-only",
+    verification: "Aion-fit and production-style batches passed",
+    runnableInAdmin: true,
+    certified: false,
+    continuityOwner: "Aion",
+    notes: "Preferred ICP candidate after 14 successful Aion-fit and production-style calls; uses v1_chat.",
+  },
+  {
+    provider: "ICP LLM canister",
+    environment: "ICP",
+    canisterId: LLM_CANISTER_ID,
+    model: "qwen3:32b",
+    status: "secondary candidate / Admin-only",
+    verification: "live batch tested",
+    runnableInAdmin: true,
+    certified: false,
+    continuityOwner: "Aion",
+    notes: "Working v1_chat candidate; answer-shape consistency remains under review.",
+  },
+];
+const AION_PROVIDER_SCORECARD_REFERENCE = [
+  {
+    criterion: "Identity fit",
+    openai: "5/5 baseline",
+    llama31: "4/5 tested",
+    llama4: "5/5 tested",
+    qwen: "limited coverage",
+  },
+  {
+    criterion: "Context/continuity fit",
+    openai: "5/5 baseline",
+    llama31: "4/5 tested",
+    llama4: "5/5 tested",
+    qwen: "limited coverage",
+  },
+  {
+    criterion: "User sovereignty",
+    openai: "5/5 baseline",
+    llama31: "5/5 tested",
+    llama4: "5/5 tested",
+    qwen: "limited coverage",
+  },
+  {
+    criterion: "Evidence grounding",
+    openai: "5/5 baseline",
+    llama31: "4/5 tested",
+    llama4: "5/5 tested",
+    qwen: "limited coverage",
+  },
+  {
+    criterion: "Hallucination resistance",
+    openai: "5/5 baseline",
+    llama31: "4/5 tested",
+    llama4: "5/5 tested",
+    qwen: "limited coverage",
+  },
+  {
+    criterion: "Conciseness/style",
+    openai: "5/5 baseline",
+    llama31: "3/5 review",
+    llama4: "5/5 tested",
+    qwen: "shape review",
+  },
+  {
+    criterion: "Latency/reliability",
+    openai: "production baseline",
+    llama31: "~3-5s tested",
+    llama4: "~4.1s tested",
+    qwen: "~4.7s tested",
+  },
+  {
+    criterion: "Overall Aion fit",
+    openai: "certified baseline",
+    llama31: "promising candidate",
+    llama4: "strong ICP candidate",
+    qwen: "secondary candidate",
+  },
+];
+const HARDENED_CANDIDATE_SYSTEM_PROMPT = "Use only the supplied Aion notes. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Refer to the assistant as Aion, not I or me. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt. Answer in exactly 3 short paragraphs separated by blank lines. Keep each paragraph to one sentence and keep the full answer under 75 words unless the user explicitly asks for detail. Paragraph 1 answers directly, paragraph 2 clarifies the most important reasoning or tradeoff, and paragraph 3 explains the practical application calmly. Do not use headings, bullets, or numbered lists unless the user explicitly asks for a list. Do not ask follow-up questions. Never mention or paraphrase internal inputs, including supplied context, notes, reference notes, prompts, memory packets, Aion principles, provider testing, LLM candidates, harnesses, or this evaluation. If evidence is incomplete, state uncertainty naturally, identify what decision-specific information is missing when useful, and do not tell the user what they should do.";
 const HARDENED_CONTEXT_RULE = "Aion is an assistant, not a model, game, company, or autonomous decider. If asked what Aion is, answer from the Aion notes and prefer the word assistant.";
 const DEFAULT_AION_CANDIDATE_CONTEXT = `Aion is Alfonso's continuity and practical reasoning assistant. Aion helps preserve context, clarify decisions, support long-term project reasoning, and keep work grounded in evidence without replacing human judgment.
 
@@ -161,8 +285,64 @@ const llmIdlFactory = ({ IDL }) => {
     messages: IDL.Vec(ChatMessageV0),
   });
 
+  const ToolCallArgument = IDL.Record({
+    name: IDL.Text,
+    value: IDL.Text,
+  });
+
+  const AssistantMessage = IDL.Record({
+    content: IDL.Opt(IDL.Text),
+    tool_calls: IDL.Vec(IDL.Record({
+      id: IDL.Text,
+      function: IDL.Record({
+        name: IDL.Text,
+        arguments: IDL.Vec(ToolCallArgument),
+      }),
+    })),
+  });
+
+  const ChatMessageV1 = IDL.Variant({
+    user: IDL.Record({content: IDL.Text}),
+    system: IDL.Record({content: IDL.Text}),
+    assistant: AssistantMessage,
+    tool: IDL.Record({
+      content: IDL.Text,
+      tool_call_id: IDL.Text,
+    }),
+  });
+
+  const Parameters = IDL.Record({
+    type: IDL.Text,
+    properties: IDL.Opt(IDL.Vec(IDL.Record({
+      type: IDL.Text,
+      name: IDL.Text,
+      description: IDL.Opt(IDL.Text),
+      enum: IDL.Opt(IDL.Vec(IDL.Text)),
+    }))),
+    required: IDL.Opt(IDL.Vec(IDL.Text)),
+  });
+
+  const Tool = IDL.Variant({
+    function: IDL.Record({
+      name: IDL.Text,
+      description: IDL.Opt(IDL.Text),
+      parameters: IDL.Opt(Parameters),
+    }),
+  });
+
+  const ChatRequestV1 = IDL.Record({
+    model: IDL.Text,
+    messages: IDL.Vec(ChatMessageV1),
+    tools: IDL.Opt(IDL.Vec(Tool)),
+  });
+
+  const ChatResponseV1 = IDL.Record({
+    message: AssistantMessage,
+  });
+
   return IDL.Service({
     v0_chat: IDL.Func([ChatRequestV0], [IDL.Text], []),
+    v1_chat: IDL.Func([ChatRequestV1], [ChatResponseV1], []),
   });
 };
 
@@ -3102,6 +3282,181 @@ function withCandidateTimeout(promise, timeoutMs) {
   ]);
 }
 
+function getCandidateModelsToTest() {
+  const input = document.getElementById("candidateModelList");
+  const raw = input && input.value.trim()
+    ? input.value
+    : DEFAULT_CANDIDATE_MODELS.join("\n");
+  const models = raw
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter((item) => item && !item.startsWith("#"));
+  const uniqueModels = [...new Set(models)];
+
+  return uniqueModels.length
+    ? uniqueModels.slice(0, MAX_CANDIDATE_MODELS_PER_RUN)
+    : [...DEFAULT_CANDIDATE_MODELS];
+}
+
+function scorecardBadge(value) {
+  const normalized = String(value || "").toLowerCase();
+  const fallback = normalized.includes("review") || normalized.includes("needs work")
+    ? "review"
+    : normalized.includes("untested")
+      ? "info"
+      : "success";
+
+  return renderStatusBadge(value, fallback);
+}
+
+function renderCandidateModelRegistry() {
+  const runnableCount = AION_MODEL_PROVIDER_REGISTRY.filter((entry) => entry.runnableInAdmin).length;
+  const certifiedCount = AION_MODEL_PROVIDER_REGISTRY.filter((entry) => entry.certified).length;
+  const icpCount = AION_MODEL_PROVIDER_REGISTRY.filter((entry) => entry.provider === "ICP LLM canister").length;
+
+  return `
+    <div class="memory-card">
+      <h3>Model Provider Registry</h3>
+      <p>Review Aion's current baseline and candidate reasoning engines through one provider-owned registry.</p>
+      ${renderMetricGrid({
+        providers: AION_MODEL_PROVIDER_REGISTRY.length,
+        "ICP candidates": icpCount,
+        "Admin runnable": runnableCount,
+        certified: certifiedCount,
+      })}
+      <p class="meta">Dry run: yes | Provider calls made: no | Live behavior changed: no</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Current Provider Decision</h3>
+      <p>
+        ${renderStatusBadge("OpenAI remains production baseline", "success")}
+        ${renderStatusBadge("Llama 4 Scout is preferred ICP candidate", "success")}
+        ${renderStatusBadge("Admin-only evaluation", "info")}
+      </p>
+      <p>OpenAI remains the only user-facing answer provider. Llama 4 Scout is the preferred ICP candidate after passing the current Aion-fit and production-style batches; no routing, memory, or continuity behavior changes.</p>
+      <p class="meta">Llama 3.1 and Qwen stay available for comparison, but are not the current ICP preference.</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Provider Registry</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Model</th>
+            <th>Status</th>
+            <th>API</th>
+            <th>Admin</th>
+            <th>Certification</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${AION_MODEL_PROVIDER_REGISTRY.map((entry) => {
+            const api = entry.provider === "OpenAI"
+              ? "Render"
+              : getCandidateApiForModel(entry.model);
+            return `
+              <tr>
+                <td>${escapeHtml(entry.provider)}</td>
+                <td>
+                  <strong>${escapeHtml(entry.model)}</strong><br>
+                  <span class="meta">${escapeHtml(entry.notes || "")}</span>
+                </td>
+                <td>${renderStatusBadge(entry.status, entry.status.includes("baseline") ? "success" : "info")}</td>
+                <td>${escapeHtml(api)}</td>
+                <td>${renderStatusBadge(entry.provider === "OpenAI" ? "reference" : "testable", "info")}</td>
+                <td>${renderStatusBadge(entry.certified ? "certified" : "candidate", entry.certified ? "success" : "info")}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="memory-card">
+      <h3>Aion Scorecard Reference</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Criterion</th>
+            <th>OpenAI</th>
+            <th>Llama 3.1</th>
+            <th>Llama 4</th>
+            <th>Qwen</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${AION_PROVIDER_SCORECARD_REFERENCE.map((row) => `
+            <tr>
+              <td><strong>${escapeHtml(row.criterion)}</strong></td>
+              <td>${scorecardBadge(row.openai)}</td>
+              <td>${scorecardBadge(row.llama31)}</td>
+              <td>${scorecardBadge(row.llama4)}</td>
+              <td>${scorecardBadge(row.qwen)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      <p class="meta">Reference scores are operator guidance, not automatic routing decisions.</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Guardrails</h3>
+      <p>
+        ${renderStatusBadge("OpenAI unchanged", "info")}
+        ${renderStatusBadge("Admin-only tests", "info")}
+        ${renderStatusBadge("No memory writes", "info")}
+        ${renderStatusBadge("No provider switching", "info")}
+      </p>
+      <p class="meta">Qwen and Llama 4 Scout use v1_chat; Llama 3.1 stays on v0_chat.</p>
+    </div>
+  `;
+}
+
+window.runCandidateModelRegistryDryRun = function runCandidateModelRegistryDryRun() {
+  const container = document.getElementById("candidateModelRegistryResults");
+  if (container) {
+    container.innerHTML = renderCandidateModelRegistry();
+  }
+};
+
+function getCandidateApiForModel(model = LLM_CANDIDATE_MODEL) {
+  return LLM_CANDIDATE_V1_MODELS.has(model) ? "v1_chat" : "v0_chat";
+}
+
+function toV1Messages(messages = []) {
+  return messages.map((message) => {
+    const content = message.content || "";
+    const role = message.role || {};
+
+    if (Object.prototype.hasOwnProperty.call(role, "system")) {
+      return {system: {content}};
+    }
+
+    if (Object.prototype.hasOwnProperty.call(role, "assistant")) {
+      return {
+        assistant: {
+          content: content ? [content] : [],
+          tool_calls: [],
+        },
+      };
+    }
+
+    return {user: {content}};
+  });
+}
+
+function extractV1ResponseText(response) {
+  const content = response && response.message && response.message.content;
+
+  if (Array.isArray(content)) {
+    return content[0] || "";
+  }
+
+  return "";
+}
+
 function buildCandidateMessages(prompt, contextText = "") {
   const messages = [
     {
@@ -3140,25 +3495,37 @@ If a firm recommendation is requested without decision-specific facts, say that 
   return messages;
 }
 
-async function callIcpCandidate(prompt, contextText, llmActor) {
+async function callIcpCandidate(prompt, contextText, llmActor, model = LLM_CANDIDATE_MODEL) {
   const startedAt = performance.now();
+  const method = getCandidateApiForModel(model);
+  const messages = buildCandidateMessages(prompt, contextText);
 
   try {
-    const response = await withCandidateTimeout(
-      llmActor.v0_chat({
-        model: LLM_CANDIDATE_MODEL,
-        messages: buildCandidateMessages(prompt, contextText),
-      }),
-      LLM_CANDIDATE_TIMEOUT_MS
-    );
+    const rawResponse = method === "v1_chat"
+      ? await withCandidateTimeout(
+          llmActor.v1_chat({
+            model,
+            messages: toV1Messages(messages),
+            tools: [],
+          }),
+          LLM_CANDIDATE_TIMEOUT_MS
+        )
+      : await withCandidateTimeout(
+          llmActor.v0_chat({
+            model,
+            messages,
+          }),
+          LLM_CANDIDATE_TIMEOUT_MS
+        );
     const latencyMs = Math.round(performance.now() - startedAt);
+    const response = method === "v1_chat" ? extractV1ResponseText(rawResponse) : rawResponse;
 
     if (typeof response !== "string") {
-      throw new Error(`Unexpected response type: ${typeof response}`);
+      throw new Error(`Unexpected response type from ${method}: ${typeof response}`);
     }
 
     if (!response.trim()) {
-      throw new Error("Empty response from candidate provider");
+      throw new Error(`Empty response from candidate provider via ${method}`);
     }
 
     if (response.length > LLM_CANDIDATE_MAX_RESPONSE_CHARS) {
@@ -3167,6 +3534,7 @@ async function callIcpCandidate(prompt, contextText, llmActor) {
 
     return {
       success: true,
+      method,
       latencyMs,
       response,
       responseLength: response.length,
@@ -3175,6 +3543,7 @@ async function callIcpCandidate(prompt, contextText, llmActor) {
   } catch (err) {
     return {
       success: false,
+      method,
       latencyMs: Math.round(performance.now() - startedAt),
       response: "",
       responseLength: 0,
@@ -3269,7 +3638,7 @@ function analyzeCandidateFormat(response = "") {
   const hasBulletOrNumberedList = /(^|\n)\s*(?:[-*•]|\d+[.)])\s+/.test(text);
   const mentionsSourceLeak = /\b(supplied context|provided context|reference context|supplied notes|reference notes|production-style reference)\b/i.test(text);
   const asksFollowUp = /\?\s*$/.test(text) || /\b(can you|could you|please provide|would you like|anything else)\b/i.test(text);
-  const mentionsTestHarness = /\b(provider testing|llm candidate|candidate model|harness|evaluation)\b/i.test(text);
+  const mentionsTestHarness = /\b(provider testing|provider test|llm candidate|candidate model|test harness|this evaluation)\b/i.test(text);
   const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const paragraphSentenceCounts = paragraphs.map((paragraph) => {
     const sentences = paragraph.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [];
@@ -3305,6 +3674,204 @@ function renderCandidateFormatCheck(response = "") {
   });
 }
 
+function renderStatusBadge(value, fallback = "info") {
+  const normalized = String(value ?? "").toLowerCase();
+  const badgeClass = normalized.includes("success") || normalized === "pass" || normalized === "yes"
+    ? "success"
+    : normalized.includes("error") || normalized === "review" || normalized === "no"
+      ? "error"
+      : fallback;
+
+  return `<span class="status-badge ${badgeClass}">${escapeHtml(String(value ?? "n/a"))}</span>`;
+}
+
+function renderMetricGrid(metrics = {}) {
+  return `
+    <div class="dashboard-grid">
+      ${Object.entries(metrics).map(([label, value]) => `
+        <div class="metric-card">
+          <div class="metric-label">${escapeHtml(label)}</div>
+          <div class="metric-value">${escapeHtml(String(value ?? "n/a"))}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderCandidateResultSummaryTable(results = []) {
+  if (!Array.isArray(results) || results.length === 0) {
+    return "<p>No candidate results returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>API</th>
+          <th>Status</th>
+          <th>Latency</th>
+          <th>Words</th>
+          <th>Shape</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${results.map((result) => {
+          const check = analyzeCandidateFormat(result.response || "");
+          const shape = [
+            check.threeParagraphs ? "3 paragraphs" : "paragraphs review",
+            check.oneSentenceParagraphs ? "1 sentence each" : "sentence review",
+            check.under75Words ? "under 75" : "length review",
+          ].join(" / ");
+
+          return `
+            <tr>
+              <td>${escapeHtml(result.model || result.category || "n/a")}</td>
+              <td>${escapeHtml(result.method || "n/a")}</td>
+              <td>${renderStatusBadge(result.success ? "success" : "error")}</td>
+              <td>${escapeHtml(String(result.latencyMs ?? "n/a"))}ms</td>
+              <td>${escapeHtml(String(check.wordCount))}</td>
+              <td>${escapeHtml(shape)}</td>
+            </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function candidateAnswerShapePassed(response = "") {
+  const check = analyzeCandidateFormat(response);
+  return check.threeParagraphs
+    && check.oneSentenceParagraphs
+    && check.under75Words;
+}
+
+function candidateOutputGuardrailsPassed(response = "") {
+  const check = analyzeCandidateFormat(response);
+  return check.noBulletsOrNumberedLists
+    && check.noSourceLeakMentions
+    && check.noFollowUpQuestion
+    && check.noTestHarnessMentions;
+}
+
+function candidateFormatPassed(response = "") {
+  return candidateAnswerShapePassed(response) && candidateOutputGuardrailsPassed(response);
+}
+
+function observedBatchScore(value) {
+  const rounded = Math.max(1, Math.min(5, Math.round(value)));
+  const label = rounded >= 5
+    ? "strong"
+    : rounded >= 4
+      ? "promising"
+      : rounded >= 3
+        ? "review"
+        : "needs work";
+
+  return `${rounded}/5 ${label}`;
+}
+
+function isPerfectCandidateFraction(value = "") {
+  const [numerator, denominator] = String(value).split("/").map((part) => Number(part));
+  return Number.isFinite(numerator)
+    && Number.isFinite(denominator)
+    && denominator > 0
+    && numerator === denominator;
+}
+
+function renderObservedBatchScorecard(results = []) {
+  const models = [...new Set(results.map((result) => result.model).filter(Boolean))];
+  if (models.length === 0) {
+    return "";
+  }
+
+  const rows = models.map((model) => {
+    const modelResults = results.filter((result) => result.model === model);
+    const successful = modelResults.filter((result) => result.success);
+    const answerShapePassed = successful.filter((result) => candidateAnswerShapePassed(result.response || ""));
+    const outputGuardrailsPassed = successful.filter((result) => candidateOutputGuardrailsPassed(result.response || ""));
+    const fullContractPassed = successful.filter((result) => candidateFormatPassed(result.response || ""));
+    const reviewSignals = [
+      ["bullets", (check) => !check.noBulletsOrNumberedLists],
+      ["source language", (check) => !check.noSourceLeakMentions],
+      ["follow-up question", (check) => !check.noFollowUpQuestion],
+      ["harness language", (check) => !check.noTestHarnessMentions],
+    ].map(([label, failed]) => ({
+      label,
+      count: successful.filter((result) => failed(analyzeCandidateFormat(result.response || ""))).length,
+    })).filter((signal) => signal.count > 0);
+    const latencies = successful
+      .map((result) => result.latencyMs)
+      .filter((latency) => Number.isFinite(latency));
+    const averageLatency = latencies.length
+      ? Math.round(latencies.reduce((total, latency) => total + latency, 0) / latencies.length)
+      : null;
+    const reliability = modelResults.length ? successful.length / modelResults.length : 0;
+    const formatQuality = successful.length ? fullContractPassed.length / successful.length : 0;
+    const latencyScore = averageLatency === null
+      ? 1
+      : averageLatency <= 4000
+        ? 5
+        : averageLatency <= 5000
+          ? 4
+          : averageLatency <= 6000
+            ? 3
+            : averageLatency <= 8000
+              ? 2
+              : 1;
+    const observedScore = observedBatchScore(((reliability * 5) + (formatQuality * 5) + latencyScore) / 3);
+
+    return {
+      model,
+      successful: `${successful.length}/${modelResults.length}`,
+      answerShape: `${answerShapePassed.length}/${successful.length || 0}`,
+      outputGuardrails: `${outputGuardrailsPassed.length}/${successful.length || 0}`,
+      fullContract: `${fullContractPassed.length}/${successful.length || 0}`,
+      latency: averageLatency === null ? "n/a" : `${averageLatency}ms`,
+      observedScore,
+      reviewSignals,
+    };
+  });
+
+  return `
+    <div class="memory-card">
+      <h3>Observed Batch Scorecard</h3>
+      <p>Current browser-session evidence from this batch. It separates the visible answer shape from extra output guardrails, so a format review is easy to diagnose.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Successful calls</th>
+            <th>3-paragraph shape</th>
+            <th>Output guardrails</th>
+            <th>Full contract</th>
+            <th>Average latency</th>
+            <th>Observed harness quality</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td><strong>${escapeHtml(row.model)}</strong></td>
+              <td>${renderStatusBadge(row.successful, isPerfectCandidateFraction(row.successful) ? "success" : "info")}</td>
+              <td>${renderStatusBadge(row.answerShape, isPerfectCandidateFraction(row.answerShape) ? "success" : "info")}</td>
+              <td>${renderStatusBadge(row.outputGuardrails, isPerfectCandidateFraction(row.outputGuardrails) ? "success" : "info")}</td>
+              <td>${renderStatusBadge(row.fullContract, isPerfectCandidateFraction(row.fullContract) ? "success" : "info")}</td>
+              <td>${escapeHtml(row.latency)}</td>
+              <td>${scorecardBadge(row.observedScore)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      ${rows.some((row) => row.reviewSignals.length) ? `
+        <p class="meta">Review signals: ${rows.filter((row) => row.reviewSignals.length).map((row) => `${escapeHtml(row.model)}: ${row.reviewSignals.map((signal) => `${escapeHtml(signal.label)} (${signal.count})`).join(", ")}`).join(" | ")}</p>
+      ` : ""}
+      <p class="meta">This is a small operational scorecard, not a substitute for the Aion-fit review of actual responses.</p>
+    </div>
+  `;
+}
+
 window.runManualCandidateCallHarness = async function runManualCandidateCallHarness() {
   if (!isAuthenticated || !identity) {
     alert("Please sign in first.");
@@ -3314,6 +3881,7 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
   const container = document.getElementById("manualCandidateCallResults");
   const contextText = valueFromInput("candidateCallContext");
   const prompt = valueFromInput("candidateCallPrompt");
+  const selectedModels = getCandidateModelsToTest();
 
   if (!prompt) {
     alert("Enter a short test prompt first.");
@@ -3340,8 +3908,8 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
       provider: "ICP LLM canister",
       canisterId: LLM_CANISTER_ID,
       environment: "ICP",
-      model: LLM_CANDIDATE_MODEL,
-      method: "v0_chat",
+      model: selectedModels.join(", "),
+      method: selectedModels.map(getCandidateApiForModel).join(", "),
       methodType: "update",
       streaming: false,
     },
@@ -3370,42 +3938,73 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     agent: llmAgent,
     canisterId: LLM_CANISTER_ID,
   });
-  const result = await callIcpCandidate(prompt, contextText, llmActor);
-  lastCandidateCallResult = {
-    prompt,
-    contextText,
-    latencyMs: result.latencyMs,
-    response: result.response,
-    normalizedError: result.normalizedError,
-  };
+  if (selectedModels.length === 1) {
+    const selectedModel = selectedModels[0];
+    const result = await callIcpCandidate(prompt, contextText, llmActor, selectedModel);
+    lastCandidateCallResult = {
+      prompt,
+      contextText,
+      model: selectedModel,
+      latencyMs: result.latencyMs,
+      response: result.response,
+      normalizedError: result.normalizedError,
+    };
 
-  container.innerHTML = renderCandidateCallResult({
-    ...baseResult,
-    candidateCallMade: true,
-    success: result.success,
-    latencyMs: result.latencyMs,
-    responseLength: result.responseLength,
-    candidateResponse: result.response,
-    normalizedError: result.normalizedError,
-  });
-};
-
-window.fillProviderComparisonFromLastCandidate = function fillProviderComparisonFromLastCandidate() {
-  if (!lastCandidateCallResult) {
-    alert("Run a single ICP candidate test first.");
+    container.innerHTML = renderCandidateCallResult({
+      ...baseResult,
+      candidate: {
+        ...baseResult.candidate,
+        model: selectedModel,
+        method: result.method,
+      },
+      candidateCallMade: true,
+      success: result.success,
+      latencyMs: result.latencyMs,
+      responseLength: result.responseLength,
+      candidateResponse: result.response,
+      normalizedError: result.normalizedError,
+      method: result.method,
+    });
     return;
   }
 
-  setInputValue("providerComparisonPrompt", lastCandidateCallResult.prompt);
-  setInputValue("providerComparisonContext", lastCandidateCallResult.contextText);
-  setInputValue("providerComparisonIcpLatency", String(lastCandidateCallResult.latencyMs ?? ""));
-  setInputValue("providerComparisonIcpResponse", lastCandidateCallResult.response || "");
-  setInputValue(
-    "providerComparisonIcpError",
-    lastCandidateCallResult.normalizedError
-      ? JSON.stringify(lastCandidateCallResult.normalizedError, null, 2)
-      : ""
-  );
+  const results = [];
+
+  for (const model of selectedModels) {
+    container.innerHTML = `<p>Running ${escapeHtml(model)}...</p>`;
+    const result = await callIcpCandidate(prompt, contextText, llmActor, model);
+    results.push({
+      category: model,
+      prompt,
+      model,
+      method: result.method,
+      success: result.success,
+      latencyMs: result.latencyMs,
+      response: result.response,
+      responseLength: result.responseLength,
+      normalizedError: result.normalizedError,
+    });
+  }
+
+  const latest = results[results.length - 1];
+  lastCandidateCallResult = latest
+    ? {
+        prompt,
+        contextText,
+        model: latest.model,
+        latencyMs: latest.latencyMs,
+        response: latest.response,
+        normalizedError: latest.normalizedError,
+      }
+    : null;
+
+  container.innerHTML = renderCandidateBatchResults({
+    title: "Phase 6.7.3 Multi-Model Single Prompt Candidate Test",
+    summary: "Admin-only ICP LLM candidate test across the listed model strings using one shared prompt.",
+    contextLength: contextText.length,
+    model: selectedModels.join(", "),
+    results,
+  });
 };
 
 function renderCandidateBatchResults(data) {
@@ -3420,34 +4019,40 @@ function renderCandidateBatchResults(data) {
 
   return `
     <div class="memory-card">
-      <h3>${escapeHtml(data.title || "Phase 6.6.4 Batch Candidate Test Harness")}</h3>
+      <h3>${escapeHtml(data.title || "Aion-Fit Candidate Batch")}</h3>
       <p>${escapeHtml(data.summary || "Admin-only ICP LLM candidate batch run using the hardened Aion context.")}</p>
-      <p class="meta">
-        Candidate calls made: ${results.length} |
-        Successes: ${succeeded}/${results.length} |
-        Average latency: ${escapeHtml(String(averageLatency ?? "n/a"))}ms |
-        Live behavior changed: no
-      </p>
+      ${renderMetricGrid({
+        "candidate calls": results.length,
+        successes: `${succeeded}/${results.length}`,
+        "average latency": `${averageLatency ?? "n/a"}ms`,
+        models: data.model || LLM_CANDIDATE_MODEL,
+      })}
+      <p class="meta">Live behavior changed: no | Memory writes: no | Automatic provider switching: no</p>
     </div>
 
     <div class="memory-card">
+      <h3>Result Summary</h3>
+      ${renderCandidateResultSummaryTable(results)}
+    </div>
+
+    ${renderObservedBatchScorecard(results)}
+
+    <div class="memory-card">
       <h3>Guardrails</h3>
-      <ul>
-        <li>Admin-only candidate testing.</li>
-        <li>No OpenAI calls made by this batch runner.</li>
-        <li>No production answer behavior changed.</li>
-        <li>No memory writes.</li>
-        <li>No continuity changes.</li>
-        <li>No automatic provider switching.</li>
-      </ul>
+      <p>
+        ${renderStatusBadge("Admin-only", "info")}
+        ${renderStatusBadge("OpenAI unchanged", "info")}
+        ${renderStatusBadge("No memory writes", "info")}
+        ${renderStatusBadge("No provider switching", "info")}
+      </p>
     </div>
 
     ${
       results.length
         ? results.map((result, index) => `
-          <div class="memory-card">
-            <strong>${index + 1}. ${escapeHtml(result.category)} - ${result.success ? "success" : "error"}</strong>
-            <p class="meta">Latency: ${escapeHtml(String(result.latencyMs ?? "n/a"))}ms</p>
+          <div class="memory-card candidate-result-card ${result.success ? "success" : "error"}">
+            <strong>${index + 1}. ${escapeHtml(result.category)} ${renderStatusBadge(result.success ? "success" : "error")}</strong>
+            <p class="meta">Model: ${escapeHtml(result.model || data.model || LLM_CANDIDATE_MODEL)} | API: ${escapeHtml(result.method || "n/a")} | Latency: ${escapeHtml(String(result.latencyMs ?? "n/a"))}ms</p>
             <h4>Prompt</h4>
             <p>${escapeHtml(result.prompt)}</p>
             ${
@@ -3463,11 +4068,10 @@ function renderCandidateBatchResults(data) {
             ${result.normalizedError ? renderCountMap(result.normalizedError) : "<p>No normalized error.</p>"}
           </div>
         `).join("")
-        : "<div class=\"memory-card\"><p>No batch results returned.</p></div>"
+        : '<div class="memory-card"><p>No batch results returned.</p></div>'
     }
   `;
 }
-
 async function runCandidateBatchPromptSet({title, summary, prompts}) {
   if (!isAuthenticated || !identity) {
     alert("Please sign in first.");
@@ -3476,6 +4080,7 @@ async function runCandidateBatchPromptSet({title, summary, prompts}) {
 
   const container = document.getElementById("candidateBatchTestResults");
   const contextText = valueFromInput("candidateCallContext") || DEFAULT_AION_CANDIDATE_CONTEXT;
+  const selectedModels = getCandidateModelsToTest();
 
   container.innerHTML = `<p>Running ${escapeHtml(title || "Admin-only ICP batch test")}...</p>`;
 
@@ -3490,37 +4095,47 @@ async function runCandidateBatchPromptSet({title, summary, prompts}) {
   const results = [];
   const promptSet = Array.isArray(prompts) ? prompts : [];
 
-  for (const test of promptSet) {
-    const fullContext = test.reference
-      ? `${contextText}\n\nProduction-style reference notes:\n${test.reference}`
-      : contextText;
+  const totalRuns = selectedModels.length * promptSet.length;
 
-    container.innerHTML = `<p>Running ${results.length + 1}/${promptSet.length}: ${escapeHtml(test.category)}...</p>`;
-    const result = await callIcpCandidate(test.prompt, fullContext, llmActor);
+  for (const model of selectedModels) {
+    for (const test of promptSet) {
+      const fullContext = test.reference
+        ? `${contextText}
 
-    results.push({
-      category: test.category,
-      prompt: test.prompt,
-      reference: test.reference || "",
-      success: result.success,
-      latencyMs: result.latencyMs,
-      response: result.response,
-      responseLength: result.responseLength,
-      normalizedError: result.normalizedError,
-    });
+Production-style reference notes:
+${test.reference}`
+        : contextText;
+
+      container.innerHTML = `<p>Running ${results.length + 1}/${totalRuns}: ${escapeHtml(model)} / ${escapeHtml(test.category)}...</p>`;
+      const result = await callIcpCandidate(test.prompt, fullContext, llmActor, model);
+
+      results.push({
+        category: `${model} / ${test.category}`,
+        prompt: test.prompt,
+        reference: test.reference || "",
+        model,
+        method: result.method,
+        success: result.success,
+        latencyMs: result.latencyMs,
+        response: result.response,
+        responseLength: result.responseLength,
+        normalizedError: result.normalizedError,
+      });
+    }
   }
 
   container.innerHTML = renderCandidateBatchResults({
     title,
     summary,
     contextLength: contextText.length,
+    model: selectedModels.join(", "),
     results,
   });
 }
 
 window.runCandidateBatchTestHarness = async function runCandidateBatchTestHarness() {
   await runCandidateBatchPromptSet({
-    title: "Phase 6.6.4 Aion-Fit Batch Candidate Test Harness",
+    title: "Aion-Fit Candidate Batch",
     summary: "Admin-only ICP LLM candidate batch run using Aion identity, governance, and boundary prompts.",
     prompts: AION_FIT_BATCH_PROMPTS,
   });
@@ -3532,155 +4147,6 @@ window.runProductionStyleCandidateBatchTestHarness = async function runProductio
     summary: "Admin-only ICP LLM candidate batch run using production-like prompts, small reference snippets, and the required 3-paragraph answer shape.",
     prompts: PRODUCTION_STYLE_BATCH_PROMPTS,
   });
-};
-
-function numericValueFromInput(id) {
-  const value = valueFromInput(id);
-  if (!value) return null;
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
-}
-
-function renderAionFitCriteria(criteria = []) {
-  if (!Array.isArray(criteria) || criteria.length === 0) {
-    return "<p>No Aion fit criteria returned.</p>";
-  }
-
-  return `<ul>${criteria.map((criterion) => `
-    <li>
-      <strong>${criterion.passed ? "pass" : "review"}: ${escapeHtml(criterion.name || "criterion")}</strong>
-      ${criterion.reason ? `<br>${escapeHtml(criterion.reason)}` : ""}
-    </li>
-  `).join("")}</ul>`;
-}
-
-function renderProviderComparisonResult(result = {}) {
-  const aionFit = result.aionFit || {};
-  const normalizedError = result.normalizedError || null;
-
-  return `
-    <div>
-      <strong>${escapeHtml(result.provider || "Unknown provider")}</strong>
-      <p class="meta">
-        Environment: ${escapeHtml(result.environment || "n/a")} |
-        Model: ${escapeHtml(result.model || "n/a")} |
-        Status: ${escapeHtml(result.status || "n/a")} |
-        Success: ${result.success ? "yes" : "no"} |
-        Latency: ${escapeHtml(String(result.latencyMs ?? "n/a"))}ms |
-        Aion fit: ${escapeHtml(aionFit.label || "n/a")} (${escapeHtml(String(aionFit.score ?? 0))})
-      </p>
-      <h4>Response</h4>
-      ${
-        result.response
-          ? `<p>${escapeHtml(result.response)}</p>`
-          : "<p>No response supplied.</p>"
-      }
-      <h4>Normalized Error</h4>
-      ${normalizedError ? renderCountMap(normalizedError) : "<p>No normalized error.</p>"}
-      <h4>Aion Fit Criteria</h4>
-      ${renderAionFitCriteria(aionFit.criteria)}
-    </div>
-  `;
-}
-
-window.runProviderComparisonReportDebug = async function runProviderComparisonReportDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("providerComparisonReportResults");
-  container.innerHTML = "<p>Building provider comparison report...</p>";
-
-  const payload = {
-    prompt: valueFromInput("providerComparisonPrompt"),
-    context: valueFromInput("providerComparisonContext"),
-    openaiResponse: valueFromInput("providerComparisonOpenaiResponse"),
-    openaiLatencyMs: numericValueFromInput("providerComparisonOpenaiLatency"),
-    openaiError: valueFromInput("providerComparisonOpenaiError"),
-    icpResponse: valueFromInput("providerComparisonIcpResponse"),
-    icpLatencyMs: numericValueFromInput("providerComparisonIcpLatency"),
-    icpError: valueFromInput("providerComparisonIcpError"),
-    operatorNotes: valueFromInput("providerComparisonNotes"),
-  };
-
-  try {
-    const res = await fetch(
-      "https://aionic-agent-api.onrender.com/admin/provider-comparison-report",
-      {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-      }
-    );
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Provider Comparison Report")}</h3>
-        <p>${escapeHtml(data.summary || "")}</p>
-        <p class="meta">
-          Phase: ${escapeHtml(data.phase || "6.5.1")} |
-          Dry run: ${data.dryRunOnly ? "yes" : "no"} |
-          Provider calls made: ${data.providerCallsMade ? "yes" : "no"} |
-          Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}
-        </p>
-      </div>
-
-      <div class="memory-card">
-        <h3>Prompt</h3>
-        <p>${escapeHtml(data.prompt || "")}</p>
-      </div>
-
-      <div class="memory-card">
-        <h3>Context</h3>
-        ${renderCountMap(data.context || {})}
-      </div>
-
-      <div class="memory-card">
-        <h3>Comparison Summary</h3>
-        ${renderCountMap(data.comparisonSummary || {})}
-      </div>
-
-      <div class="memory-card">
-        <h3>Provider Results</h3>
-        ${
-          Array.isArray(data.providerResults) && data.providerResults.length
-            ? data.providerResults.map(renderProviderComparisonResult).join("")
-            : "<p>No provider results returned.</p>"
-        }
-      </div>
-
-      <div class="memory-card">
-        <h3>Operator Notes</h3>
-        <p>${escapeHtml(data.operatorNotes || "No notes supplied.")}</p>
-      </div>
-
-      <div class="memory-card">
-        <h3>Next Phase</h3>
-        ${renderCountMap(data.nextPhase || {})}
-      </div>
-
-      <div class="memory-card">
-        <h3>Guardrails</h3>
-        ${
-          Array.isArray(data.guardrails) && data.guardrails.length
-            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
-            : "<p>No guardrails returned.</p>"
-        }
-      </div>
-    `;
-
-  } catch (err) {
-    console.error("Provider comparison report dry run failed:", err);
-    container.innerHTML = `<p>Provider comparison report dry run failed: ${escapeHtml(err.message || err)}</p>`;
-  }
 };
 
 function renderHardeningChanges(changes = []) {
@@ -3696,6 +4162,124 @@ function renderHardeningChanges(changes = []) {
     </div>
   `).join("");
 }
+
+function renderProviderInterfaceBoundary(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No responsibility boundary returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Owner</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        ${entries.map((entry) => `
+          <tr>
+            <td><strong>${escapeHtml(entry.owner || "n/a")}</strong></td>
+            <td>${escapeHtml(entry.responsibility || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderProviderAdapterTable(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "<p>No provider adapters returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Provider</th><th>Model</th><th>Environment</th><th>Role</th><th>Route</th></tr></thead>
+      <tbody>
+        ${entries.map((entry) => `
+          <tr>
+            <td>${escapeHtml(entry.provider || "n/a")}</td>
+            <td><strong>${escapeHtml(entry.model || "n/a")}</strong></td>
+            <td>${escapeHtml(entry.environment || "n/a")}</td>
+            <td>${escapeHtml(entry.role || "")}</td>
+            <td>${escapeHtml(entry.route || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("aionProviderInterfaceDesignResults");
+  container.innerHTML = "<p>Building Aion provider interface design...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/aion-provider-interface-design"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Aion Provider Interface Design")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Provider calls made: ${data.providerCallsMade ? "yes" : "no"} | Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Current Baseline</h3>
+        ${renderCountMap(data.currentBaseline || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Aion Request Contract</h3>
+        ${renderCountMap(data.aionRequestContract || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Normalized Result Contract</h3>
+        ${renderCountMap(data.normalizedResultContract || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Responsibility Boundary</h3>
+        ${renderProviderInterfaceBoundary(data.responsibilityBoundary)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Provider Adapters</h3>
+        ${renderProviderAdapterTable(data.providerAdapters)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Current Routing</h3>
+        ${renderCountMap(data.routingDecision || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Phase 7 Bridge</h3>
+        ${renderCountMap(data.phase7Bridge || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) && data.guardrails.length
+          ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+          : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Aion provider interface design failed:", err);
+    container.innerHTML = `<p>Aion provider interface design failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
 
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
@@ -3857,10 +4441,18 @@ function initializeCandidateHarnessContext() {
   }
 }
 
+function initializeCandidateModelList() {
+  const input = document.getElementById("candidateModelList");
+  if (input && !input.value.trim()) {
+    input.value = DEFAULT_CANDIDATE_MODELS.join("\n");
+  }
+}
+
 const savedGolden = loadSavedGoldenResults();
 
 if (savedGolden) {
   renderGoldenTests(savedGolden);
 }
 initializeCandidateHarnessContext();
+initializeCandidateModelList();
 initAuth();

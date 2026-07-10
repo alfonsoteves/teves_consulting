@@ -74,6 +74,102 @@
       white-space: pre-wrap;
       font-family: inherit;
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      background: #eef6ff;
+      color: #0f3b5f;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfdff;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .metric-card {
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fbff;
+    }
+
+    .metric-label {
+      color: #64748b;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .metric-value {
+      color: #0f172a;
+      font-size: 1.15rem;
+      font-weight: 750;
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.2;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .status-badge.success,
+    .status-badge.pass {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+      color: #166534;
+    }
+
+    .status-badge.error,
+    .status-badge.review {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #9a3412;
+    }
+
+    .status-badge.info {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .candidate-result-card.success {
+      border-left: 4px solid #22c55e;
+    }
+
+    .candidate-result-card.error {
+      border-left: 4px solid #f97316;
+    }
+
   </style>
 </head>
 
@@ -328,10 +424,12 @@
       <button onclick="runProviderInspectionDebug()">Inspect Candidate</button>
       <button onclick="runIcpLlmCandidInspectionDebug()">Inspect Interface</button>
       <button onclick="runParallelProviderHarnessPlanDebug()">Build Harness Plan</button>
+      <button onclick="runCandidateModelRegistryDryRun()">Build Model Registry</button>
 
       <div id="providerInspectionResults"></div>
       <div id="icpLlmCandidInspectionResults"></div>
       <div id="parallelProviderHarnessPlanResults"></div>
+      <div id="candidateModelRegistryResults"></div>
 
       <details>
         <summary><strong>Live Candid Verification Notes</strong></summary>
@@ -408,6 +506,10 @@
         <textarea id="candidateCallContext" rows="6"></textarea>
       </label>
 
+      <label>Candidate models to test
+        <textarea id="candidateModelList" rows="3" placeholder="One model string per line, for example llama3.1:8b"></textarea>
+      </label>
+
       <label>Single test prompt
         <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
       </label>
@@ -420,59 +522,14 @@
       <div id="candidateBatchTestResults"></div>
     </details>
     <details>
-      <summary><strong>Manual OpenAI Comparison</strong></summary>
-
-      <p>Paste the OpenAI baseline response, then reuse the latest single ICP test result to reduce copy/paste.</p>
-
-      <label>Prompt
-        <textarea id="providerComparisonPrompt" rows="3" placeholder="Prompt used for both providers."></textarea>
-      </label>
-
-      <label>Aion notes
-        <textarea id="providerComparisonContext" rows="5" placeholder="Notes supplied to both providers, if any."></textarea>
-      </label>
-
-      <div class="form-grid">
-        <label>OpenAI latency ms
-          <input id="providerComparisonOpenaiLatency" type="number" min="0">
-        </label>
-        <label>ICP latency ms
-          <input id="providerComparisonIcpLatency" type="number" min="0">
-        </label>
-      </div>
-
-      <label>OpenAI baseline response
-        <textarea id="providerComparisonOpenaiResponse" rows="5"></textarea>
-      </label>
-
-      <label>ICP candidate response
-        <textarea id="providerComparisonIcpResponse" rows="5"></textarea>
-      </label>
-
-      <label>OpenAI error, if any
-        <textarea id="providerComparisonOpenaiError" rows="2"></textarea>
-      </label>
-
-      <label>ICP error, if any
-        <textarea id="providerComparisonIcpError" rows="2"></textarea>
-      </label>
-
-      <label>Operator notes
-        <textarea id="providerComparisonNotes" rows="3"></textarea>
-      </label>
-
-      <button onclick="fillProviderComparisonFromLastCandidate()">Use Last ICP Result</button>
-      <button onclick="runProviderComparisonReportDebug()">Build Comparison Report</button>
-
-      <div id="providerComparisonReportResults"></div>
-    </details>
-    <details>
       <summary><strong>Advanced Provider Reports</strong></summary>
 
-      <p>Review prompt hardening and other provider planning artifacts when changing the test harness.</p>
+      <p>Review provider design and prompt hardening artifacts without changing routing.</p>
 
+      <button onclick="runAionProviderInterfaceDesignDebug()">Build Interface Design</button>
       <button onclick="runCandidateHardeningPlanDebug()">Build Hardening Plan</button>
 
+      <div id="aionProviderInterfaceDesignResults"></div>
       <div id="candidateHardeningPlanResults"></div>
     </details>
     </section>
