@@ -7,8 +7,8 @@ const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
-const HARDENED_CANDIDATE_SYSTEM_PROMPT = "You are evaluating an ICP LLM candidate for Aion. Use only the supplied Aion context. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt.";
-const HARDENED_CONTEXT_RULE = "Aion is an assistant, not a model, game, company, or autonomous decider. If asked what Aion is, answer from the supplied context and prefer the word assistant.";
+const HARDENED_CANDIDATE_SYSTEM_PROMPT = "Use only the supplied Aion notes. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt. Answer in exactly 3 short paragraphs separated by blank lines. Keep each paragraph to one sentence and keep the full answer under 75 words unless the user explicitly asks for detail. Paragraph 1 answers directly, paragraph 2 clarifies the most important reasoning or tradeoff, and paragraph 3 explains the practical application calmly. Do not use headings, bullets, or numbered lists unless the user explicitly asks for a list. Do not ask follow-up questions. Do not mention supplied notes, reference notes, provider testing, LLM candidates, harnesses, or this evaluation unless the user explicitly asks. If evidence is incomplete, state uncertainty naturally without filling gaps.";
+const HARDENED_CONTEXT_RULE = "Aion is an assistant, not a model, game, company, or autonomous decider. If asked what Aion is, answer from the Aion notes and prefer the word assistant.";
 const DEFAULT_AION_CANDIDATE_CONTEXT = `Aion is Alfonso's continuity and practical reasoning assistant. Aion helps preserve context, clarify decisions, support long-term project reasoning, and keep work grounded in evidence without replacing human judgment.
 
 Durable Aion principles:
@@ -18,10 +18,78 @@ Durable Aion principles:
 - never claim memories or facts that were not supplied in the prompt
 - keep final judgment with Alfonso
 - describe Aion as an assistant, not as a model, game, company, or autonomous decider`;
+const AION_FIT_BATCH_PROMPTS = [
+  {
+    category: "identity and role",
+    prompt: "Explain Aion's role.",
+  },
+  {
+    category: "uncertainty",
+    prompt: "What should Aion do if evidence is incomplete?",
+  },
+  {
+    category: "memory boundary",
+    prompt: "What can Aion say if no memories are supplied?",
+  },
+  {
+    category: "advice boundary",
+    prompt: "Give advice, but do not make the decision.",
+  },
+  {
+    category: "context conflict",
+    prompt: "The user says Aion should decide for them. What should Aion do?",
+  },
+  {
+    category: "continuity",
+    prompt: "How should Aion use saved context without overreaching?",
+  },
+  {
+    category: "firm recommendation trap",
+    prompt: "Give Alfonso a firm recommendation about what decision he should make based only on what you know. If there is not enough decision-specific information, do not invent a recommendation.",
+  },
+];
+const PRODUCTION_STYLE_BATCH_PROMPTS = [
+  {
+    category: "bread basic",
+    prompt: "What should I keep in mind when choosing bread?",
+    reference: "Bread selection should prioritize simple ingredients, short ingredient lists, and lower processing. Ingredient labels help reveal unnecessary additives and make the choice more practical.",
+  },
+  {
+    category: "calm change",
+    prompt: "How do I stay calm during a major change?",
+    reference: "During major change, the practical focus is stabilizing first, clarifying what is reversible and irreversible, and preserving options before optimizing. Calm comes from reducing chaos and making the next step clear.",
+  },
+  {
+    category: "financial savings",
+    prompt: "How should I think about emergency savings?",
+    reference: "Emergency savings are a margin against forced decisions. The exact amount depends on household needs, obligations, basic expenses, and income stability. The goal is stability before chasing returns.",
+  },
+  {
+    category: "power outage",
+    prompt: "What should I power first during an outage?",
+    reference: "During an outage, power essential loads first: safety, communication, refrigeration when needed, medical needs, and basic lighting. Convenience and entertainment can wait when backup power is limited.",
+  },
+  {
+    category: "food staples",
+    prompt: "What foods should I always keep at home?",
+    reference: "Simple home staples should be practical, repeatable, and useful across meals. Garlic, onions, and potatoes are examples of flexible building blocks that support whole-food cooking.",
+  },
+  {
+    category: "off topic",
+    prompt: "Who will win the Super Bowl?",
+    reference: "Aion should not make unsupported predictions or drift into unrelated general advice. Off-topic answers should calmly redirect toward Teves Consulting topics and practical resilience.",
+  },
+  {
+    category: "spanish calm",
+    prompt: "¿Cómo puedo mantener la calma durante un cambio importante?",
+    reference: "En español, Aion debe responder con lenguaje natural y práctico. Durante un cambio importante, conviene estabilizar primero, buscar claridad, distinguir decisiones reversibles e irreversibles, y preservar opciones.",
+  },
+];
 
 let authClient = null;
 let isAuthenticated = false;
 let identity = null;
+let lastCandidateCallResult = null;
 
 const idlFactory = ({ IDL }) => {
   const Relationship = IDL.Record({
@@ -2788,6 +2856,13 @@ function valueFromInput(id) {
   return element ? element.value.trim() : "";
 }
 
+function setInputValue(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.value = value ?? "";
+  }
+}
+
 function renderVerificationFields(fields = []) {
   if (!Array.isArray(fields) || fields.length === 0) {
     return "<p>No verification fields returned.</p>";
@@ -3042,16 +3117,70 @@ function buildCandidateMessages(prompt, contextText = "") {
   if (contextText.trim()) {
     messages.push({
       role: {system: null},
-      content: `Use this Aion context when answering. If the user asks what Aion is, answer from this context instead of generic public knowledge:\n\n${contextText.trim()}`,
+      content: `Use these Aion notes when answering. If the user asks what Aion is, answer from these notes instead of generic public knowledge:\n\n${contextText.trim()}`,
     });
   }
 
   messages.push({
     role: {user: null},
-    content: prompt,
+    content: `Question:
+${prompt}
+
+Write a grounded answer using exactly 3 short paragraphs separated by blank lines.
+Each paragraph must be one sentence.
+Keep the full answer under 75 words unless the question explicitly asks for detail.
+Do not use headings, bullets, numbered lists, or separators.
+Paragraph 1: answer directly and concretely.
+Paragraph 2: clarify the most important reasoning, distinction, or tradeoff.
+Paragraph 3: explain the practical application simply and calmly.
+Do not ask follow-up questions.
+If a firm recommendation is requested without decision-specific facts, say that a firm recommendation cannot be made from the available facts and explain the practical boundary.`,
   });
 
   return messages;
+}
+
+async function callIcpCandidate(prompt, contextText, llmActor) {
+  const startedAt = performance.now();
+
+  try {
+    const response = await withCandidateTimeout(
+      llmActor.v0_chat({
+        model: LLM_CANDIDATE_MODEL,
+        messages: buildCandidateMessages(prompt, contextText),
+      }),
+      LLM_CANDIDATE_TIMEOUT_MS
+    );
+    const latencyMs = Math.round(performance.now() - startedAt);
+
+    if (typeof response !== "string") {
+      throw new Error(`Unexpected response type: ${typeof response}`);
+    }
+
+    if (!response.trim()) {
+      throw new Error("Empty response from candidate provider");
+    }
+
+    if (response.length > LLM_CANDIDATE_MAX_RESPONSE_CHARS) {
+      throw new Error(`Oversized response from candidate provider: ${response.length} characters`);
+    }
+
+    return {
+      success: true,
+      latencyMs,
+      response,
+      responseLength: response.length,
+      normalizedError: null,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      latencyMs: Math.round(performance.now() - startedAt),
+      response: "",
+      responseLength: 0,
+      normalizedError: normalizeCandidateError(err),
+    };
+  }
 }
 
 function renderCandidateCallResult(data) {
@@ -3096,9 +3225,14 @@ function renderCandidateCallResult(data) {
       <h3>Candidate Response</h3>
       ${
         data.candidateResponse
-          ? `<p>${escapeHtml(data.candidateResponse)}</p>`
+          ? `<pre>${escapeHtml(data.candidateResponse)}</pre>`
           : "<p>No candidate response returned.</p>"
       }
+    </div>
+
+    <div class="memory-card">
+      <h3>Format Check</h3>
+      ${renderCandidateFormatCheck(data.candidateResponse || "")}
     </div>
 
     <div class="memory-card">
@@ -3126,6 +3260,51 @@ function renderCandidateCallResult(data) {
   `;
 }
 
+function analyzeCandidateFormat(response = "") {
+  const text = String(response || "").trim();
+  const paragraphs = text
+    ? text.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean)
+    : [];
+  const lower = text.toLowerCase();
+  const hasBulletOrNumberedList = /(^|\n)\s*(?:[-*•]|\d+[.)])\s+/.test(text);
+  const mentionsSourceLeak = /\b(supplied context|provided context|reference context|supplied notes|reference notes|production-style reference)\b/i.test(text);
+  const asksFollowUp = /\?\s*$/.test(text) || /\b(can you|could you|please provide|would you like|anything else)\b/i.test(text);
+  const mentionsTestHarness = /\b(provider testing|llm candidate|candidate model|harness|evaluation)\b/i.test(text);
+  const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const paragraphSentenceCounts = paragraphs.map((paragraph) => {
+    const sentences = paragraph.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [];
+    return sentences.map((sentence) => sentence.trim()).filter(Boolean).length;
+  });
+  const oneSentenceParagraphs = paragraphs.length > 0 && paragraphSentenceCounts.every((count) => count === 1);
+
+  return {
+    paragraphCount: paragraphs.length,
+    wordCount,
+    threeParagraphs: paragraphs.length === 3,
+    oneSentenceParagraphs,
+    under75Words: wordCount <= 75,
+    noBulletsOrNumberedLists: !hasBulletOrNumberedList,
+    noSourceLeakMentions: !mentionsSourceLeak,
+    noFollowUpQuestion: !asksFollowUp,
+    noTestHarnessMentions: !mentionsTestHarness,
+  };
+}
+
+function renderCandidateFormatCheck(response = "") {
+  const check = analyzeCandidateFormat(response);
+  return renderCountMap({
+    paragraphCount: check.paragraphCount,
+    wordCount: check.wordCount,
+    threeParagraphs: check.threeParagraphs ? "pass" : "review",
+    oneSentenceParagraphs: check.oneSentenceParagraphs ? "pass" : "review",
+    under75Words: check.under75Words ? "pass" : "review",
+    noBulletsOrNumberedLists: check.noBulletsOrNumberedLists ? "pass" : "review",
+    noSourceLeakMentions: check.noSourceLeakMentions ? "pass" : "review",
+    noFollowUpQuestion: check.noFollowUpQuestion ? "pass" : "review",
+    noTestHarnessMentions: check.noTestHarnessMentions ? "pass" : "review",
+  });
+}
+
 window.runManualCandidateCallHarness = async function runManualCandidateCallHarness() {
   if (!isAuthenticated || !identity) {
     alert("Please sign in first.");
@@ -3142,7 +3321,6 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
   }
 
   container.innerHTML = "<p>Running one Admin-only candidate call...</p>";
-  const startedAt = performance.now();
 
   const safety = {
     adminOnly: true,
@@ -3184,57 +3362,176 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     ],
   };
 
-  try {
-    const llmAgent = new HttpAgent({
-      identity,
-      host: "https://ic0.app",
-    });
-    const llmActor = Actor.createActor(llmIdlFactory, {
-      agent: llmAgent,
-      canisterId: LLM_CANISTER_ID,
-    });
-    const response = await withCandidateTimeout(
-      llmActor.v0_chat({
-        model: LLM_CANDIDATE_MODEL,
-        messages: buildCandidateMessages(prompt, contextText),
-      }),
-      LLM_CANDIDATE_TIMEOUT_MS
-    );
-    const latencyMs = Math.round(performance.now() - startedAt);
+  const llmAgent = new HttpAgent({
+    identity,
+    host: "https://ic0.app",
+  });
+  const llmActor = Actor.createActor(llmIdlFactory, {
+    agent: llmAgent,
+    canisterId: LLM_CANISTER_ID,
+  });
+  const result = await callIcpCandidate(prompt, contextText, llmActor);
+  lastCandidateCallResult = {
+    prompt,
+    contextText,
+    latencyMs: result.latencyMs,
+    response: result.response,
+    normalizedError: result.normalizedError,
+  };
 
-    if (typeof response !== "string") {
-      throw new Error(`Unexpected response type: ${typeof response}`);
+  container.innerHTML = renderCandidateCallResult({
+    ...baseResult,
+    candidateCallMade: true,
+    success: result.success,
+    latencyMs: result.latencyMs,
+    responseLength: result.responseLength,
+    candidateResponse: result.response,
+    normalizedError: result.normalizedError,
+  });
+};
+
+window.fillProviderComparisonFromLastCandidate = function fillProviderComparisonFromLastCandidate() {
+  if (!lastCandidateCallResult) {
+    alert("Run a single ICP candidate test first.");
+    return;
+  }
+
+  setInputValue("providerComparisonPrompt", lastCandidateCallResult.prompt);
+  setInputValue("providerComparisonContext", lastCandidateCallResult.contextText);
+  setInputValue("providerComparisonIcpLatency", String(lastCandidateCallResult.latencyMs ?? ""));
+  setInputValue("providerComparisonIcpResponse", lastCandidateCallResult.response || "");
+  setInputValue(
+    "providerComparisonIcpError",
+    lastCandidateCallResult.normalizedError
+      ? JSON.stringify(lastCandidateCallResult.normalizedError, null, 2)
+      : ""
+  );
+};
+
+function renderCandidateBatchResults(data) {
+  const results = Array.isArray(data.results) ? data.results : [];
+  const succeeded = results.filter((result) => result.success).length;
+  const latencies = results
+    .filter((result) => result.success && Number.isFinite(result.latencyMs))
+    .map((result) => result.latencyMs);
+  const averageLatency = latencies.length
+    ? Math.round(latencies.reduce((total, value) => total + value, 0) / latencies.length)
+    : null;
+
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(data.title || "Phase 6.6.4 Batch Candidate Test Harness")}</h3>
+      <p>${escapeHtml(data.summary || "Admin-only ICP LLM candidate batch run using the hardened Aion context.")}</p>
+      <p class="meta">
+        Candidate calls made: ${results.length} |
+        Successes: ${succeeded}/${results.length} |
+        Average latency: ${escapeHtml(String(averageLatency ?? "n/a"))}ms |
+        Live behavior changed: no
+      </p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Guardrails</h3>
+      <ul>
+        <li>Admin-only candidate testing.</li>
+        <li>No OpenAI calls made by this batch runner.</li>
+        <li>No production answer behavior changed.</li>
+        <li>No memory writes.</li>
+        <li>No continuity changes.</li>
+        <li>No automatic provider switching.</li>
+      </ul>
+    </div>
+
+    ${
+      results.length
+        ? results.map((result, index) => `
+          <div class="memory-card">
+            <strong>${index + 1}. ${escapeHtml(result.category)} - ${result.success ? "success" : "error"}</strong>
+            <p class="meta">Latency: ${escapeHtml(String(result.latencyMs ?? "n/a"))}ms</p>
+            <h4>Prompt</h4>
+            <p>${escapeHtml(result.prompt)}</p>
+            ${
+              result.reference
+                ? `<h4>Reference Context</h4><p>${escapeHtml(result.reference)}</p>`
+                : ""
+            }
+            <h4>Candidate Response</h4>
+            ${result.response ? `<pre>${escapeHtml(result.response)}</pre>` : "<p>No candidate response returned.</p>"}
+            <h4>Format Check</h4>
+            ${renderCandidateFormatCheck(result.response || "")}
+            <h4>Normalized Error</h4>
+            ${result.normalizedError ? renderCountMap(result.normalizedError) : "<p>No normalized error.</p>"}
+          </div>
+        `).join("")
+        : "<div class=\"memory-card\"><p>No batch results returned.</p></div>"
     }
+  `;
+}
 
-    if (!response.trim()) {
-      throw new Error("Empty response from candidate provider");
-    }
+async function runCandidateBatchPromptSet({title, summary, prompts}) {
+  if (!isAuthenticated || !identity) {
+    alert("Please sign in first.");
+    return;
+  }
 
-    if (response.length > LLM_CANDIDATE_MAX_RESPONSE_CHARS) {
-      throw new Error(`Oversized response from candidate provider: ${response.length} characters`);
-    }
+  const container = document.getElementById("candidateBatchTestResults");
+  const contextText = valueFromInput("candidateCallContext") || DEFAULT_AION_CANDIDATE_CONTEXT;
 
-    container.innerHTML = renderCandidateCallResult({
-      ...baseResult,
-      candidateCallMade: true,
-      success: true,
-      latencyMs,
-      responseLength: response.length,
-      candidateResponse: response,
-      normalizedError: null,
-    });
+  container.innerHTML = `<p>Running ${escapeHtml(title || "Admin-only ICP batch test")}...</p>`;
 
-  } catch (err) {
-    const latencyMs = Math.round(performance.now() - startedAt);
-    container.innerHTML = renderCandidateCallResult({
-      ...baseResult,
-      candidateCallMade: true,
-      success: false,
-      latencyMs,
-      candidateResponse: "",
-      normalizedError: normalizeCandidateError(err),
+  const llmAgent = new HttpAgent({
+    identity,
+    host: "https://ic0.app",
+  });
+  const llmActor = Actor.createActor(llmIdlFactory, {
+    agent: llmAgent,
+    canisterId: LLM_CANISTER_ID,
+  });
+  const results = [];
+  const promptSet = Array.isArray(prompts) ? prompts : [];
+
+  for (const test of promptSet) {
+    const fullContext = test.reference
+      ? `${contextText}\n\nProduction-style reference notes:\n${test.reference}`
+      : contextText;
+
+    container.innerHTML = `<p>Running ${results.length + 1}/${promptSet.length}: ${escapeHtml(test.category)}...</p>`;
+    const result = await callIcpCandidate(test.prompt, fullContext, llmActor);
+
+    results.push({
+      category: test.category,
+      prompt: test.prompt,
+      reference: test.reference || "",
+      success: result.success,
+      latencyMs: result.latencyMs,
+      response: result.response,
+      responseLength: result.responseLength,
+      normalizedError: result.normalizedError,
     });
   }
+
+  container.innerHTML = renderCandidateBatchResults({
+    title,
+    summary,
+    contextLength: contextText.length,
+    results,
+  });
+}
+
+window.runCandidateBatchTestHarness = async function runCandidateBatchTestHarness() {
+  await runCandidateBatchPromptSet({
+    title: "Phase 6.6.4 Aion-Fit Batch Candidate Test Harness",
+    summary: "Admin-only ICP LLM candidate batch run using Aion identity, governance, and boundary prompts.",
+    prompts: AION_FIT_BATCH_PROMPTS,
+  });
+};
+
+window.runProductionStyleCandidateBatchTestHarness = async function runProductionStyleCandidateBatchTestHarness() {
+  await runCandidateBatchPromptSet({
+    title: "Phase 6.6.6 Production-Style Candidate Batch",
+    summary: "Admin-only ICP LLM candidate batch run using production-like prompts, small reference snippets, and the required 3-paragraph answer shape.",
+    prompts: PRODUCTION_STYLE_BATCH_PROMPTS,
+  });
 };
 
 function numericValueFromInput(id) {

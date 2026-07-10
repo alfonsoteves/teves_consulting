@@ -318,128 +318,118 @@
 
     <section class="admin-section">
       <h2>Model Providers</h2>
-      <p class="section-note">Inspect Aion's active OpenAI baseline and first concrete ICP LLM canister candidate.</p>
+      <p class="section-note">Inspect, test, and compare candidate model providers without changing production answers.</p>
 
-    <details>
-      <summary><strong>ICP LLM Canister Candidate Inspection</strong></summary>
+    <details open>
+      <summary><strong>Provider Setup</strong></summary>
 
-      <p>Inspect the DFINITY LLM canister candidate without changing live reasoning behavior.</p>
+      <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
 
       <button onclick="runProviderInspectionDebug()">Inspect Candidate</button>
-
-      <div id="providerInspectionResults"></div>
-    </details>
-    <details>
-      <summary><strong>ICP LLM Candid Interface Inspection</strong></summary>
-
-      <p>Review interface completeness before any parallel provider test calls.</p>
-
       <button onclick="runIcpLlmCandidInspectionDebug()">Inspect Interface</button>
-
-      <div id="icpLlmCandidInspectionResults"></div>
-    </details>
-    <details>
-      <summary><strong>ICP LLM Live Candid Verification Notes</strong></summary>
-
-      <p>Evaluate operator verification notes without saving them or enabling candidate calls.</p>
-
-      <div class="form-grid">
-        <label>v0_chat exists
-          <select id="icpVerifyV0ChatExists">
-            <option value="">Pending</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </label>
-        <label>Method type
-          <select id="icpVerifyMethodType">
-            <option value="">Pending</option>
-            <option value="update">Update</option>
-            <option value="query">Query</option>
-          </select>
-        </label>
-        <label>Request shape verified
-          <select id="icpVerifyRequestShape">
-            <option value="">Pending</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </label>
-        <label>Response shape verified
-          <select id="icpVerifyResponseShape">
-            <option value="">Pending</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </label>
-      </div>
-
-      <label>Cost / cycles notes
-        <textarea id="icpVerifyCostCyclesNotes" rows="2"></textarea>
-      </label>
-      <label>Timeout notes
-        <textarea id="icpVerifyTimeoutNotes" rows="2"></textarea>
-      </label>
-      <label>Error notes
-        <textarea id="icpVerifyErrorNotes" rows="2"></textarea>
-      </label>
-      <label>Streaming notes
-        <textarea id="icpVerifyStreamingNotes" rows="2"></textarea>
-      </label>
-      <label>Model identity notes
-        <textarea id="icpVerifyModelIdentityNotes" rows="2"></textarea>
-      </label>
-
-      <div class="form-grid">
-        <label>Verified by
-          <input id="icpVerifyVerifiedBy" type="text">
-        </label>
-        <label>Verified at
-          <input id="icpVerifyVerifiedAt" type="text">
-        </label>
-      </div>
-
-      <button onclick="runIcpLlmCandidVerificationNotesDebug()">Evaluate Notes</button>
-
-      <div id="icpLlmCandidVerificationNotesResults"></div>
-    </details>
-    <details>
-      <summary><strong>Parallel Provider Harness Plan</strong></summary>
-
-      <p>Plan the Admin-only candidate harness before making any ICP LLM canister call.</p>
-
       <button onclick="runParallelProviderHarnessPlanDebug()">Build Harness Plan</button>
 
+      <div id="providerInspectionResults"></div>
+      <div id="icpLlmCandidInspectionResults"></div>
       <div id="parallelProviderHarnessPlanResults"></div>
+
+      <details>
+        <summary><strong>Live Candid Verification Notes</strong></summary>
+
+        <p>Evaluate operator verification notes without saving them or enabling candidate calls.</p>
+
+        <div class="form-grid">
+          <label>v0_chat exists
+            <select id="icpVerifyV0ChatExists">
+              <option value="">Pending</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </label>
+          <label>Method type
+            <select id="icpVerifyMethodType">
+              <option value="">Pending</option>
+              <option value="update">Update</option>
+              <option value="query">Query</option>
+            </select>
+          </label>
+          <label>Request shape verified
+            <select id="icpVerifyRequestShape">
+              <option value="">Pending</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </label>
+          <label>Response shape verified
+            <select id="icpVerifyResponseShape">
+              <option value="">Pending</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </label>
+        </div>
+
+        <label>Cost / cycles notes
+          <textarea id="icpVerifyCostCyclesNotes" rows="2"></textarea>
+        </label>
+        <label>Timeout notes
+          <textarea id="icpVerifyTimeoutNotes" rows="2"></textarea>
+        </label>
+        <label>Error notes
+          <textarea id="icpVerifyErrorNotes" rows="2"></textarea>
+        </label>
+        <label>Streaming notes
+          <textarea id="icpVerifyStreamingNotes" rows="2"></textarea>
+        </label>
+        <label>Model identity notes
+          <textarea id="icpVerifyModelIdentityNotes" rows="2"></textarea>
+        </label>
+
+        <div class="form-grid">
+          <label>Verified by
+            <input id="icpVerifyVerifiedBy" type="text">
+          </label>
+          <label>Verified at
+            <input id="icpVerifyVerifiedAt" type="text">
+          </label>
+        </div>
+
+        <button onclick="runIcpLlmCandidVerificationNotesDebug()">Evaluate Notes</button>
+
+        <div id="icpLlmCandidVerificationNotesResults"></div>
+      </details>
     </details>
-    <details>
-      <summary><strong>Context-Bound Candidate Call Harness</strong></summary>
+    <details open>
+      <summary><strong>Candidate Test Console</strong></summary>
 
-      <p>Run one Admin-only ICP LLM candidate call with explicit Aion context and no production changes.</p>
+      <p>Run one-off or batch ICP candidate tests. Candidate output stays in Admin and cannot affect production answers.</p>
 
-      <label>Aion context
+      <label>Aion notes
         <textarea id="candidateCallContext" rows="6"></textarea>
       </label>
 
-      <label>Operator test prompt
+      <label>Single test prompt
         <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
       </label>
 
-      <button onclick="runManualCandidateCallHarness()">Run Context-Bound Candidate Call</button>
+      <button onclick="runManualCandidateCallHarness()">Run Single ICP Test</button>
+      <button onclick="runCandidateBatchTestHarness()">Run Aion-Fit Batch</button>
+      <button onclick="runProductionStyleCandidateBatchTestHarness()">Run Production-Style Batch</button>
 
       <div id="manualCandidateCallResults"></div>
+      <div id="candidateBatchTestResults"></div>
     </details>
     <details>
-      <summary><strong>Provider Comparison Report</strong></summary>
+      <summary><strong>Manual OpenAI Comparison</strong></summary>
 
-      <p>Compare manual OpenAI and ICP LLM candidate outputs without making provider calls or changing production behavior.</p>
+      <p>Paste the OpenAI baseline response, then reuse the latest single ICP test result to reduce copy/paste.</p>
 
       <label>Prompt
         <textarea id="providerComparisonPrompt" rows="3" placeholder="Prompt used for both providers."></textarea>
       </label>
 
-      <label>Aion context
-        <textarea id="providerComparisonContext" rows="5" placeholder="Context supplied to both providers, if any."></textarea>
+      <label>Aion notes
+        <textarea id="providerComparisonContext" rows="5" placeholder="Notes supplied to both providers, if any."></textarea>
       </label>
 
       <div class="form-grid">
@@ -471,14 +461,15 @@
         <textarea id="providerComparisonNotes" rows="3"></textarea>
       </label>
 
+      <button onclick="fillProviderComparisonFromLastCandidate()">Use Last ICP Result</button>
       <button onclick="runProviderComparisonReportDebug()">Build Comparison Report</button>
 
       <div id="providerComparisonReportResults"></div>
     </details>
     <details>
-      <summary><strong>Candidate Hardening Plan</strong></summary>
+      <summary><strong>Advanced Provider Reports</strong></summary>
 
-      <p>Review the prompt and context hardening before retesting the ICP LLM candidate.</p>
+      <p>Review prompt hardening and other provider planning artifacts when changing the test harness.</p>
 
       <button onclick="runCandidateHardeningPlanDebug()">Build Hardening Plan</button>
 
