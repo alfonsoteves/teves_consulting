@@ -4206,6 +4206,105 @@ function renderProviderAdapterTable(entries = []) {
   `;
 }
 
+function nativeManifestBadge(category = "") {
+  const normalized = String(category).toLowerCase();
+  const fallback = normalized.includes("already native") || normalized.includes("native next")
+    ? "success"
+    : normalized.includes("transitional") || normalized.includes("external")
+      ? "info"
+      : "review";
+
+  return renderStatusBadge(category, fallback);
+}
+
+function renderNativeManifestCapabilities(capabilities = []) {
+  if (!Array.isArray(capabilities) || capabilities.length === 0) {
+    return "<p>No capabilities returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead>
+        <tr><th>Capability</th><th>Current</th><th>Future</th><th>Category</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        ${capabilities.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.capability || "n/a")}</strong><br><span class="meta">${escapeHtml(item.note || "")}</span></td>
+            <td>${escapeHtml(item.current || "")}</td>
+            <td>${escapeHtml(item.future || "")}</td>
+            <td>${nativeManifestBadge(item.category || "")}</td>
+            <td>${escapeHtml(item.status || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runNativeIntelligenceManifestDebug = async function runNativeIntelligenceManifestDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeIntelligenceManifestResults");
+  container.innerHTML = "<p>Building Native Intelligence Manifest...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/native-intelligence-manifest"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const slice = data.firstMotokoSlice || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Native Intelligence Manifest")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p><strong>${escapeHtml(data.guidingPrinciple || "")}</strong></p>
+        ${renderMetricGrid(data.categoryCounts || {})}
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"} | Provider calls made: ${data.providerCallsMade ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Capability Inventory</h3>
+        ${renderNativeManifestCapabilities(data.capabilities)}
+      </div>
+
+      <div class="memory-card">
+        <h3>First Motoko Slice</h3>
+        <p><strong>${escapeHtml(slice.name || "")}</strong></p>
+        <p>${escapeHtml(slice.scope || "")}</p>
+        <h4>Excludes</h4>
+        ${Array.isArray(slice.excludes) ? `<ul>${slice.excludes.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No exclusions returned.</p>"}
+        <h4>Success Criteria</h4>
+        ${Array.isArray(slice.successCriteria) ? `<ul>${slice.successCriteria.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No success criteria returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Action</h3>
+        <p>${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) && data.guardrails.length
+          ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+          : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Native Intelligence Manifest failed:", err);
+    container.innerHTML = `<p>Native Intelligence Manifest failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
