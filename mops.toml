@@ -11,5 +11,11 @@ args = ["--default-persistent-actors", "-W=M0223,M0236,M0237"]
 [canisters.teves_consulting_backend]
 main = "src/teves_consulting_backend/main.mo"
 
+[canisters.teves_consulting_backend.check-stable]
+path = "deployed/teves_consulting_backend.most"
+
 [build]
 args = ["--release"]
+
+[deployed]
+dir = "deployed"

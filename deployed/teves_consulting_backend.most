@@ -1,0 +1,37 @@
+// Version: 1.0.0
+type Feedback__954473765 =
+  {
+    answer : Text;
+    id : Nat;
+    question : Text;
+    rating : Text;
+    receivedAt : Int;
+    timestamp : Text
+  };
+type MemorySummary__553378330 =
+  {
+    confidence : Nat;
+    createdAt : Int;
+    id : Nat;
+    importance : Nat;
+    keyDecisions : [Text];
+    memoryType : Text;
+    milestone : Bool;
+    owner : Principal;
+    relationships : [Relationship__612622434];
+    sourceSessionId : Text;
+    status : Text;
+    summary : Text;
+    tags : [Text];
+    title : Text;
+    topics : [Text];
+    updatedAt : Int
+  };
+type Relationship__612622434 =
+  {category : Text; predicate : Text; subject : Text; target : Text};
+actor {
+  stable var feedbackEntries : [Feedback__954473765];
+  stable var memorySummaries : [MemorySummary__553378330];
+  stable var nextId : Nat;
+  stable var nextMemoryId : Nat
+};
