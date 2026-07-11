@@ -1,221 +1,113 @@
-import Array "mo:base/Array";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Time "mo:base/Time";
-import Principal "mo:base/Principal";
+import Array "mo:core/Array";
+import Principal "mo:core/Principal";
+import Time "mo:core/Time";
+import Types "types";
+import SummaryAccess "lib/SummaryAccess";
 
-persistent actor {
+actor {
+  var feedbackEntries : [Types.Feedback] = [];
+  var nextId : Nat = 0;
+  var memorySummaries : [Types.MemorySummary] = [];
+  var nextMemoryId : Nat = 0;
 
-  public type Feedback = {
-    id : Nat;
-    rating : Text;
-    question : Text;
-    answer : Text;
-    timestamp : Text;
-    receivedAt : Int;
-  };
-
-  public type Relationship = {
-      subject : Text;
-      predicate : Text;
-      target : Text;
-      category : Text;
-  };
-
-  public type MemorySummary = {
-    id : Nat;
-    owner : Principal;
-
-    createdAt : Int;
-    updatedAt : Int;
-
-    title : Text;
-    summary : Text;
-
-    topics : [Text];
-    tags : [Text];
-
-    keyDecisions : [Text];
-    relationships : [Relationship];
-
-    milestone : Bool;
-
-    importance : Nat;
-    memoryType : Text;
-    sourceSessionId : Text;
-    confidence : Nat;
-    status : Text;
-  };
-
-  stable var feedbackEntries : [Feedback] = [];
-  stable var nextId : Nat = 0;
-  stable var memorySummaries : [MemorySummary] = [];
-  stable var nextMemoryId : Nat = 0;
-
-  public shared(msg) func whoami() : async Text {
-    Principal.toText(msg.caller)
+  public shared ({ caller }) func whoami() : async Text {
+    caller.toText();
   };
 
   public shared func addFeedback(
     rating : Text,
     question : Text,
     answer : Text,
-    timestamp : Text
+    timestamp : Text,
   ) : async Bool {
-
-    let feedback : Feedback = {
+    let feedback : Types.Feedback = {
       id = nextId;
-      rating = rating;
-      question = question;
-      answer = answer;
-      timestamp = timestamp;
-      receivedAt = Int.abs(Time.now());
+      rating;
+      question;
+      answer;
+      timestamp;
+      receivedAt = Time.now();
     };
 
-    feedbackEntries := Array.append(feedbackEntries, [feedback]);
-
+    feedbackEntries := feedbackEntries.concat([feedback]);
     nextId += 1;
-
-    return true;
+    true;
   };
 
   public query func getFeedbackCount() : async Nat {
     feedbackEntries.size();
   };
-  
-  public query func getFeedbackEntries() : async [Feedback] {
-    feedbackEntries
-  };
-  public query func getRecentFeedback(limit : Nat) : async [Feedback] {
-    let size = feedbackEntries.size();
 
-    if (limit >= size) {
-      feedbackEntries
-    } else {
-      let start = size - limit;
-      Array.tabulate<Feedback>(
-        limit,
-        func(i : Nat) : Feedback {
-          feedbackEntries[start + i]
-        }
-      )
-    }
+  public query func getFeedbackEntries() : async [Types.Feedback] {
+    feedbackEntries;
   };
 
-  public shared(msg) func storeSummary(
+  public query func getRecentFeedback(limit : Nat) : async [Types.Feedback] {
+    SummaryAccess.recent(feedbackEntries, limit);
+  };
+
+  public shared ({ caller }) func storeSummary(
     title : Text,
     summary : Text,
     topics : [Text],
     tags : [Text],
     keyDecisions : [Text],
-    relationships : [Relationship],
+    relationships : [Types.Relationship],
     milestone : Bool,
     importance : Nat,
     memoryType : Text,
     sourceSessionId : Text,
     confidence : Nat,
-    status : Text
+    status : Text,
   ) : async Nat {
     let id = nextMemoryId;
     let now = Time.now();
-
-    let entry : MemorySummary = {
-      id = id;
-      owner = msg.caller;
-
+    let entry : Types.MemorySummary = {
+      id;
+      owner = caller;
       createdAt = now;
       updatedAt = now;
-
-      title = title;
-      summary = summary;
-
-      topics = topics;
-      tags = tags;
-
-      keyDecisions = keyDecisions;
-      relationships = relationships;
-
-      milestone = milestone;
-
-      importance = importance;
-      memoryType = memoryType;
-      sourceSessionId = sourceSessionId;
-      confidence = confidence;
-      status = status;
+      title;
+      summary;
+      topics;
+      tags;
+      keyDecisions;
+      relationships;
+      milestone;
+      importance;
+      memoryType;
+      sourceSessionId;
+      confidence;
+      status;
     };
 
-    memorySummaries := Array.append<MemorySummary>(memorySummaries, [entry]);
+    memorySummaries := memorySummaries.concat([entry]);
     nextMemoryId += 1;
-
-    id
+    id;
   };
 
-  public shared query(msg) func getMyRecentSummaries(limit : Nat) : async [MemorySummary] {
-    let mine = Array.filter<MemorySummary>(
-      memorySummaries,
-      func(entry : MemorySummary) : Bool {
-        entry.owner == msg.caller
-      }
-    );
-
-    let count = mine.size();
-
-    if (count <= limit) {
-      mine
-    } else {
-      Array.tabulate<MemorySummary>(
-        limit,
-        func(i : Nat) : MemorySummary {
-          mine[count - limit + i]
-        }
-      )
-    }
+  public shared query ({ caller }) func getMyRecentSummaries(
+    limit : Nat
+  ) : async [Types.MemorySummary] {
+    SummaryAccess.recent(SummaryAccess.forOwner(memorySummaries, caller), limit);
   };
 
-  public shared query(msg) func getMyMilestoneSummaries() : async [MemorySummary] {
-
-    Array.filter<MemorySummary>(
-      memorySummaries,
-      func(summary : MemorySummary) : Bool {
-        summary.owner == msg.caller and summary.milestone
-      }
-    )
-
-  };
-  public shared query(msg) func getMyAllSummaries() : async [MemorySummary] {
-    Array.filter<MemorySummary>(
-      memorySummaries,
-      func(entry : MemorySummary) : Bool {
-        entry.owner == msg.caller
-      }
-    )
+  public shared query ({ caller }) func getMyMilestoneSummaries() : async [Types.MemorySummary] {
+    SummaryAccess.milestones(memorySummaries, caller);
   };
 
-    public shared(msg) func deleteSummaryById(id : Nat) : async Bool {
+  public shared query ({ caller }) func getMyAllSummaries() : async [Types.MemorySummary] {
+    SummaryAccess.forOwner(memorySummaries, caller);
+  };
 
+  public shared ({ caller }) func deleteSummaryById(id : Nat) : async Bool {
     let before = memorySummaries.size();
-
-    memorySummaries := Array.filter<MemorySummary>(
-      memorySummaries,
-      func(entry : MemorySummary) : Bool {
-        not (
-          entry.owner == msg.caller
-          and entry.id == id
-        )
-      }
-    );
-
-    memorySummaries.size() < before
+    memorySummaries := SummaryAccess.removeById(memorySummaries, caller, id);
+    memorySummaries.size() < before;
   };
-  
-  public shared(msg) func deleteAllMySummaries() : async Bool {
-    memorySummaries := Array.filter<MemorySummary>(
-      memorySummaries,
-      func(entry : MemorySummary) : Bool {
-        entry.owner != msg.caller
-      }
-    );
 
-    true
+  public shared ({ caller }) func deleteAllMySummaries() : async Bool {
+    memorySummaries := SummaryAccess.withoutOwner(memorySummaries, caller);
+    true;
   };
 };

@@ -1,5 +1,15 @@
-[dependencies]
-base = "0.14.14"
-
 [toolchain]
-moc = "1.3.0"
+moc = "1.9.0"
+lintoko = "0.10.0"
+
+[dependencies]
+core = "2.5.0"
+
+[moc]
+args = ["--default-persistent-actors", "-W=M0223,M0236,M0237"]
+
+[canisters.teves_consulting_backend]
+main = "src/teves_consulting_backend/main.mo"
+
+[build]
+args = ["--release"]
