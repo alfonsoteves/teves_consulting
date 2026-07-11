@@ -1,7 +1,12 @@
 import Array "mo:core/Array";
+import PrivateRankerProof "PrivateRankerProof";
 import Types "../types";
 
 module {
+  public func privateRankerBuildProof() : Bool {
+    PrivateRankerProof.isLinked();
+  };
+
   public func recent<T>(entries : [T], limit : Nat) : [T] {
     let count = entries.size();
 

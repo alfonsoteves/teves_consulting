@@ -1,8 +1,9 @@
 {
   "version": 3,
-  "mopsTomlDepsHash": "e3321ac6e0dad30176eeef3d83f8ff4def75d1cc49f0245c1fa8af72141235a8",
+  "mopsTomlDepsHash": "85b672599c90e3a770284b36fcc574000598fdbd769a0799d0fcb00d5e7ee7b0",
   "deps": {
-    "core": "2.5.0"
+    "core": "2.5.0",
+    "aion_intelligence": "/Users/sandbox2/Documents/Projects/teves_consulting/private/aion_intelligence"
   },
   "hashes": {
     "core@2.5.0": {
