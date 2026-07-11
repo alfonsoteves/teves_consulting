@@ -7,7 +7,5 @@ canisters:
 
   - name: teves_consulting_backend
     recipe:
-      type: "@dfinity/motoko@v4.1.0"
-      configuration:
-        main: src/teves_consulting_backend/main.mo
+      type: "@dfinity/motoko@v5.0.0"
 
