@@ -1,0 +1,3 @@
+[submodule "private/aion_intelligence"]
+	path = private/aion_intelligence
+	url = https://github.com/alfonsoteves/aion_intelligence.git
