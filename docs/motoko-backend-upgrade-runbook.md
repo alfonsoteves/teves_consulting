@@ -34,11 +34,13 @@ Otherwise, stop. The existing backend remains the correct production state.
 
 ## Controlled Upgrade
 
-Create a snapshot before the upgrade and record the returned identifier:
+Creating a snapshot requires a brief stop. Stop the backend, create the snapshot, record the returned identifier, then start the backend again before the upgrade:
 
 ```bash
+icp canister stop teves_consulting_backend -e ic
 SNAPSHOT_ID="$(icp canister snapshot create teves_consulting_backend -e ic -q)"
 printf 'Rollback snapshot: %s\n' "$SNAPSHOT_ID"
+icp canister start teves_consulting_backend -e ic
 ```
 
 Upgrade only the backend. Do not pass `--yes`; retain the ICP CLI's compatibility confirmation:
@@ -68,7 +70,9 @@ Commit the refreshed `deployed/` baseline only after these checks pass.
 If the backend is unavailable or continuity behavior regresses, restore the recorded snapshot:
 
 ```bash
+icp canister stop teves_consulting_backend -e ic
 icp canister snapshot restore teves_consulting_backend "$SNAPSHOT_ID" -e ic
+icp canister start teves_consulting_backend -e ic
 icp canister status teves_consulting_backend -e ic
 ```
 
