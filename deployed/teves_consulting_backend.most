@@ -1,5 +1,5 @@
 // Version: 1.0.0
-type Feedback__954473765 =
+type Feedback__240916034 =
   {
     answer : Text;
     id : Nat;
@@ -8,7 +8,7 @@ type Feedback__954473765 =
     receivedAt : Int;
     timestamp : Text
   };
-type MemorySummary__553378330 =
+type MemorySummary__1057387174 =
   {
     confidence : Nat;
     createdAt : Int;
@@ -18,7 +18,7 @@ type MemorySummary__553378330 =
     memoryType : Text;
     milestone : Bool;
     owner : Principal;
-    relationships : [Relationship__612622434];
+    relationships : [Relationship__612246604];
     sourceSessionId : Text;
     status : Text;
     summary : Text;
@@ -27,11 +27,11 @@ type MemorySummary__553378330 =
     topics : [Text];
     updatedAt : Int
   };
-type Relationship__612622434 =
+type Relationship__612246604 =
   {category : Text; predicate : Text; subject : Text; target : Text};
 actor {
-  stable var feedbackEntries : [Feedback__954473765];
-  stable var memorySummaries : [MemorySummary__553378330];
+  stable var feedbackEntries : [Feedback__240916034];
+  stable var memorySummaries : [MemorySummary__1057387174];
   stable var nextId : Nat;
   stable var nextMemoryId : Nat
 };
