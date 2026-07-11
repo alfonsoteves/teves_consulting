@@ -4416,6 +4416,129 @@ window.runMotokoContinuityContractDebug = async function runMotokoContinuityCont
   }
 };
 
+function renderPrivateModuleRoles(roles = []) {
+  if (!Array.isArray(roles) || roles.length === 0) {
+    return "<p>No repository roles returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Repository</th><th>Visibility</th><th>Role</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        ${roles.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.repository || "n/a")}</strong></td>
+            <td>${escapeHtml(item.visibility || "")}</td>
+            <td>${escapeHtml(item.role || "")}</td>
+            <td>${escapeHtml(item.responsibility || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderCompatibilityFindings(findings = []) {
+  if (!Array.isArray(findings) || findings.length === 0) {
+    return "<p>No compatibility findings returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Area</th><th>Current</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        ${findings.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.area || "n/a")}</strong></td>
+            <td>${escapeHtml(item.current || "")}</td>
+            <td>${renderStatusBadge(item.status || "")}</td>
+            <td>${escapeHtml(item.action || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runPrivateModuleIntegrationDebug = async function runPrivateModuleIntegrationDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("privateModuleIntegrationResults");
+  container.innerHTML = "<p>Building private module integration plan...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/private-module-integration"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const proof = data.firstBuildProof || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Motoko Toolchain and Private Module Integration")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Repository created: ${data.repositoryCreated ? "yes" : "no"} | Submodule created: ${data.submoduleCreated ? "yes" : "no"} | Toolchain changed: ${data.toolchainChanged ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Repository Roles</h3>
+        ${renderPrivateModuleRoles(data.repositoryRoles)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Private Module Plan</h3>
+        ${renderCountMap(data.privateModulePlan || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Toolchain Compatibility</h3>
+        ${renderCompatibilityFindings(data.compatibilityFindings)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Integration Sequence</h3>
+        ${Array.isArray(data.integrationSequence) ? `<ol>${data.integrationSequence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>` : "<p>No sequence returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>First Build Proof</h3>
+        <p><strong>${escapeHtml(proof.name || "")}</strong></p>
+        <p>${escapeHtml(proof.scope || "")}</p>
+        <h4>Excludes</h4>
+        ${Array.isArray(proof.excludes) ? `<ul>${proof.excludes.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No exclusions returned.</p>"}
+        <h4>Success Criteria</h4>
+        ${Array.isArray(proof.successCriteria) ? `<ul>${proof.successCriteria.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No success criteria returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Readiness</h3>
+        ${renderCountMap(data.readiness || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Action</h3>
+        <p>${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Private module integration plan failed:", err);
+    container.innerHTML = `<p>Private module integration plan failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
