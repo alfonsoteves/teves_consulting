@@ -4305,6 +4305,117 @@ window.runNativeIntelligenceManifestDebug = async function runNativeIntelligence
   }
 };
 
+function renderContractFieldTable(fields = []) {
+  if (!Array.isArray(fields) || fields.length === 0) {
+    return "<p>No contract fields returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Rule</th></tr></thead>
+      <tbody>
+        ${fields.map((field) => `
+          <tr>
+            <td><strong>${escapeHtml(field.field || "n/a")}</strong></td>
+            <td>${escapeHtml(field.type || "")}</td>
+            <td>${escapeHtml(field.rule || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runMotokoContinuityContractDebug = async function runMotokoContinuityContractDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("motokoContinuityContractResults");
+  container.innerHTML = "<p>Building read-only Motoko continuity contract...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/motoko-continuity-contract"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const method = data.method || {};
+    const caller = data.callerBoundary || {};
+    const result = data.resultShape || {};
+    const readiness = data.readiness || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Read-Only Motoko Continuity Contract")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Motoko code created: ${data.motokoCodeCreated ? "yes" : "no"} | Live behavior changed: ${data.liveBehaviorChanged ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Method</h3>
+        ${renderCountMap(method)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Caller Boundary</h3>
+        ${renderCountMap(caller)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Request</h3>
+        ${renderContractFieldTable(data.requestFields)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Fixed Limits</h3>
+        ${renderCountMap(data.fixedLimits || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Result Shape</h3>
+        <h4>Success</h4>
+        ${renderCountMap(result.ok || {})}
+        <h4>Error Variants</h4>
+        ${Array.isArray(result.errorVariants) ? `<ul>${result.errorVariants.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No error variants returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Algorithm Boundary</h3>
+        ${Array.isArray(data.algorithmBoundary) ? `<ul>${data.algorithmBoundary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No algorithm boundary returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Python Parity Fixtures</h3>
+        ${Array.isArray(data.pythonParityFixtures) ? `<ul>${data.pythonParityFixtures.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No fixtures returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Implementation Readiness</h3>
+        ${renderCountMap(readiness)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Action</h3>
+        <p>${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Motoko continuity contract failed:", err);
+    container.innerHTML = `<p>Motoko continuity contract failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
