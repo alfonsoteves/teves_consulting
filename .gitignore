@@ -30,7 +30,7 @@ build/
 
 # ICP
 canister_ids.json
-.icp/
+.icp/cache/
 .mops/
 
 site_dist/

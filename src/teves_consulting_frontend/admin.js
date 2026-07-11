@@ -4641,6 +4641,91 @@ window.runMotokoToolchainModernizationDebug = async function runMotokoToolchainM
   }
 };
 
+function renderBaselineArtifacts(artifacts = []) {
+  if (!Array.isArray(artifacts) || artifacts.length === 0) {
+    return "<p>No baseline artifacts returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Artifact</th><th>Purpose</th><th>Source</th></tr></thead>
+      <tbody>
+        ${artifacts.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.artifact || "n/a")}</strong></td>
+            <td>${escapeHtml(item.purpose || "")}</td>
+            <td>${escapeHtml(item.source || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runMotokoCompatibilityBaselineDebug = async function runMotokoCompatibilityBaselineDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("motokoCompatibilityBaselineResults");
+  container.innerHTML = "<p>Building backend compatibility baseline capture plan...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/motoko-compatibility-baseline"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const capture = data.captureTool || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Public Backend Compatibility Baseline")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Canister calls made: ${data.canisterCallsMade ? "yes" : "no"} | Canister deployed: ${data.canisterDeployment ? "yes" : "no"} | Memory writes: ${data.memoryWrites ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Capture Tool</h3>
+        ${renderCountMap(capture)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Version-Controlled Evidence</h3>
+        ${renderBaselineArtifacts(data.versionControlledEvidence)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Capture Checks</h3>
+        ${Array.isArray(data.captureChecks) ? `<ul>${data.captureChecks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No capture checks returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Not Performed</h3>
+        ${Array.isArray(data.notPerformed) ? `<ul>${data.notPerformed.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No exclusions returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Action</h3>
+        <p>${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Motoko compatibility baseline plan failed:", err);
+    container.innerHTML = `<p>Motoko compatibility baseline plan failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
