@@ -4539,6 +4539,108 @@ window.runPrivateModuleIntegrationDebug = async function runPrivateModuleIntegra
   }
 };
 
+function renderToolchainGates(gates = []) {
+  if (!Array.isArray(gates) || gates.length === 0) {
+    return "<p>No compatibility gates returned.</p>";
+  }
+
+  return `
+    <table>
+      <thead><tr><th>Gate</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        ${gates.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.gate || "n/a")}</strong></td>
+            <td>${renderStatusBadge(item.status || "")}</td>
+            <td>${escapeHtml(item.evidence || "")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.runMotokoToolchainModernizationDebug = async function runMotokoToolchainModernizationDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("motokoToolchainModernizationResults");
+  container.innerHTML = "<p>Building public Motoko toolchain modernization plan...</p>";
+
+  try {
+    const res = await fetch(
+      "https://aionic-agent-api.onrender.com/admin/motoko-toolchain-modernization"
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const migration = data.migrationStrategy || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Public Motoko Toolchain Modernization")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Toolchain changed: ${data.toolchainChanged ? "yes" : "no"} | Private library imported: ${data.privateLibraryImported ? "yes" : "no"} | Canister deployed: ${data.canisterDeployment ? "yes" : "no"}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Current State</h3>
+        ${renderCountMap(data.currentState || {})}
+        <h4>Existing Persistent Fields</h4>
+        ${Array.isArray(data.legacyStateFields) ? `<ul>${data.legacyStateFields.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No state fields returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Target State</h3>
+        ${renderCountMap(data.targetState || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Migration Strategy</h3>
+        ${renderCountMap(migration)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Compatibility Gates</h3>
+        ${renderToolchainGates(data.compatibilityGates)}
+      </div>
+
+      <div class="memory-card">
+        <h3>Execution Sequence</h3>
+        ${Array.isArray(data.executionSequence) ? `<ol>${data.executionSequence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>` : "<p>No sequence returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Holds</h3>
+        ${Array.isArray(data.holds) ? `<ul>${data.holds.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No holds returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Readiness</h3>
+        ${renderCountMap(data.readiness || {})}
+      </div>
+
+      <div class="memory-card">
+        <h3>Next Action</h3>
+        <p>${escapeHtml(data.nextAction || "")}</p>
+      </div>
+
+      <div class="memory-card">
+        <h3>Guardrails</h3>
+        ${Array.isArray(data.guardrails) ? `<ul>${data.guardrails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No guardrails returned.</p>"}
+      </div>
+    `;
+  } catch (err) {
+    console.error("Motoko toolchain modernization plan failed:", err);
+    container.innerHTML = `<p>Motoko toolchain modernization plan failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runAionProviderInterfaceDesignDebug = async function runAionProviderInterfaceDesignDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
