@@ -1,0 +1,53 @@
+type Relationship = 
+ record {
+   category: text;
+   predicate: text;
+   subject: text;
+   target: text;
+ };
+type MemorySummary = 
+ record {
+   confidence: nat;
+   createdAt: int;
+   id: nat;
+   importance: nat;
+   keyDecisions: vec text;
+   memoryType: text;
+   milestone: bool;
+   owner: principal;
+   relationships: vec Relationship;
+   sourceSessionId: text;
+   status: text;
+   summary: text;
+   tags: vec text;
+   title: text;
+   topics: vec text;
+   updatedAt: int;
+ };
+type Feedback = 
+ record {
+   answer: text;
+   id: nat;
+   question: text;
+   rating: text;
+   receivedAt: int;
+   timestamp: text;
+ };
+service : {
+  addFeedback: (rating: text, question: text, answer: text, timestamp:
+   text) -> (bool);
+  deleteAllMySummaries: () -> (bool);
+  deleteSummaryById: (id: nat) -> (bool);
+  getFeedbackCount: () -> (nat) query;
+  getFeedbackEntries: () -> (vec Feedback) query;
+  getMyAllSummaries: () -> (vec MemorySummary) query;
+  getMyMilestoneSummaries: () -> (vec MemorySummary) query;
+  getMyRecentSummaries: (limit: nat) -> (vec MemorySummary) query;
+  getRecentFeedback: (limit: nat) -> (vec Feedback) query;
+  storeSummary: (title: text, summary: text, topics: vec text, tags:
+   vec text, keyDecisions: vec text, relationships: vec Relationship,
+   milestone: bool, importance: nat, memoryType: text, sourceSessionId: 
+   text, confidence: nat, status: text) -> (nat);
+  whoami: () -> (text);
+}
+
