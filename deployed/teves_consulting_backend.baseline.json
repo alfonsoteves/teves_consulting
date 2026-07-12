@@ -1,8 +1,8 @@
 {
   "backendCanister": "teves_consulting_backend",
   "environment": "ic",
-  "sourceRevision": "4283b9b23491537fa3bd87b38b0ade9315349933",
-  "capturedAtUtc": "2026-07-11T20:02:57Z",
+  "sourceRevision": "c21173465e738a6e3a57b9e77edab0356738cfb6",
+  "capturedAtUtc": "2026-07-12T12:48:39Z",
   "candidFile": "teves_consulting_backend.did",
   "captureMode": "read-only candid metadata"
 }

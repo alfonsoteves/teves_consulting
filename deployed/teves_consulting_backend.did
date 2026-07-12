@@ -1,3 +1,16 @@
+type Result = 
+ variant {
+   err: Error;
+   ok: Response;
+ };
+type Response = 
+ record {
+   contextPreview: text;
+   memoryCount: nat;
+   queryIntent: text;
+   queryText: text;
+   rankedMemories: vec MemoryPreview;
+ };
 type Relationship = 
  record {
    category: text;
@@ -24,6 +37,22 @@ type MemorySummary =
    topics: vec text;
    updatedAt: int;
  };
+type MemoryPreview = 
+ record {
+   confidence: nat;
+   id: nat;
+   importance: nat;
+   keyDecisions: vec text;
+   memoryType: text;
+   milestone: bool;
+   relationships: vec Relationship;
+   score: int;
+   status: text;
+   summary: text;
+   tags: vec text;
+   title: text;
+   topics: vec text;
+ };
 type Feedback = 
  record {
    answer: text;
@@ -32,6 +61,12 @@ type Feedback =
    rating: text;
    receivedAt: int;
    timestamp: text;
+ };
+type Error = 
+ variant {
+   internalError;
+   invalidQuery;
+   unauthenticated;
  };
 service : {
   addFeedback: (rating: text, question: text, answer: text, timestamp:
@@ -44,6 +79,7 @@ service : {
   getMyMilestoneSummaries: () -> (vec MemorySummary) query;
   getMyRecentSummaries: (limit: nat) -> (vec MemorySummary) query;
   getRecentFeedback: (limit: nat) -> (vec Feedback) query;
+  previewMyContinuity: (queryText: text) -> (Result) query;
   storeSummary: (title: text, summary: text, topics: vec text, tags:
    vec text, keyDecisions: vec text, relationships: vec Relationship,
    milestone: bool, importance: nat, memoryType: text, sourceSessionId: 
