@@ -5074,6 +5074,108 @@ window.runProviderAdapterGuardDebug = async function runProviderAdapterGuardDebu
   }
 };
 
+window.runLiveProviderAdapterHandoffSimulationDebug = async function runLiveProviderAdapterHandoffSimulationDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("liveProviderAdapterHandoffResults");
+  container.innerHTML = "<p>Simulating live native policy handoffs...</p>";
+
+  const operations = [
+    { operationId: "publicAnswer", expected: "accepted" },
+    { operationId: "adminCandidateEvaluation", expected: "accepted" },
+    { operationId: "nativeContinuityPreview", expected: "invocation_not_permitted" },
+  ];
+
+  try {
+    const results = await Promise.all(operations.map(async ({ operationId, expected }) => {
+      try {
+        const nativeDecision = await window.adminActor.previewAionProviderRoute({
+          [operationId]: null,
+        });
+        const nativeOperation = nativeOperationKey(nativeDecision.operation);
+        const response = await fetch(
+          "https://aionic-agent-api.onrender.com/admin/provider-adapter-handoff-simulation",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              operation: operationId,
+              decisionOperation: nativeOperation,
+              providerId: nativeDecision.providerId,
+              routeId: nativeDecision.routeId,
+              invocationPermitted: nativeDecision.invocationPermitted,
+              explicitOperatorAction: nativeDecision.explicitOperatorAction,
+              promotionRequired: nativeDecision.promotionRequired,
+              automaticFallback: nativeDecision.automaticFallback,
+              timeoutMs: 30000,
+            }),
+          }
+        );
+        const simulation = await response.json();
+
+        if (simulation.error) {
+          return { operationId, expected, simulation: null, passed: false, error: simulation.error };
+        }
+
+        return {
+          operationId,
+          expected,
+          simulation,
+          passed: simulation.handoffValidation === expected && simulation.providerCallsMade === false,
+          error: "",
+        };
+      } catch (err) {
+        return { operationId, expected, simulation: null, passed: false, error: err.message || String(err) };
+      }
+    }));
+
+    const passed = results.filter((result) => result.passed).length;
+    const allPassed = passed === results.length;
+    const rows = results.map((result) => {
+      const simulation = result.simulation;
+      const nativeRoute = simulation
+        ? `${simulation.nativeDecision?.providerId || ""} / ${simulation.nativeDecision?.routeId || ""}`
+        : "No simulation result";
+      const actual = simulation ? simulation.handoffValidation : result.error;
+      const adapter = simulation ? simulation.adapterInvocation : "not attempted";
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(result.operationId)}</strong></td>
+          <td>${escapeHtml(nativeRoute)}</td>
+          <td>${escapeHtml(result.expected)}</td>
+          <td>${escapeHtml(actual || "")}</td>
+          <td>${escapeHtml(adapter)}</td>
+          <td><span class="status-badge ${result.passed ? "success" : "error"}">${result.passed ? "pass" : "review"}</span></td>
+        </tr>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Live Provider Adapter Handoff Simulation</h3>
+        <p>Live ICP route decisions are validated by the Render guard using server-created synthetic results only.</p>
+        <p class="meta">Phase: 7.49 | Provider calls: no | Memory writes: no | Automatic switching: no</p>
+        <p><span class="status-badge ${allPassed ? "success" : "error"}">${allPassed ? "handoff boundary confirmed" : "handoff review needed"}</span> ${passed}/${results.length} operations passed</p>
+      </div>
+      <div class="memory-card">
+        <h3>Live Handoff Matrix</h3>
+        <table><thead><tr><th>Operation</th><th>Native decision</th><th>Expected</th><th>Guard result</th><th>Adapter state</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      <div class="memory-card">
+        <h3>Boundary</h3>
+        <p>The browser sends only the fixed native decision fields. Render creates a synthetic result for validation and never invokes OpenAI, ICP LLM, or another provider.</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Live provider adapter handoff simulation failed:", err);
+    container.innerHTML = `<p>Live provider adapter handoff simulation failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
