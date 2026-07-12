@@ -5,6 +5,8 @@ import RelationshipExpansion "mo:aion_intelligence/RelationshipExpansion";
 import Types "../types";
 
 module {
+  public let maximumExpandedSummaries : Nat = RelationshipExpansion.maximumExpandedMemories;
+
   public type ExpandedSummary = {
     summary : Types.MemorySummary;
     score : Nat;

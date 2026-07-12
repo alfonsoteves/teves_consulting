@@ -31,6 +31,23 @@ let preview : ContinuityPreviewProjection.Preview = {
       score = 245;
     },
   ];
+  expandedMemories = [
+    {
+      id = 2;
+      title = "Related deployment decision";
+      summary = "A related decision keeps the rollout reversible.";
+      topics = ["continuity"];
+      tags = ["backend"];
+      keyDecisions = [];
+      relationships = [];
+      milestone = false;
+      importance = 5;
+      memoryType = "decision";
+      confidence = 90;
+      status = "active";
+      score = 13;
+    },
+  ];
 };
 
 let context = ContinuityContextBuilder.build(preview);
@@ -45,6 +62,8 @@ assert context.contains(#text("Memory count: 1"));
 assert context.contains(#text("Technical fixture"));
 assert context.contains(#text("Keep selection owner-scoped."));
 assert context.contains(#text("backend stores continuity"));
+assert context.contains(#text("Relationship-expanded memories"));
+assert context.contains(#text("Related deployment decision"));
 assert not context.contains(#text("owner-a-session"));
 assert context.size() <= ContinuityContextBuilder.maximumContextCharacters;
 assert shortContext.size() == 24;

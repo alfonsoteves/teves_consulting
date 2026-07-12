@@ -59,6 +59,14 @@ module {
       result #= "\n" # memoryText(memory);
     };
 
+    if (preview.expandedMemories.size() > 0) {
+      result #= "\nRelationship-expanded memories\n";
+
+      for (memory in preview.expandedMemories.values()) {
+        result #= "\n" # memoryText(memory);
+      };
+    };
+
     result;
   };
 

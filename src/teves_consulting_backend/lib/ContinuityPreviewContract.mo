@@ -21,6 +21,7 @@ module {
     queryIntent : Text;
     memoryCount : Nat;
     rankedMemories : [ContinuityPreviewProjection.MemoryPreview];
+    expandedMemories : [ContinuityPreviewProjection.MemoryPreview];
     contextPreview : Text;
   };
 
@@ -52,6 +53,7 @@ module {
       queryIntent = preview.queryIntent;
       memoryCount = preview.memoryCount;
       rankedMemories = preview.rankedMemories;
+      expandedMemories = preview.expandedMemories;
       contextPreview;
     };
   };

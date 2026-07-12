@@ -48,6 +48,7 @@ let preview : ContinuityPreviewProjection.Preview = {
   queryIntent = "technical";
   memoryCount = 3;
   rankedMemories = [memory];
+  expandedMemories = [memory];
 };
 
 expectNormalized(" \n\tHow should continuity be selected?\r ", "How should continuity be selected?");
@@ -64,4 +65,6 @@ assert response.queryIntent == "technical";
 assert response.memoryCount == 3;
 assert response.rankedMemories.size() == 1;
 assert response.rankedMemories[0].title == "Keep continuity bounded";
+assert response.expandedMemories.size() == 1;
+assert response.expandedMemories[0].title == "Keep continuity bounded";
 assert response.contextPreview == "Continuity context\nMemory count: 3";

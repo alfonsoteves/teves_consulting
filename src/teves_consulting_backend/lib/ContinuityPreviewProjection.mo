@@ -1,7 +1,9 @@
 import Array "mo:core/Array";
 import BoundedContinuityPreview "BoundedContinuityPreview";
+import Int "mo:core/Int";
 import MemoryRank "mo:aion_intelligence/MemoryRank";
 import NativeContinuitySelection "NativeContinuitySelection";
+import NativeRelationshipExpansion "NativeRelationshipExpansion";
 import PrivateTypes "mo:aion_intelligence/Types";
 import Types "../types";
 
@@ -27,6 +29,7 @@ module {
     queryIntent : Text;
     memoryCount : Nat;
     rankedMemories : [MemoryPreview];
+    expandedMemories : [MemoryPreview];
   };
 
   func intentLabel(intent : PrivateTypes.Intent) : Text {
@@ -38,22 +41,30 @@ module {
     };
   };
 
-  func toPreviewMemory(ranked : NativeContinuitySelection.RankedSummary) : MemoryPreview {
+  func toPreviewMemory(summary : Types.MemorySummary, score : Int) : MemoryPreview {
     {
-      id = ranked.summary.id;
-      title = ranked.summary.title;
-      summary = ranked.summary.summary;
-      topics = ranked.summary.topics;
-      tags = ranked.summary.tags;
-      keyDecisions = ranked.summary.keyDecisions;
-      relationships = ranked.summary.relationships;
-      milestone = ranked.summary.milestone;
-      importance = ranked.summary.importance;
-      memoryType = ranked.summary.memoryType;
-      confidence = ranked.summary.confidence;
-      status = ranked.summary.status;
-      score = ranked.score;
+      id = summary.id;
+      title = summary.title;
+      summary = summary.summary;
+      topics = summary.topics;
+      tags = summary.tags;
+      keyDecisions = summary.keyDecisions;
+      relationships = summary.relationships;
+      milestone = summary.milestone;
+      importance = summary.importance;
+      memoryType = summary.memoryType;
+      confidence = summary.confidence;
+      status = summary.status;
+      score;
     };
+  };
+
+  func rankedPreviewMemory(ranked : NativeContinuitySelection.RankedSummary) : MemoryPreview {
+    toPreviewMemory(ranked.summary, ranked.score);
+  };
+
+  func expandedPreviewMemory(expanded : NativeRelationshipExpansion.ExpandedSummary) : MemoryPreview {
+    toPreviewMemory(expanded.summary, Int.fromNat(expanded.score));
   };
 
   public func buildForOwner(
@@ -64,12 +75,20 @@ module {
   ) : Preview {
     let memoryCount = summaries.filter(func summary { summary.owner == owner }).size();
     let ranked = BoundedContinuityPreview.previewForOwner(summaries, owner, queryText, requestedLimit);
+    let expanded = NativeRelationshipExpansion.expandForOwner(
+      summaries,
+      owner,
+      ranked.map(func entry { entry.summary }),
+      queryText,
+      NativeRelationshipExpansion.maximumExpandedSummaries,
+    );
 
     {
       queryText;
       queryIntent = intentLabel(MemoryRank.detectIntent(queryText));
       memoryCount;
-      rankedMemories = ranked.map(func entry { toPreviewMemory(entry) });
+      rankedMemories = ranked.map(func entry { rankedPreviewMemory(entry) });
+      expandedMemories = expanded.map(func entry { expandedPreviewMemory(entry) });
     };
   };
 };

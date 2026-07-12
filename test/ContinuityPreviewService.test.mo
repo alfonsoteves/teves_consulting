@@ -61,6 +61,7 @@ switch (result) {
     assert response.queryIntent == "technical";
     assert response.memoryCount == 1;
     assert response.rankedMemories.size() == 1;
+    assert response.expandedMemories == [];
     assert response.rankedMemories[0].id == 1;
     assert response.contextPreview.contains(#text("Owner A backend"));
     assert not response.contextPreview.contains(#text("Owner B backend"));
