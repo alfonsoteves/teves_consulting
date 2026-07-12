@@ -5027,6 +5027,53 @@ window.runAionRouteEnforcementHandoffDebug = async function runAionRouteEnforcem
   }
 };
 
+window.runProviderAdapterGuardDebug = async function runProviderAdapterGuardDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("providerAdapterGuardResults");
+  container.innerHTML = "<p>Running provider adapter guard fixtures...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/provider-adapter-guard");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const summary = data.summaryCounts || {};
+    const rows = Array.isArray(data.fixtureResults) ? data.fixtureResults.map((fixture) => `
+      <tr>
+        <td><strong>${escapeHtml(fixture.name || "")}</strong></td>
+        <td>${escapeHtml(fixture.expected || "")}</td>
+        <td>${escapeHtml(fixture.actual || "")}</td>
+        <td><span class="status-badge ${fixture.passed ? "success" : "error"}">${fixture.passed ? "pass" : "review"}</span></td>
+      </tr>
+    `).join("") : "";
+    const fullyGreen = Number(summary.review || 0) === 0;
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Provider Adapter Guard Fixture Run")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Phase: ${escapeHtml(data.phase || "7.48")} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Memory writes: ${data.memoryWrites ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
+        <p><span class="status-badge ${fullyGreen ? "success" : "error"}">${fullyGreen ? "fixtures passed" : "review required"}</span> ${escapeHtml(summary.passed || 0)}/${escapeHtml(summary.fixtures || 0)} passed</p>
+      </div>
+      <div class="memory-card"><h3>Contract Boundary</h3>${renderCountMap(data.contractBoundary || {})}</div>
+      <div class="memory-card"><h3>Normalized Errors</h3><p>${(data.normalizedErrors || []).map((item) => `<code>${escapeHtml(item)}</code>`).join(" | ")}</p></div>
+      <div class="memory-card"><h3>Fixture Results</h3><table><thead><tr><th>Fixture</th><th>Expected</th><th>Actual</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="memory-card"><h3>Guardrails</h3><ul>${(data.guardrails || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    `;
+  } catch (err) {
+    console.error("Provider adapter guard fixtures failed:", err);
+    container.innerHTML = `<p>Provider adapter guard fixtures failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
