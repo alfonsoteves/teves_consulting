@@ -4978,6 +4978,55 @@ window.runAionProviderPolicyParityDebug = async function runAionProviderPolicyPa
   }
 };
 
+window.runAionRouteEnforcementHandoffDebug = async function runAionRouteEnforcementHandoffDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("aionRouteEnforcementHandoffResults");
+  container.innerHTML = "<p>Building route-enforcement handoff design...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-route-enforcement-handoff");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const routeRows = Array.isArray(data.routeMatrix) ? data.routeMatrix.map((route) => `
+      <tr>
+        <td><strong>${escapeHtml(route.operation || "")}</strong></td>
+        <td>${escapeHtml(route.nativeRoute || "")}</td>
+        <td>${escapeHtml(route.adapter || "")}</td>
+        <td>${escapeHtml(route.enforcementStatus || "")}</td>
+        <td>${escapeHtml(route.requirement || "")}</td>
+      </tr>
+    `).join("") : "";
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Aion Route Enforcement Handoff Design")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Phase: ${escapeHtml(data.phase || "7.45")} | Dry run: ${data.dryRunOnly ? "yes" : "no"} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
+      </div>
+      <div class="memory-card"><h3>Parity Evidence</h3>${renderCountMap(data.parityEvidence || {})}</div>
+      <div class="memory-card"><h3>Native Decision Contract</h3>${renderCountMap(data.nativeDecisionContract || {})}</div>
+      <div class="memory-card"><h3>Aion Request Boundary</h3>${renderCountMap(data.aionRequestBoundary || {})}</div>
+      <div class="memory-card"><h3>Handoff Sequence</h3><ol>${(data.handoffSequence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>
+      <div class="memory-card"><h3>Route Matrix</h3><table><thead><tr><th>Operation</th><th>Native route</th><th>External adapter</th><th>Enforcement</th><th>Requirement</th></tr></thead><tbody>${routeRows}</tbody></table></div>
+      <div class="memory-card"><h3>Failure Policy</h3><ul>${(data.failurePolicy || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Promotion Requirements</h3><ul>${(data.promotionRequirements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Non-Goals</h3><ul>${(data.nonGoals || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    `;
+  } catch (err) {
+    console.error("Aion route enforcement handoff design failed:", err);
+    container.innerHTML = `<p>Aion route enforcement handoff design failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
