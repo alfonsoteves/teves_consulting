@@ -2,6 +2,7 @@ import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import Types "types";
+import CertifiedPolicyLifecycle "lib/CertifiedPolicyLifecycle";
 import ContinuityPreviewContract "lib/ContinuityPreviewContract";
 import ContinuityPreviewService "lib/ContinuityPreviewService";
 import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
@@ -9,6 +10,8 @@ import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
 import SummaryAccess "lib/SummaryAccess";
 
 actor {
+  CertifiedPolicyLifecycle.refresh();
+
   var feedbackEntries : [Types.Feedback] = [];
   var nextId : Nat = 0;
   var memorySummaries : [Types.MemorySummary] = [];
