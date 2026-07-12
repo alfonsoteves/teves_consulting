@@ -3,6 +3,8 @@ import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import Types "types";
 import CertifiedPolicyLifecycle "lib/CertifiedPolicyLifecycle";
+import CertifiedPolicySnapshotContract "lib/CertifiedPolicySnapshotContract";
+import CertifiedPolicySnapshotService "lib/CertifiedPolicySnapshotService";
 import ContinuityPreviewContract "lib/ContinuityPreviewContract";
 import ContinuityPreviewService "lib/ContinuityPreviewService";
 import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
@@ -121,6 +123,10 @@ actor {
     operation : ProviderRoutePreviewContract.Operation
   ) : async ProviderRoutePreviewContract.Response {
     ProviderRoutePreviewService.preview(operation);
+  };
+
+  public query func getCertifiedAionProviderPolicy() : async CertifiedPolicySnapshotContract.Response {
+    CertifiedPolicySnapshotService.getCertified();
   };
 
   public shared ({ caller }) func deleteSummaryById(id : Nat) : async Bool {
