@@ -1,10 +1,15 @@
 import Array "mo:core/Array";
+import PrivateProviderPolicyProof "PrivateProviderPolicyProof";
 import PrivateRankerProof "PrivateRankerProof";
 import Types "../types";
 
 module {
   public func privateRankerBuildProof() : Bool {
     PrivateRankerProof.isLinked();
+  };
+
+  public func privateProviderPolicyBuildProof() : Bool {
+    PrivateProviderPolicyProof.isLinked();
   };
 
   public func recent<T>(entries : [T], limit : Nat) : [T] {
