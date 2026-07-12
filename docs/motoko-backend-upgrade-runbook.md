@@ -2,6 +2,8 @@
 
 This runbook promotes the Phase 7 Motoko build modernization only. It does not add Aion intelligence behavior, change provider routing, or alter the public Candid interface.
 
+For the first native read-only Candid addition, use [Native Continuity Preview Promotion](native-continuity-preview-promotion.md).
+
 ## Preconditions
 
 - Run from the reviewed `phase7-motoko-modernization` branch after it is clean and pushed.
