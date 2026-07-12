@@ -2,6 +2,8 @@ import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import Types "types";
+import ContinuityPreviewContract "lib/ContinuityPreviewContract";
+import ContinuityPreviewService "lib/ContinuityPreviewService";
 import SummaryAccess "lib/SummaryAccess";
 
 actor {
@@ -98,6 +100,16 @@ actor {
 
   public shared query ({ caller }) func getMyAllSummaries() : async [Types.MemorySummary] {
     SummaryAccess.forOwner(memorySummaries, caller);
+  };
+
+  public shared query ({ caller }) func previewMyContinuity(
+    queryText : Text
+  ) : async ContinuityPreviewContract.Result {
+    if (caller.isAnonymous()) {
+      #err(#unauthenticated);
+    } else {
+      ContinuityPreviewService.previewForOwner(memorySummaries, caller, queryText);
+    };
   };
 
   public shared ({ caller }) func deleteSummaryById(id : Nat) : async Bool {
