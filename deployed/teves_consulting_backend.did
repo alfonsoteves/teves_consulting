@@ -3,6 +3,16 @@ type Result =
    err: Error;
    ok: Response;
  };
+type Response__1 = 
+ record {
+   automaticFallback: bool;
+   explicitOperatorAction: bool;
+   invocationPermitted: bool;
+   operation: Operation;
+   promotionRequired: bool;
+   providerId: text;
+   routeId: text;
+ };
 type Response = 
  record {
    contextPreview: text;
@@ -18,6 +28,12 @@ type Relationship =
    predicate: text;
    subject: text;
    target: text;
+ };
+type Operation = 
+ variant {
+   adminCandidateEvaluation;
+   nativeContinuityPreview;
+   publicAnswer;
  };
 type MemorySummary = 
  record {
@@ -80,6 +96,7 @@ service : {
   getMyMilestoneSummaries: () -> (vec MemorySummary) query;
   getMyRecentSummaries: (limit: nat) -> (vec MemorySummary) query;
   getRecentFeedback: (limit: nat) -> (vec Feedback) query;
+  previewAionProviderRoute: (operation: Operation) -> (Response__1) query;
   previewMyContinuity: (queryText: text) -> (Result) query;
   storeSummary: (title: text, summary: text, topics: vec text, tags:
    vec text, keyDecisions: vec text, relationships: vec Relationship,
