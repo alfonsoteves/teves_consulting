@@ -4,6 +4,8 @@ import Time "mo:core/Time";
 import Types "types";
 import ContinuityPreviewContract "lib/ContinuityPreviewContract";
 import ContinuityPreviewService "lib/ContinuityPreviewService";
+import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
+import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
 import SummaryAccess "lib/SummaryAccess";
 
 actor {
@@ -110,6 +112,12 @@ actor {
     } else {
       ContinuityPreviewService.previewForOwner(memorySummaries, caller, queryText);
     };
+  };
+
+  public query func previewAionProviderRoute(
+    operation : ProviderRoutePreviewContract.Operation
+  ) : async ProviderRoutePreviewContract.Response {
+    ProviderRoutePreviewService.preview(operation);
   };
 
   public shared ({ caller }) func deleteSummaryById(id : Nat) : async Bool {
