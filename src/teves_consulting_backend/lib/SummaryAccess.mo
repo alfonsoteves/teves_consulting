@@ -1,4 +1,5 @@
 import Array "mo:core/Array";
+import PrivateCertifiedPolicyDigestProof "PrivateCertifiedPolicyDigestProof";
 import PrivateCertifiedPolicySnapshotProof "PrivateCertifiedPolicySnapshotProof";
 import PrivateProviderPolicyProof "PrivateProviderPolicyProof";
 import PrivateRankerProof "PrivateRankerProof";
@@ -15,6 +16,10 @@ module {
 
   public func privateCertifiedPolicySnapshotBuildProof() : Bool {
     PrivateCertifiedPolicySnapshotProof.isLinked();
+  };
+
+  public func privateCertifiedPolicyDigestBuildProof() : Bool {
+    PrivateCertifiedPolicyDigestProof.isLinked();
   };
 
   public func recent<T>(entries : [T], limit : Nat) : [T] {
