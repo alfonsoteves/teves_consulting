@@ -242,6 +242,22 @@ const idlFactory = ({ IDL }) => {
     status: IDL.Text,
   });
 
+  const ProviderRouteOperation = IDL.Variant({
+    publicAnswer: IDL.Null,
+    adminCandidateEvaluation: IDL.Null,
+    nativeContinuityPreview: IDL.Null,
+  });
+
+  const ProviderRoutePreview = IDL.Record({
+    operation: ProviderRouteOperation,
+    providerId: IDL.Text,
+    routeId: IDL.Text,
+    invocationPermitted: IDL.Bool,
+    explicitOperatorAction: IDL.Bool,
+    promotionRequired: IDL.Bool,
+    automaticFallback: IDL.Bool,
+  });
+
   return IDL.Service({
     whoami: IDL.Func([], [IDL.Text], []),
 
@@ -265,6 +281,12 @@ const idlFactory = ({ IDL }) => {
         timestamp: IDL.Text,
         receivedAt: IDL.Int,
       }))],
+      ["query"]
+    ),
+
+    previewAionProviderRoute: IDL.Func(
+      [ProviderRouteOperation],
+      [ProviderRoutePreview],
       ["query"]
     ),
   });
@@ -4838,6 +4860,121 @@ window.runAionProviderRoutingPolicyDebug = async function runAionProviderRouting
   } catch (err) {
     console.error("Aion provider routing policy failed:", err);
     container.innerHTML = `<p>Aion provider routing policy failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function nativeOperationKey(operation = {}) {
+  return Object.keys(operation)[0] || "unknown";
+}
+
+function policyParityChecks(route, nativeDecision) {
+  const expected = route.nativeDecision || {};
+
+  return {
+    operation: nativeOperationKey(nativeDecision.operation) === route.operationId,
+    provider: nativeDecision.providerId === expected.providerId,
+    route: nativeDecision.routeId === expected.routeId,
+    invocation: nativeDecision.invocationPermitted === expected.invocationPermitted,
+    operatorAction: nativeDecision.explicitOperatorAction === expected.explicitOperatorAction,
+    promotion: nativeDecision.promotionRequired === expected.promotionRequired,
+    fallback: nativeDecision.automaticFallback === expected.automaticFallback,
+  };
+}
+
+window.runAionProviderPolicyParityDebug = async function runAionProviderPolicyParityDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("aionProviderPolicyParityResults");
+  container.innerHTML = "<p>Comparing Render and native provider policy...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-provider-routing-policy");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const routes = Array.isArray(data.routes)
+      ? data.routes.filter((route) => route.operationId && route.nativeDecision)
+      : [];
+
+    if (routes.length !== 3) {
+      container.innerHTML = "<p>Policy parity metadata is incomplete.</p>";
+      return;
+    }
+
+    const results = await Promise.all(routes.map(async (route) => {
+      try {
+        const nativeDecision = await window.adminActor.previewAionProviderRoute({
+          [route.operationId]: null,
+        });
+        const checks = policyParityChecks(route, nativeDecision);
+        const matches = Object.values(checks).every(Boolean);
+
+        return { route, nativeDecision, checks, matches, error: "" };
+      } catch (err) {
+        return {
+          route,
+          nativeDecision: null,
+          checks: {},
+          matches: false,
+          error: err.message || String(err),
+        };
+      }
+    }));
+
+    const matchedCount = results.filter((result) => result.matches).length;
+    const allMatch = matchedCount === results.length;
+    const rows = results.map((result) => {
+      const expected = result.route.nativeDecision || {};
+      const actual = result.nativeDecision;
+      const actualRoute = actual
+        ? `${actual.providerId || ""} / ${actual.routeId || ""}`
+        : "No native result";
+      const checkSummary = result.error
+        ? escapeHtml(result.error)
+        : Object.entries(result.checks)
+          .map(([name, passed]) => `${name}: ${passed ? "pass" : "review"}`)
+          .join(" | ");
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(result.route.operation || "")}</strong></td>
+          <td>${escapeHtml(`${expected.providerId || ""} / ${expected.routeId || ""}`)}</td>
+          <td>${escapeHtml(actualRoute)}</td>
+          <td><span class="status-badge ${result.matches ? "success" : "error"}">${result.matches ? "match" : "review"}</span></td>
+          <td>${escapeHtml(checkSummary)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Native Provider Policy Parity</h3>
+        <p>Render policy and the live ICP route preview are compared for fixed operations only.</p>
+        <p class="meta">Phase: 7.44 | Provider calls: no | Memory writes: no | Automatic switching: no</p>
+        <p><span class="status-badge ${allMatch ? "success" : "error"}">${allMatch ? "parity confirmed" : "parity review needed"}</span> ${matchedCount}/${results.length} routes matched</p>
+      </div>
+      <div class="memory-card">
+        <h3>Route Comparison</h3>
+        <table>
+          <thead><tr><th>Operation</th><th>Render expectation</th><th>Native result</th><th>Status</th><th>Checks</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="memory-card">
+        <h3>Boundary</h3>
+        <p>This report compares policy descriptions. It does not invoke OpenAI, ICP LLM, or any other reasoning provider, and it does not authorize route enforcement.</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Aion provider policy parity failed:", err);
+    container.innerHTML = `<p>Aion provider policy parity failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 
