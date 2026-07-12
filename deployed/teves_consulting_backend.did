@@ -6,6 +6,7 @@ type Result =
 type Response = 
  record {
    contextPreview: text;
+   expandedMemories: vec MemoryPreview;
    memoryCount: nat;
    queryIntent: text;
    queryText: text;
