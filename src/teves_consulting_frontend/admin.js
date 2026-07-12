@@ -5176,6 +5176,56 @@ window.runLiveProviderAdapterHandoffSimulationDebug = async function runLiveProv
   }
 };
 
+window.runRenderNativeProviderPolicyQueryDebug = async function runRenderNativeProviderPolicyQueryDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("renderNativeProviderPolicyQueryResults");
+  container.innerHTML = "<p>Querying the native policy from Render...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/render-native-provider-policy-query");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const summary = data.summaryCounts || {};
+    const allPassed = Number(summary.review || 0) === 0;
+    const rows = Array.isArray(data.results) ? data.results.map((result) => `
+      <tr>
+        <td><strong>${escapeHtml(result.operation || "")}</strong></td>
+        <td>${escapeHtml(`${result.nativeDecision?.providerId || ""} / ${result.nativeDecision?.routeId || ""}`)}</td>
+        <td>${result.policyParity ? "pass" : "review"}</td>
+        <td>${escapeHtml(result.handoffValidation || "")}</td>
+        <td>${escapeHtml(result.adapterInvocation || "")}</td>
+        <td><span class="status-badge ${result.passed ? "success" : "error"}">${result.passed ? "pass" : "review"}</span></td>
+      </tr>
+    `).join("") : "";
+    const trust = data.trustBoundary || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Render-Initiated Native Policy Query")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Phase: ${escapeHtml(data.phase || "7.50")} | ICP queries: ${escapeHtml(data.canisterCallsMade || 0)} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Memory writes: ${data.memoryWrites ? "yes" : "no"}</p>
+        <p><span class="status-badge ${allPassed ? "success" : "error"}">${allPassed ? "server query confirmed" : "query review needed"}</span> ${escapeHtml(summary.passed || 0)}/${escapeHtml(summary.operations || 0)} operations passed</p>
+      </div>
+      <div class="memory-card"><h3>Canister Query</h3>${renderCountMap(data.canister || {})}</div>
+      <div class="memory-card"><h3>Trust Boundary</h3>${renderCountMap(trust)}</div>
+      <div class="memory-card"><h3>Server Query Matrix</h3><table><thead><tr><th>Operation</th><th>Native decision</th><th>Policy parity</th><th>Guard result</th><th>Adapter state</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="memory-card"><h3>Guardrails</h3><ul>${(data.guardrails || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    `;
+  } catch (err) {
+    console.error("Render native provider policy query failed:", err);
+    container.innerHTML = `<p>Render native provider policy query failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
