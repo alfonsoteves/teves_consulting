@@ -5226,6 +5226,55 @@ window.runRenderNativeProviderPolicyQueryDebug = async function runRenderNativeP
   }
 };
 
+window.runCertifiedNativePolicyAuthorizationDebug = async function runCertifiedNativePolicyAuthorizationDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("certifiedNativePolicyAuthorizationResults");
+  container.innerHTML = "<p>Building certified native policy authorization design...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/certified-native-policy-authorization");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const fieldRows = Array.isArray(data.proposedNativeContract) ? data.proposedNativeContract.map((field) => `
+      <tr><td><strong>${escapeHtml(field.field || "")}</strong></td><td>${escapeHtml(field.type || "")}</td><td>${escapeHtml(field.purpose || "")}</td></tr>
+    `).join("") : "";
+    const rejectedRows = Array.isArray(data.rejectedApproaches) ? data.rejectedApproaches.map((item) => `
+      <tr><td><strong>${escapeHtml(item.approach || "")}</strong></td><td>${escapeHtml(item.reason || "")}</td></tr>
+    `).join("") : "";
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Certified Native Policy Authorization Design")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Phase: ${escapeHtml(data.phase || "7.51")} | Dry run: ${data.dryRunOnly ? "yes" : "no"} | Canister calls: ${escapeHtml(data.canisterCallsMade || 0)} | Provider calls: ${data.providerCallsMade ? "yes" : "no"}</p>
+      </div>
+      <div class="memory-card"><h3>Current Evidence</h3>${renderCountMap(data.currentEvidence || {})}</div>
+      <div class="memory-card"><h3>Selected Approach</h3>${renderCountMap(data.selectedApproach || {})}</div>
+      <div class="memory-card"><h3>Proposed Native Contract</h3><table><thead><tr><th>Field</th><th>Type</th><th>Purpose</th></tr></thead><tbody>${fieldRows}</tbody></table></div>
+      <div class="memory-card"><h3>Proposed Method</h3>${renderCountMap(data.proposedMethod || {})}</div>
+      <div class="memory-card"><h3>Native Lifecycle</h3><ol>${(data.nativeLifecycle || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>
+      <div class="memory-card"><h3>Verifier Requirements</h3><ol>${(data.verifierRequirements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>
+      <div class="memory-card"><h3>Failure Policy</h3><ul>${(data.failurePolicy || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Rejected Approaches</h3><table><thead><tr><th>Approach</th><th>Reason</th></tr></thead><tbody>${rejectedRows}</tbody></table></div>
+      <div class="memory-card"><h3>Implementation Sequence</h3><ol>${(data.implementationSequence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>
+      <div class="memory-card"><h3>Non-Goals</h3><ul>${(data.nonGoals || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Guardrails</h3><ul>${(data.guardrails || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    `;
+  } catch (err) {
+    console.error("Certified native policy authorization design failed:", err);
+    container.innerHTML = `<p>Certified native policy authorization design failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
