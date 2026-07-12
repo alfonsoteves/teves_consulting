@@ -4,6 +4,7 @@ lintoko = "0.10.0"
 
 [dependencies]
 core = "2.5.0"
+sha2 = "0.2.5"
 aion_intelligence = "./private/aion_intelligence"
 
 [moc]
