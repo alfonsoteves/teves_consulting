@@ -4801,6 +4801,46 @@ window.runAionProviderInterfaceDesignDebug = async function runAionProviderInter
   }
 };
 
+window.runAionProviderRoutingPolicyDebug = async function runAionProviderRoutingPolicyDebug() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("aionProviderRoutingPolicyResults");
+  container.innerHTML = "<p>Building Aion provider routing policy...</p>";
+
+  try {
+    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-provider-routing-policy");
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const routeRows = Array.isArray(data.routes) ? data.routes.map((route) => `
+      <tr><td><strong>${escapeHtml(route.operation || "")}</strong></td><td>${escapeHtml(route.provider || "")}</td><td>${escapeHtml(route.model || "")}</td><td>${escapeHtml(route.status || "")}</td><td>${escapeHtml(route.rule || "")}</td></tr>
+    `).join("") : "";
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Aion Provider Routing Policy")}</h3>
+        <p>${escapeHtml(data.summary || "")}</p>
+        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
+      </div>
+      <div class="memory-card"><h3>Permitted Routes</h3><table><thead><tr><th>Operation</th><th>Provider</th><th>Model</th><th>Status</th><th>Rule</th></tr></thead><tbody>${routeRows}</tbody></table></div>
+      <div class="memory-card"><h3>Decision Order</h3><ul>${(data.decisionOrder || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Failure Policy</h3><ul>${(data.failurePolicy || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+      <div class="memory-card"><h3>Future Motoko Policy Contract</h3>${renderCountMap(data.futureMotokoContract || {})}</div>
+      <div class="memory-card"><h3>Promotion Requirements</h3><ul>${(data.promotionRequirements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    `;
+  } catch (err) {
+    console.error("Aion provider routing policy failed:", err);
+    container.innerHTML = `<p>Aion provider routing policy failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
 window.runCandidateHardeningPlanDebug = async function runCandidateHardeningPlanDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
