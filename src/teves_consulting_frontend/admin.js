@@ -8,6 +8,7 @@ const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
+const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
 const DEFAULT_CANDIDATE_MODELS = [
   LLM_CANDIDATE_MODEL,
   "qwen3:32b",
@@ -215,6 +216,36 @@ let authClient = null;
 let isAuthenticated = false;
 let identity = null;
 let lastCandidateCallResult = null;
+let isOperator = false;
+let renderOperatorSessionToken = null;
+let renderOperatorSessionExpiresAt = null;
+let operatorAccessIssue = null;
+const browserFetch = window.fetch.bind(window);
+
+function isRenderAdminRequest(input) {
+  const rawUrl = input instanceof Request ? input.url : String(input);
+
+  try {
+    const url = new URL(rawUrl, window.location.href);
+    return (
+      url.origin === new URL(AIONIC_AGENT_API_BASE_URL).origin &&
+      url.pathname.startsWith("/admin/") &&
+      url.href !== OPERATOR_SESSION_EXCHANGE_URL
+    );
+  } catch (_error) {
+    return false;
+  }
+}
+
+window.fetch = function authenticatedAdminFetch(input, init = {}) {
+  if (!isRenderAdminRequest(input) || !renderOperatorSessionToken) {
+    return browserFetch(input, init);
+  }
+
+  const headers = new Headers(init.headers || {});
+  headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
+  return browserFetch(input, { ...init, headers });
+};
 
 const idlFactory = ({ IDL }) => {
   const Relationship = IDL.Record({
@@ -259,8 +290,23 @@ const idlFactory = ({ IDL }) => {
     automaticFallback: IDL.Bool,
   });
 
+  const OperatorStatus = IDL.Record({
+    isOperator: IDL.Bool,
+    allowlistConfigured: IDL.Bool,
+    recoveryConfigured: IDL.Bool,
+    operatorCount: IDL.Nat,
+  });
+
   return IDL.Service({
     whoami: IDL.Func([], [IDL.Text], []),
+
+    getOperatorStatus: IDL.Func([], [OperatorStatus], ["query"]),
+
+    issueOperatorSessionGrant: IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
+      []
+    ),
 
     getMyAllSummaries: IDL.Func(
       [],
@@ -385,6 +431,7 @@ async function initAuth() {
   if (isAuthenticated) {
     identity = authClient.getIdentity();
     await createAuthenticatedActor();
+    await refreshOperatorAccess();
   }
 
   updateAuthUI();
@@ -414,11 +461,105 @@ function updateAuthUI() {
 
 function updateAdminVisibility() {
   const adminContent = document.getElementById("adminContent");
+  const access = document.getElementById("operatorAccess");
 
-  if (!adminContent) return;
+  if (!adminContent || !access) return;
 
-  adminContent.style.display =
-    isAuthenticated ? "block" : "none";
+  adminContent.style.display = isAuthenticated && isOperator ? "block" : "none";
+  access.style.display = "block";
+  access.className = "operator-access";
+
+  if (!isAuthenticated) {
+    access.textContent = "Sign in with Internet Identity to continue.";
+    return;
+  }
+
+  if (operatorAccessIssue) {
+    access.classList.add("denied");
+    access.textContent = "Operator access could not be verified. Refresh after the operator session service is available.";
+    return;
+  }
+
+  if (!isOperator) {
+    access.classList.add("denied");
+    access.textContent = "Access denied. This interface is restricted to the Teves Consulting operator.";
+    return;
+  }
+
+  access.classList.add("verified");
+  access.textContent = renderOperatorSessionExpiresAt
+    ? `Operator access verified. This Admin session expires at ${new Date(renderOperatorSessionExpiresAt * 1000).toLocaleTimeString()}.`
+    : "Operator access verified.";
+}
+
+function encodeOperatorGrant(nonce) {
+  let binary = "";
+  nonce.forEach((value) => {
+    binary += String.fromCharCode(value);
+  });
+
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+async function establishRenderOperatorSession() {
+  const nonce = new Uint8Array(32);
+  crypto.getRandomValues(nonce);
+  const issued = await window.adminActor.issueOperatorSessionGrant(Array.from(nonce));
+
+  if (!issued) {
+    throw new Error("Operator session grant was not issued.");
+  }
+
+  const response = await browserFetch(OPERATOR_SESSION_EXCHANGE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nonce: encodeOperatorGrant(nonce) }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Operator session exchange was rejected.");
+  }
+
+  const session = await response.json();
+  if (!session || typeof session.sessionToken !== "string" || !session.sessionToken) {
+    throw new Error("Operator session exchange returned an invalid session.");
+  }
+
+  renderOperatorSessionToken = session.sessionToken;
+  renderOperatorSessionExpiresAt = session.expiresAt || null;
+}
+
+async function refreshOperatorAccess() {
+  isOperator = false;
+  renderOperatorSessionToken = null;
+  renderOperatorSessionExpiresAt = null;
+  operatorAccessIssue = null;
+
+  if (!isAuthenticated || !window.adminActor) {
+    updateAdminVisibility();
+    return false;
+  }
+
+  try {
+    const status = await window.adminActor.getOperatorStatus();
+    if (!status.allowlistConfigured || !status.isOperator) {
+      updateAdminVisibility();
+      return false;
+    }
+
+    await establishRenderOperatorSession();
+    isOperator = true;
+    updateAdminVisibility();
+    return true;
+  } catch (err) {
+    console.error("Operator access verification failed:", err);
+    operatorAccessIssue = "verification_failed";
+    updateAdminVisibility();
+    return false;
+  }
 }
 
 window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizationDryRun() {
@@ -427,32 +568,32 @@ window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizatio
     return;
   }
 
-  if (!isAuthenticated || !window.adminActor) {
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
     container.innerHTML = "<p>Sign in with Internet Identity first.</p>";
     return;
   }
 
-  container.innerHTML = "<p>Reading the authenticated caller principal...</p>";
+  container.innerHTML = "<p>Refreshing operator access...</p>";
 
   try {
     const principal = await window.adminActor.whoami();
+    const status = await window.adminActor.getOperatorStatus();
     container.innerHTML = `
       <div class="memory-card">
-        <h3>Operator Authorization Dry Run</h3>
-        <p>Capture this authenticated production Internet Identity principal before creating the operator allowlist.</p>
+        <h3>Operator Access</h3>
+        <p>The authenticated principal is allowlisted and holds a short-lived Admin session.</p>
         ${renderMetricGrid({
           "signed-in principal": principal,
-          "allowlist": "not configured",
-          "current Admin access": "any authenticated II user",
-          "recovery principal": "not configured",
+          "allowlist": status.allowlistConfigured ? "configured" : "not configured",
+          "operator access": status.isOperator ? "verified" : "denied",
+          "recovery principal": status.recoveryConfigured ? "configured" : "not configured",
         })}
-        <p class="meta">Phase 7.76 | Dry run: yes | Allowlist writes: no | Live behavior changed: no</p>
-        <p class="meta">This screen does not authorize access. It exposes only the signed-in caller's own principal so the next phase can install an explicit Motoko allowlist.</p>
+        <p class="meta">Phase 7.77 | Operator authorization and Render session required.</p>
       </div>
     `;
   } catch (err) {
-    console.error("Operator authorization dry run failed:", err);
-    container.innerHTML = `<p>Could not read the authenticated caller principal: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+    console.error("Operator access refresh failed:", err);
+    container.innerHTML = `<p>Could not refresh operator access: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
   }
 };
 
@@ -465,6 +606,10 @@ window.handleAuth = async function handleAuth() {
     await authClient.logout();
     isAuthenticated = false;
     identity = null;
+    isOperator = false;
+    renderOperatorSessionToken = null;
+    renderOperatorSessionExpiresAt = null;
+    operatorAccessIssue = null;
 
     window.adminActor = Actor.createActor(idlFactory, {
       agent,
@@ -484,12 +629,14 @@ window.handleAuth = async function handleAuth() {
       identity = authClient.getIdentity();
 
       await createAuthenticatedActor();
-
+      const operatorReady = await refreshOperatorAccess();
       updateAuthUI();
 
-      await loadMemories();
-      await loadGoldenTests();
-      await loadFeedback();
+      if (operatorReady) {
+        await loadMemories();
+        await loadGoldenTests();
+        await loadFeedback();
+      }
     },
   });
 };

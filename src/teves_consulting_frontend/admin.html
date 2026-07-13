@@ -170,21 +170,119 @@
       border-left: 4px solid #f97316;
     }
 
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      max-width: 1120px;
+      margin: 32px auto 64px;
+      background: #111315;
+      color: #f3f4f6;
+    }
+
+    h1,
+    h2,
+    h3,
+    strong,
+    summary {
+      color: #f9fafb;
+    }
+
+    button {
+      background: #27303a;
+      border: 1px solid #475569;
+      color: #f3f4f6;
+    }
+
+    button:hover {
+      background: #344150;
+      border-color: #60a5fa;
+    }
+
+    input,
+    textarea,
+    select {
+      box-sizing: border-box;
+      background: #1a1d21;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: #f3f4f6;
+    }
+
+    .admin-section {
+      border-color: #2c3138;
+    }
+
+    .section-note,
+    .meta,
+    .metric-label {
+      color: #9ca3af;
+    }
+
+    details,
+    details[open],
+    .memory-card,
+    .metric-card {
+      background: #1a1d21;
+      border-color: #2c3138;
+    }
+
+    .metric-card {
+      border-radius: 6px;
+    }
+
+    .metric-value {
+      color: #f3f4f6;
+    }
+
+    th,
+    tr:nth-child(even) td {
+      background: #20252b;
+      color: #bfdbfe;
+    }
+
+    td,
+    th {
+      border-color: #2c3138;
+    }
+
+    .operator-access {
+      display: none;
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      background: #1a1d21;
+      color: #cbd5e1;
+    }
+
+    .operator-access.denied {
+      border-color: #b45309;
+      color: #fde68a;
+    }
+
+    .operator-access.verified {
+      border-color: #166534;
+      color: #bbf7d0;
+    }
+
   </style>
 </head>
 
 <body>
   <h1>Teves Consulting Admin</h1>
-  <p>Private memory tools for Aion continuity review.</p>
+  <p class="section-note">Operator tools for Aion continuity review.</p>
 
   <button id="authButton" onclick="handleAuth()">Sign In</button>
+  <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
   <div id="adminContent" style="display:none;">
 
     <section class="admin-section">
       <h2>Operator Access</h2>
-      <p class="section-note">Identify the authenticated Internet Identity principal before an operator allowlist is enabled.</p>
+      <p class="section-note">Review the signed-in operator and the short-lived Admin session.</p>
 
-      <button onclick="showOperatorAuthorizationDryRun()">Show My Operator Principal</button>
+      <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
 
       <div id="operatorAuthorizationResults"></div>
     </section>
