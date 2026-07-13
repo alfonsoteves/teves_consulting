@@ -10,6 +10,7 @@ import ContinuityPreviewService "lib/ContinuityPreviewService";
 import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
 import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
 import OperatorAccess "lib/OperatorAccess";
+import OperatorSession "lib/OperatorSession";
 import SummaryAccess "lib/SummaryAccess";
 
 actor {
@@ -19,6 +20,7 @@ actor {
   var nextId : Nat = 0;
   var memorySummaries : [Types.MemorySummary] = [];
   var nextMemoryId : Nat = 0;
+  var operatorSessionGrants : [OperatorSession.Grant] = [];
 
   public shared ({ caller }) func whoami() : async Text {
     caller.toText();
@@ -46,6 +48,20 @@ actor {
 
   public shared query ({ caller }) func getOperatorStatus() : async OperatorAccess.Status {
     OperatorAccess.getOperatorStatus(caller);
+  };
+
+  public shared ({ caller }) func issueOperatorSessionGrant(nonce : Blob) : async Bool {
+    OperatorAccess.requireOperator(caller);
+
+    let issuance = OperatorSession.issue(operatorSessionGrants, nonce, Time.now());
+    operatorSessionGrants := issuance.grants;
+    issuance.issued;
+  };
+
+  public shared func redeemOperatorSessionGrant(nonce : Blob) : async Bool {
+    let redemption = OperatorSession.redeem(operatorSessionGrants, nonce, Time.now());
+    operatorSessionGrants := redemption.grants;
+    redemption.redeemed;
   };
 
   public shared query ({ caller }) func getFeedbackCount() : async Nat {
