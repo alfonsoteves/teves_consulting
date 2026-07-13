@@ -7,6 +7,7 @@ import CertifiedPolicySnapshotContract "lib/CertifiedPolicySnapshotContract";
 import CertifiedPolicySnapshotService "lib/CertifiedPolicySnapshotService";
 import ContinuityPreviewContract "lib/ContinuityPreviewContract";
 import ContinuityPreviewService "lib/ContinuityPreviewService";
+import HttpsOutcallTransport "lib/HttpsOutcallTransport";
 import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
 import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
 import OperatorAccess "lib/OperatorAccess";
@@ -62,6 +63,11 @@ actor {
     let redemption = OperatorSession.redeem(operatorSessionGrants, nonce, Time.now());
     operatorSessionGrants := redemption.grants;
     redemption.redeemed;
+  };
+
+  public shared ({ caller }) func probeHttpsOutcallTransport() : async HttpsOutcallTransport.Receipt {
+    OperatorAccess.requireOperator(caller);
+    await HttpsOutcallTransport.probe();
   };
 
   public shared query ({ caller }) func getFeedbackCount() : async Nat {
