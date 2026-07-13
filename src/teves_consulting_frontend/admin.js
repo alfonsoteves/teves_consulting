@@ -710,6 +710,16 @@ const NATIVE_CONTINUITY_SHADOW_OBSERVATION_QUERIES = [
   "What is the next action for Aion?",
 ];
 
+function shadowMemoryDetail(memory) {
+  return {
+    id: String(memory.id),
+    title: String(memory.title || ""),
+    memoryType: String(memory.memoryType || "session"),
+    importance: String(memory.importance ?? "n/a"),
+    score: memory.score == null ? "n/a" : String(memory.score),
+  };
+}
+
 async function requestNativeContinuityShadow(query) {
   const [memories, nativeResult] = await Promise.all([
     window.adminActor.getMyAllSummaries(),
@@ -745,11 +755,52 @@ async function requestNativeContinuityShadow(query) {
     throw new Error(data.detail || data.error || `Shadow request failed (${response.status})`);
   }
 
+  const comparison = data.comparison || {};
+  const memoryDetailsById = new Map(
+    memories.map(memory => [String(memory.id), shadowMemoryDetail(memory)])
+  );
+  data.shadowDiagnostics = {
+    legacySelected: (comparison.legacySelectedIds || []).map((id) => ({
+      id: String(id),
+      ...(memoryDetailsById.get(String(id)) || {}),
+    })),
+    nativeRanked: preview.rankedMemories.map(shadowMemoryDetail),
+  };
+
   return data;
 }
 
 function renderNativeContinuityShadowObservation(container, data) {
   const comparison = data.comparison || {};
+  const diagnostics = data.shadowDiagnostics || {};
+  const diagnosticRows = [
+    ...(diagnostics.legacySelected || []).map(memory => ({ source: "Render", ...memory })),
+    ...(diagnostics.nativeRanked || []).map(memory => ({ source: "Motoko", ...memory })),
+  ];
+  const diagnosticsHtml = !comparison.selectedIdsMatch && diagnosticRows.length > 0
+    ? `
+      <details>
+        <summary><strong>Selection Diagnostic</strong></summary>
+        <table>
+          <thead>
+            <tr><th>Source</th><th>ID</th><th>Title</th><th>Type</th><th>Importance</th><th>Native score</th></tr>
+          </thead>
+          <tbody>
+            ${diagnosticRows.map(memory => `
+              <tr>
+                <td>${escapeHtml(memory.source)}</td>
+                <td>${escapeHtml(memory.id)}</td>
+                <td>${escapeHtml(memory.title || "Unknown")}</td>
+                <td>${escapeHtml(memory.memoryType || "n/a")}</td>
+                <td>${escapeHtml(memory.importance || "n/a")}</td>
+                <td>${escapeHtml(memory.score || "n/a")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </details>
+    `
+    : "";
   container.innerHTML = `
     <div class="memory-card">
       <h3>${escapeHtml(data.title || "Native Continuity Shadow Observation")}</h3>
@@ -771,6 +822,7 @@ function renderNativeContinuityShadowObservation(container, data) {
       <p><strong>Overlapping IDs:</strong> ${renderShadowIds(comparison.legacyOverlapIds)}</p>
       <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
       <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
+      ${diagnosticsHtml}
       <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
     </div>
   `;
