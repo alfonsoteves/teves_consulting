@@ -1,3 +1,10 @@
+type Status = 
+ record {
+   allowlistConfigured: bool;
+   isOperator: bool;
+   operatorCount: nat;
+   recoveryConfigured: bool;
+ };
 type Result = 
  variant {
    err: Error;
@@ -103,6 +110,7 @@ service : {
   getMyAllSummaries: () -> (vec MemorySummary) query;
   getMyMilestoneSummaries: () -> (vec MemorySummary) query;
   getMyRecentSummaries: (limit: nat) -> (vec MemorySummary) query;
+  getOperatorStatus: () -> (Status) query;
   getRecentFeedback: (limit: nat) -> (vec Feedback) query;
   previewAionProviderRoute: (operation: Operation) -> (Response__1) query;
   previewMyContinuity: (queryText: text) -> (Result) query;
