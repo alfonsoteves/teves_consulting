@@ -9,6 +9,7 @@ import ContinuityPreviewContract "lib/ContinuityPreviewContract";
 import ContinuityPreviewService "lib/ContinuityPreviewService";
 import ProviderRoutePreviewContract "lib/ProviderRoutePreviewContract";
 import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
+import OperatorAccess "lib/OperatorAccess";
 import SummaryAccess "lib/SummaryAccess";
 
 actor {
@@ -43,15 +44,24 @@ actor {
     true;
   };
 
-  public query func getFeedbackCount() : async Nat {
+  public shared query ({ caller }) func getOperatorStatus() : async OperatorAccess.Status {
+    OperatorAccess.getOperatorStatus(caller);
+  };
+
+  public shared query ({ caller }) func getFeedbackCount() : async Nat {
+    OperatorAccess.requireOperator(caller);
     feedbackEntries.size();
   };
 
-  public query func getFeedbackEntries() : async [Types.Feedback] {
+  public shared query ({ caller }) func getFeedbackEntries() : async [Types.Feedback] {
+    OperatorAccess.requireOperator(caller);
     feedbackEntries;
   };
 
-  public query func getRecentFeedback(limit : Nat) : async [Types.Feedback] {
+  public shared query ({ caller }) func getRecentFeedback(
+    limit : Nat
+  ) : async [Types.Feedback] {
+    OperatorAccess.requireOperator(caller);
     SummaryAccess.recent(feedbackEntries, limit);
   };
 
