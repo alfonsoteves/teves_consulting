@@ -704,6 +704,78 @@ function renderShadowIds(ids = []) {
     : "none";
 }
 
+const NATIVE_CONTINUITY_SHADOW_OBSERVATION_QUERIES = [
+  "What phase are we in?",
+  "How should the Motoko backend deploy?",
+  "What is the next action for Aion?",
+];
+
+async function requestNativeContinuityShadow(query) {
+  const [memories, nativeResult] = await Promise.all([
+    window.adminActor.getMyAllSummaries(),
+    window.adminActor.previewMyContinuity(query),
+  ]);
+
+  if ("err" in nativeResult) {
+    const errorName = Object.keys(nativeResult.err || {})[0] || "unknown_error";
+    throw new Error(`Native continuity preview returned: ${errorName}`);
+  }
+
+  const preview = nativeResult.ok;
+  const response = await fetch(
+    `${AIONIC_AGENT_API_BASE_URL}/admin/native-continuity-shadow`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        memories: memories.map(serializeMemoryForRanking),
+        nativePreview: {
+          queryText: preview.queryText,
+          queryIntent: preview.queryIntent,
+          rankedMemories: nativePreviewIds(preview.rankedMemories),
+          expandedMemories: nativePreviewIds(preview.expandedMemories),
+        },
+      }),
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || `Shadow request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+function renderNativeContinuityShadowObservation(container, data) {
+  const comparison = data.comparison || {};
+  container.innerHTML = `
+    <div class="memory-card">
+      <h3>${escapeHtml(data.title || "Native Continuity Shadow Observation")}</h3>
+      <p>Render and Motoko were compared from this signed-in caller's current memory snapshot. The public answer path was not changed.</p>
+      ${renderMetricGrid({
+        status: data.shadowStatus || "unknown",
+        "query match": comparison.queryMatches ? "pass" : "review",
+        "intent match": comparison.intentMatches ? "pass" : "review",
+        "known native IDs": comparison.nativeIdsKnownToCaller ? "pass" : "review",
+        "selection match": comparison.selectedIdsMatch ? "pass" : "review",
+        "legacy coverage": comparison.legacySelectionCoveragePercent == null
+          ? "n/a"
+          : `${comparison.legacySelectionCoveragePercent}%`,
+        "legacy IDs covered": comparison.legacyIdsCoveredByNative ? "pass" : "review",
+        "provider calls": data.providerCallsMade ? "yes" : "no",
+        "memory writes": data.memoryWrites ? "yes" : "no",
+      })}
+      <p><strong>Render-selected IDs:</strong> ${renderShadowIds(comparison.legacySelectedIds)}</p>
+      <p><strong>Overlapping IDs:</strong> ${renderShadowIds(comparison.legacyOverlapIds)}</p>
+      <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
+      <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
+      <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
+    </div>
+  `;
+}
+
 window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
   const container = document.getElementById("nativeContinuityShadowResults");
   const queryInput = document.getElementById("nativeContinuityShadowQuery");
@@ -730,66 +802,8 @@ window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
   container.innerHTML = "<p>Comparing the signed-in native preview with the current Render selection...</p>";
 
   try {
-    const [memories, nativeResult] = await Promise.all([
-      window.adminActor.getMyAllSummaries(),
-      window.adminActor.previewMyContinuity(query),
-    ]);
-
-    if ("err" in nativeResult) {
-      const errorName = Object.keys(nativeResult.err || {})[0] || "unknown_error";
-      container.innerHTML = `<p>Native continuity preview returned: ${escapeHtml(errorName)}</p>`;
-      return;
-    }
-
-    const preview = nativeResult.ok;
-    const response = await fetch(
-      `${AIONIC_AGENT_API_BASE_URL}/admin/native-continuity-shadow`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          memories: memories.map(serializeMemoryForRanking),
-          nativePreview: {
-            queryText: preview.queryText,
-            queryIntent: preview.queryIntent,
-            rankedMemories: nativePreviewIds(preview.rankedMemories),
-            expandedMemories: nativePreviewIds(preview.expandedMemories),
-          },
-        }),
-      }
-    );
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || data.error || `Shadow request failed (${response.status})`);
-    }
-
-    const comparison = data.comparison || {};
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Native Continuity Shadow Observation")}</h3>
-        <p>Render and Motoko were compared from this signed-in caller's current memory snapshot. The public answer path was not changed.</p>
-        ${renderMetricGrid({
-          status: data.shadowStatus || "unknown",
-          "query match": comparison.queryMatches ? "pass" : "review",
-          "intent match": comparison.intentMatches ? "pass" : "review",
-          "known native IDs": comparison.nativeIdsKnownToCaller ? "pass" : "review",
-          "selection match": comparison.selectedIdsMatch ? "pass" : "review",
-          "legacy coverage": comparison.legacySelectionCoveragePercent == null
-            ? "n/a"
-            : `${comparison.legacySelectionCoveragePercent}%`,
-          "legacy IDs covered": comparison.legacyIdsCoveredByNative ? "pass" : "review",
-          "provider calls": data.providerCallsMade ? "yes" : "no",
-          "memory writes": data.memoryWrites ? "yes" : "no",
-        })}
-        <p><strong>Render-selected IDs:</strong> ${renderShadowIds(comparison.legacySelectedIds)}</p>
-        <p><strong>Overlapping IDs:</strong> ${renderShadowIds(comparison.legacyOverlapIds)}</p>
-        <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
-        <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
-        <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
-      </div>
-    `;
+    const data = await requestNativeContinuityShadow(query);
+    renderNativeContinuityShadowObservation(container, data);
   } catch (err) {
     console.error("Native continuity shadow observation failed:", err);
     container.innerHTML = `<p>Native continuity shadow observation failed: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
@@ -797,6 +811,92 @@ window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
     if (button) {
       button.disabled = false;
     }
+  }
+};
+
+window.runNativeContinuityShadowObservationSet = async function runNativeContinuityShadowObservationSet() {
+  const container = document.getElementById("nativeContinuityShadowObservationSetResults");
+  const button = document.getElementById("runNativeContinuityShadowObservationSetButton");
+  if (!container) {
+    return;
+  }
+
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before running the observation set.</p>";
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+  }
+  container.innerHTML = "<p>Running the fixed native continuity observation set...</p>";
+
+  const results = [];
+  for (const query of NATIVE_CONTINUITY_SHADOW_OBSERVATION_QUERIES) {
+    try {
+      results.push({ query, data: await requestNativeContinuityShadow(query) });
+    } catch (err) {
+      results.push({
+        query,
+        error: String(err && (err.message || err) || "Unknown error"),
+      });
+    }
+  }
+
+  const successful = results.filter(result => result.data);
+  const exactMatches = successful.filter(result => result.data.shadowStatus === "match").length;
+  const coverageMatches = successful.filter(result => result.data.shadowStatus === "coverage_match").length;
+  const reviews = successful.filter(result => result.data.shadowStatus === "review").length;
+  const blocked = results.length - successful.length;
+
+  container.innerHTML = `
+    <div class="memory-card">
+      <h3>Native Continuity Shadow Observation Set</h3>
+      ${renderMetricGrid({
+        observations: results.length,
+        "exact matches": exactMatches,
+        "coverage matches": coverageMatches,
+        reviews,
+        blocked,
+        "provider calls": "no",
+        "memory writes": "no",
+      })}
+      <table>
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Status</th>
+            <th>Coverage</th>
+            <th>Render IDs</th>
+            <th>Native IDs</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${results.map((result) => {
+            const comparison = result.data?.comparison || {};
+            const status = result.data?.shadowStatus || "blocked";
+            const coverage = comparison.legacySelectionCoveragePercent == null
+              ? "n/a"
+              : `${comparison.legacySelectionCoveragePercent}%`;
+            return `
+              <tr>
+                <td>${escapeHtml(result.query)}</td>
+                <td>${renderStatusBadge(status)}</td>
+                <td>${escapeHtml(coverage)}</td>
+                <td>${renderShadowIds(comparison.legacySelectedIds)}</td>
+                <td>${renderShadowIds(comparison.nativeRankedIds)}</td>
+              </tr>
+              ${result.error ? `<tr><td colspan="5">${escapeHtml(result.error)}</td></tr>` : ""}
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+      <p class="meta">Phase 7.80 | Fixed observation set | Browser caller identity | No public answer routing changed</p>
+    </div>
+  `;
+
+  if (button) {
+    button.disabled = false;
   }
 };
 
