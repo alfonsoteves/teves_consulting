@@ -776,10 +776,15 @@ window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
           "intent match": comparison.intentMatches ? "pass" : "review",
           "known native IDs": comparison.nativeIdsKnownToCaller ? "pass" : "review",
           "selection match": comparison.selectedIdsMatch ? "pass" : "review",
+          "legacy coverage": comparison.legacySelectionCoveragePercent == null
+            ? "n/a"
+            : `${comparison.legacySelectionCoveragePercent}%`,
+          "legacy IDs covered": comparison.legacyIdsCoveredByNative ? "pass" : "review",
           "provider calls": data.providerCallsMade ? "yes" : "no",
           "memory writes": data.memoryWrites ? "yes" : "no",
         })}
         <p><strong>Render-selected IDs:</strong> ${renderShadowIds(comparison.legacySelectedIds)}</p>
+        <p><strong>Overlapping IDs:</strong> ${renderShadowIds(comparison.legacyOverlapIds)}</p>
         <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
         <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
         <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
