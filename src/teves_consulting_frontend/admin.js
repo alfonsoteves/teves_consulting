@@ -3672,6 +3672,7 @@ function analyzeCandidateFormat(response = "") {
   const hasBulletOrNumberedList = /(^|\n)\s*(?:[-*•]|\d+[.)])\s+/.test(text);
   const mentionsSourceLeak = /\b(supplied context|provided context|reference context|supplied notes|reference notes|production-style reference)\b/i.test(text);
   const asksFollowUp = /\?\s*$/.test(text) || /\b(can you|could you|please provide|would you like|anything else)\b/i.test(text);
+  const solicitsFollowUpContext = /\b(if you provide|if you share|provide more details|share more details|tell me more about)\b/i.test(text);
   const mentionsTestHarness = /\b(provider testing|provider test|llm candidate|candidate model|test harness|this evaluation)\b/i.test(text);
   const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const paragraphSentenceCounts = paragraphs.map((paragraph) => {
@@ -3689,6 +3690,7 @@ function analyzeCandidateFormat(response = "") {
     noBulletsOrNumberedLists: !hasBulletOrNumberedList,
     noSourceLeakMentions: !mentionsSourceLeak,
     noFollowUpQuestion: !asksFollowUp,
+    noFollowUpSolicitation: !solicitsFollowUpContext,
     noTestHarnessMentions: !mentionsTestHarness,
   };
 }
@@ -3704,6 +3706,7 @@ function renderCandidateFormatCheck(response = "") {
     noBulletsOrNumberedLists: check.noBulletsOrNumberedLists ? "pass" : "review",
     noSourceLeakMentions: check.noSourceLeakMentions ? "pass" : "review",
     noFollowUpQuestion: check.noFollowUpQuestion ? "pass" : "review",
+    noFollowUpSolicitation: check.noFollowUpSolicitation ? "pass" : "review",
     noTestHarnessMentions: check.noTestHarnessMentions ? "pass" : "review",
   });
 }
@@ -3786,6 +3789,7 @@ function candidateOutputGuardrailsPassed(response = "") {
   return check.noBulletsOrNumberedLists
     && check.noSourceLeakMentions
     && check.noFollowUpQuestion
+    && check.noFollowUpSolicitation
     && check.noTestHarnessMentions;
 }
 
@@ -3950,6 +3954,7 @@ function renderObservedBatchScorecard(results = []) {
       ["bullets", (check) => !check.noBulletsOrNumberedLists],
       ["source language", (check) => !check.noSourceLeakMentions],
       ["follow-up question", (check) => !check.noFollowUpQuestion],
+      ["follow-up solicitation", (check) => !check.noFollowUpSolicitation],
       ["harness language", (check) => !check.noTestHarnessMentions],
     ].map(([label, failed]) => ({
       label,
