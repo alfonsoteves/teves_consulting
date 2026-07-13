@@ -37,6 +37,7 @@ module {
       case (#identity) { "identity" };
       case (#recipe) { "recipe" };
       case (#technical) { "technical" };
+      case (#planning) { "planning" };
       case (#general) { "general" };
     };
   };

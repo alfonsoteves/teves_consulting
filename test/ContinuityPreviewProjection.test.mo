@@ -68,3 +68,12 @@ assert memory.memoryType == "technical";
 assert memory.confidence == 92;
 assert memory.status == "active";
 assert memory.score > 0;
+
+let planningPreview = ContinuityPreviewProjection.buildForOwner(
+  [ownerAMemory, ownerBMemory],
+  ownerA,
+  "What is the next action for Aion?",
+  5,
+);
+
+assert planningPreview.queryIntent == "planning";
