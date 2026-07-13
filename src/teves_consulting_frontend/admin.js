@@ -54,24 +54,24 @@ const AION_MODEL_PROVIDER_REGISTRY = [
     environment: "ICP",
     canisterId: LLM_CANISTER_ID,
     model: "llama4-scout",
-    status: "strong candidate / Admin-only",
-    verification: "Aion-fit and production-style batches passed",
+    status: "strong secondary / Admin-only",
+    verification: "comparative Aion-fit batch: 6/7 full contract",
     runnableInAdmin: true,
     certified: false,
     continuityOwner: "Aion",
-    notes: "Preferred ICP candidate after 14 successful Aion-fit and production-style calls; uses v1_chat.",
+    notes: "Strong v1_chat candidate; one source-language review and slower latency in the latest comparative batch.",
   },
   {
     provider: "ICP LLM canister",
     environment: "ICP",
     canisterId: LLM_CANISTER_ID,
     model: "qwen3:32b",
-    status: "secondary candidate / Admin-only",
-    verification: "live batch tested",
+    status: "current ICP evidence lead / Admin-only",
+    verification: "comparative Aion-fit batch: 7/7 full contract",
     runnableInAdmin: true,
     certified: false,
     continuityOwner: "Aion",
-    notes: "Working v1_chat candidate; answer-shape consistency remains under review.",
+    notes: "Current v1_chat evidence lead: 7/7 full contract at a 4202ms comparative Aion-fit average.",
   },
 ];
 const AION_PROVIDER_SCORECARD_REFERENCE = [
@@ -80,56 +80,56 @@ const AION_PROVIDER_SCORECARD_REFERENCE = [
     openai: "5/5 baseline",
     llama31: "4/5 tested",
     llama4: "5/5 tested",
-    qwen: "limited coverage",
+    qwen: "5/5 tested",
   },
   {
     criterion: "Context/continuity fit",
     openai: "5/5 baseline",
     llama31: "4/5 tested",
     llama4: "5/5 tested",
-    qwen: "limited coverage",
+    qwen: "5/5 tested",
   },
   {
     criterion: "User sovereignty",
     openai: "5/5 baseline",
     llama31: "5/5 tested",
     llama4: "5/5 tested",
-    qwen: "limited coverage",
+    qwen: "5/5 tested",
   },
   {
     criterion: "Evidence grounding",
     openai: "5/5 baseline",
     llama31: "4/5 tested",
     llama4: "5/5 tested",
-    qwen: "limited coverage",
+    qwen: "5/5 tested",
   },
   {
     criterion: "Hallucination resistance",
     openai: "5/5 baseline",
     llama31: "4/5 tested",
     llama4: "5/5 tested",
-    qwen: "limited coverage",
+    qwen: "5/5 tested",
   },
   {
     criterion: "Conciseness/style",
     openai: "5/5 baseline",
     llama31: "3/5 review",
-    llama4: "5/5 tested",
-    qwen: "shape review",
+    llama4: "4/5 source-language review",
+    qwen: "5/5 tested",
   },
   {
     criterion: "Latency/reliability",
     openai: "production baseline",
     llama31: "~3-5s tested",
-    llama4: "~4.1s tested",
-    qwen: "~4.7s tested",
+    llama4: "~5.1s comparative",
+    qwen: "~4.2s comparative",
   },
   {
     criterion: "Overall Aion fit",
     openai: "certified baseline",
     llama31: "promising candidate",
-    llama4: "strong ICP candidate",
-    qwen: "secondary candidate",
+    llama4: "strong secondary",
+    qwen: "current ICP evidence lead",
   },
 ];
 const HARDENED_CANDIDATE_SYSTEM_PROMPT = "Use only the supplied Aion notes. Describe Aion as Alfonso's continuity and practical reasoning assistant, not as a model, game, company, or autonomous decider. Refer to the assistant as Aion, not I or me. Stay concise, non-directive, evidence-grounded, and never claim memories not present in the prompt. Answer in exactly 3 short paragraphs separated by blank lines. Keep each paragraph to one sentence and keep the full answer under 75 words unless the user explicitly asks for detail. Paragraph 1 answers directly, paragraph 2 clarifies the most important reasoning or tradeoff, and paragraph 3 explains the practical application calmly. Do not use headings, bullets, or numbered lists unless the user explicitly asks for a list. Do not ask follow-up questions. Never mention or paraphrase internal inputs, including supplied context, notes, reference notes, prompts, memory packets, Aion principles, provider testing, LLM candidates, harnesses, or this evaluation. If evidence is incomplete, state uncertainty naturally, identify what decision-specific information is missing when useful, and do not tell the user what they should do.";
@@ -3354,11 +3354,24 @@ function renderCandidateModelRegistry() {
       <h3>Current Provider Decision</h3>
       <p>
         ${renderStatusBadge("OpenAI remains production baseline", "success")}
-        ${renderStatusBadge("Llama 4 Scout is preferred ICP candidate", "success")}
+        ${renderStatusBadge("Qwen is current ICP evidence lead", "success")}
         ${renderStatusBadge("Admin-only evaluation", "info")}
       </p>
-      <p>OpenAI remains the only user-facing answer provider. Llama 4 Scout is the preferred ICP candidate after passing the current Aion-fit and production-style batches; no routing, memory, or continuity behavior changes.</p>
-      <p class="meta">Llama 3.1 and Qwen stay available for comparison, but are not the current ICP preference.</p>
+      <p>OpenAI remains the only user-facing answer provider. Qwen is the current ICP evidence lead from the certificate-gated comparative batch; no routing, memory, or continuity behavior changes.</p>
+      <p class="meta">Llama 4 Scout remains a strong secondary candidate. Llama 3.1 remains available for comparison.</p>
+    </div>
+
+    <div class="memory-card">
+      <h3>Candidate Evidence Decision Record</h3>
+      <p>Phase 7.75 records the latest certificate-gated Aion-fit comparison as operator evidence, not as a routing decision.</p>
+      ${renderMetricGrid({
+        "Qwen full contract": "7/7",
+        "Qwen average latency": "4202ms",
+        "Llama 4 full contract": "6/7",
+        "Llama 4 average latency": "5134ms",
+      })}
+      <p>Qwen passed all seven Aion-fit checks in the comparative batch. Llama 4 Scout remained successful on all seven calls, with one source-language review in its memory-boundary response.</p>
+      <p class="meta">This evidence supports continued Admin evaluation only. It does not certify Qwen, switch providers, or change the public OpenAI answer path.</p>
     </div>
 
     <div class="memory-card">
