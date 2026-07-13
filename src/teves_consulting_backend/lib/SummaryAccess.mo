@@ -2,6 +2,7 @@ import Array "mo:core/Array";
 import PrivateCertifiedPolicyDigestProof "PrivateCertifiedPolicyDigestProof";
 import PrivateCertifiedPolicySnapshotProof "PrivateCertifiedPolicySnapshotProof";
 import PrivateProviderPolicyProof "PrivateProviderPolicyProof";
+import PrivatePlanningIntentProof "PrivatePlanningIntentProof";
 import PrivateRankerProof "PrivateRankerProof";
 import Types "../types";
 
@@ -20,6 +21,10 @@ module {
 
   public func privateCertifiedPolicyDigestBuildProof() : Bool {
     PrivateCertifiedPolicyDigestProof.isLinked();
+  };
+
+  public func privatePlanningIntentBuildProof() : Bool {
+    PrivatePlanningIntentProof.isLinked();
   };
 
   public func recent<T>(entries : [T], limit : Nat) : [T] {
