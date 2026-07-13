@@ -421,6 +421,41 @@ function updateAdminVisibility() {
     isAuthenticated ? "block" : "none";
 }
 
+window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizationDryRun() {
+  const container = document.getElementById("operatorAuthorizationResults");
+  if (!container) {
+    return;
+  }
+
+  if (!isAuthenticated || !window.adminActor) {
+    container.innerHTML = "<p>Sign in with Internet Identity first.</p>";
+    return;
+  }
+
+  container.innerHTML = "<p>Reading the authenticated caller principal...</p>";
+
+  try {
+    const principal = await window.adminActor.whoami();
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Operator Authorization Dry Run</h3>
+        <p>Capture this authenticated production Internet Identity principal before creating the operator allowlist.</p>
+        ${renderMetricGrid({
+          "signed-in principal": principal,
+          "allowlist": "not configured",
+          "current Admin access": "any authenticated II user",
+          "recovery principal": "not configured",
+        })}
+        <p class="meta">Phase 7.76 | Dry run: yes | Allowlist writes: no | Live behavior changed: no</p>
+        <p class="meta">This screen does not authorize access. It exposes only the signed-in caller's own principal so the next phase can install an explicit Motoko allowlist.</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Operator authorization dry run failed:", err);
+    container.innerHTML = `<p>Could not read the authenticated caller principal: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+  }
+};
+
 window.handleAuth = async function handleAuth() {
   if (!authClient) {
     authClient = await AuthClient.create();
