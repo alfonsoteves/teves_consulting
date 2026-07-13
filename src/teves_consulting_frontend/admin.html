@@ -713,6 +713,17 @@
       </details>
 
       <details>
+        <summary><strong>Shadow Window Evidence</strong></summary>
+
+        <p>Review the local operator evidence for the current caller's shadow window.</p>
+
+        <button onclick="refreshNativeContinuityShadowEvidence()">Refresh Window Evidence</button>
+        <button onclick="clearNativeContinuityShadowEvidence()">Clear Current Caller Evidence</button>
+
+        <div id="nativeContinuityShadowEvidenceResults"></div>
+      </details>
+
+      <details>
         <summary><strong>Read-Only Motoko Continuity Contract</strong></summary>
 
         <p>Define the first caller-scoped continuity API before writing Motoko code.</p>

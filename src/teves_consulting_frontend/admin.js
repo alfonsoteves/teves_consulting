@@ -828,6 +828,122 @@ function renderNativeContinuityShadowObservation(container, data) {
   `;
 }
 
+const NATIVE_CONTINUITY_SHADOW_EVIDENCE_STORAGE_KEY = "aion.nativeContinuityShadowEvidence.v1";
+
+function currentShadowEvidenceCaller() {
+  return identity?.getPrincipal?.().toText?.() || "";
+}
+
+function loadNativeContinuityShadowEvidence() {
+  try {
+    const records = JSON.parse(window.localStorage.getItem(NATIVE_CONTINUITY_SHADOW_EVIDENCE_STORAGE_KEY) || "[]");
+    return Array.isArray(records) ? records : [];
+  } catch (err) {
+    console.warn("Could not read native continuity shadow evidence:", err);
+    return [];
+  }
+}
+
+function saveNativeContinuityShadowEvidence(records) {
+  window.localStorage.setItem(
+    NATIVE_CONTINUITY_SHADOW_EVIDENCE_STORAGE_KEY,
+    JSON.stringify(records)
+  );
+}
+
+function compactShadowObservation(result) {
+  const comparison = result.data?.comparison || {};
+  return {
+    query: result.query,
+    shadowStatus: result.data?.shadowStatus || "blocked",
+    structuralPass: Boolean(
+      comparison.queryMatches
+      && comparison.intentMatches
+      && comparison.nativeIdsKnownToCaller
+      && !result.data?.providerCallsMade
+      && !result.data?.memoryWrites
+      && !result.data?.publicAnswerChanged
+    ),
+    legacySelectedIds: comparison.legacySelectedIds || [],
+    legacyOverlapIds: comparison.legacyOverlapIds || [],
+    nativeRankedIds: comparison.nativeRankedIds || [],
+    coveragePercent: comparison.legacySelectionCoveragePercent ?? null,
+    reason: result.data?.reason || result.error || "unknown",
+  };
+}
+
+function recordNativeContinuityShadowEvidence(results) {
+  const caller = currentShadowEvidenceCaller();
+  if (!caller) {
+    return;
+  }
+
+  const records = loadNativeContinuityShadowEvidence();
+  records.push({
+    caller,
+    recordedAt: new Date().toISOString(),
+    observations: results.map(compactShadowObservation),
+  });
+  saveNativeContinuityShadowEvidence(records);
+}
+
+function renderNativeContinuityShadowEvidence() {
+  const container = document.getElementById("nativeContinuityShadowEvidenceResults");
+  if (!container) {
+    return;
+  }
+
+  if (!isAuthenticated || !isOperator) {
+    container.innerHTML = "<p>Operator access is required before reviewing shadow evidence.</p>";
+    return;
+  }
+
+  const caller = currentShadowEvidenceCaller();
+  const records = loadNativeContinuityShadowEvidence().filter(record => record.caller === caller);
+  const observations = records.flatMap(record => Array.isArray(record.observations) ? record.observations : []);
+  const structuralPasses = observations.filter(observation => observation.structuralPass).length;
+  const legacyTotal = observations.reduce((total, observation) => total + observation.legacySelectedIds.length, 0);
+  const overlapTotal = observations.reduce((total, observation) => total + observation.legacyOverlapIds.length, 0);
+  const coveragePercent = legacyTotal > 0 ? Math.round((overlapTotal / legacyTotal) * 100) : null;
+  const semanticReviews = observations.filter(observation => observation.coveragePercent != null && observation.coveragePercent < 100).length;
+  const firstRecordedAt = records[0]?.recordedAt || null;
+  const lastRecordedAt = records.at(-1)?.recordedAt || null;
+  const elapsedHours = firstRecordedAt && lastRecordedAt
+    ? Math.floor((Date.parse(lastRecordedAt) - Date.parse(firstRecordedAt)) / 3_600_000)
+    : 0;
+  const windowThresholdMet = records.length >= 4
+    && elapsedHours >= 24
+    && observations.length === 12
+    && structuralPasses === observations.length
+    && coveragePercent != null
+    && coveragePercent >= 90;
+
+  container.innerHTML = `
+    <div class="memory-card">
+      <h3>Native Continuity Shadow Window</h3>
+      ${renderMetricGrid({
+        runs: records.length,
+        observations: observations.length,
+        "structural passes": `${structuralPasses}/${observations.length}`,
+        "legacy ID coverage": coveragePercent == null ? "n/a" : `${coveragePercent}%`,
+        "semantic reviews": semanticReviews,
+        "elapsed hours": elapsedHours,
+        "evidence threshold": windowThresholdMet ? "ready for operator review" : "collecting evidence",
+      })}
+      <p class="meta">Browser-local metadata only | Current caller scope | No canister or memory write | No automatic cutover</p>
+    </div>
+  `;
+}
+
+window.refreshNativeContinuityShadowEvidence = renderNativeContinuityShadowEvidence;
+
+window.clearNativeContinuityShadowEvidence = function clearNativeContinuityShadowEvidence() {
+  const caller = currentShadowEvidenceCaller();
+  const remaining = loadNativeContinuityShadowEvidence().filter(record => record.caller !== caller);
+  saveNativeContinuityShadowEvidence(remaining);
+  renderNativeContinuityShadowEvidence();
+};
+
 window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
   const container = document.getElementById("nativeContinuityShadowResults");
   const queryInput = document.getElementById("nativeContinuityShadowQuery");
@@ -946,6 +1062,8 @@ window.runNativeContinuityShadowObservationSet = async function runNativeContinu
       <p class="meta">Phase 7.80 | Fixed observation set | Browser caller identity | No public answer routing changed</p>
     </div>
   `;
+  recordNativeContinuityShadowEvidence(results);
+  renderNativeContinuityShadowEvidence();
 
   if (button) {
     button.disabled = false;
