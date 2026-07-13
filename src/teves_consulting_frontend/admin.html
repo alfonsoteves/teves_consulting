@@ -288,6 +288,20 @@
     </section>
 
     <section class="admin-section">
+      <h2>HTTPS Transport</h2>
+      <p class="section-note">Run the fixed operator-only non-replicated transport proof.</p>
+
+      <details>
+        <summary><strong>Transport Probe</strong></summary>
+
+        <p>The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
+        <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run HTTPS Transport Probe</button>
+
+        <div id="httpsOutcallTransportResults"></div>
+      </details>
+    </section>
+
+    <section class="admin-section">
       <h2>Memory Records</h2>
       <p class="section-note">Review saved continuity memories and feedback.</p>
 

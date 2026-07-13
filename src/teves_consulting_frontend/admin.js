@@ -297,6 +297,13 @@ const idlFactory = ({ IDL }) => {
     operatorCount: IDL.Nat,
   });
 
+  const HttpsOutcallTransportReceipt = IDL.Record({
+    url: IDL.Text,
+    status: IDL.Nat,
+    responseBytes: IDL.Nat,
+    isReplicated: IDL.Bool,
+  });
+
   return IDL.Service({
     whoami: IDL.Func([], [IDL.Text], []),
 
@@ -336,6 +343,8 @@ const idlFactory = ({ IDL }) => {
       [ProviderRoutePreview],
       ["query"]
     ),
+
+    probeHttpsOutcallTransport: IDL.Func([], [HttpsOutcallTransportReceipt], []),
   });
 };
 
@@ -594,6 +603,48 @@ window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizatio
   } catch (err) {
     console.error("Operator access refresh failed:", err);
     container.innerHTML = `<p>Could not refresh operator access: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+  }
+};
+
+window.runHttpsOutcallTransportProbe = async function runHttpsOutcallTransportProbe() {
+  const container = document.getElementById("httpsOutcallTransportResults");
+  const button = document.getElementById("runHttpsOutcallTransportProbeButton");
+  if (!container) {
+    return;
+  }
+
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before running the transport probe.</p>";
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+  }
+  container.innerHTML = "<p>Running the fixed non-replicated HTTPS transport probe...</p>";
+
+  try {
+    const receipt = await window.adminActor.probeHttpsOutcallTransport();
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>HTTPS Transport Receipt</h3>
+        <p>The operator-only proof completed. No reasoning provider, memory write, or automatic fallback was involved.</p>
+        ${renderMetricGrid({
+          url: receipt.url,
+          "HTTP status": String(receipt.status),
+          "response bytes": String(receipt.responseBytes),
+          "replicated execution": receipt.isReplicated ? "yes" : "no",
+        })}
+        <p class="meta">Phase 7.78 | Fixed GET | No headers | No request body | No external response body displayed</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("HTTPS transport probe failed:", err);
+    container.innerHTML = `<p>HTTPS transport probe failed: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
   }
 };
 
