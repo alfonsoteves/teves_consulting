@@ -4165,6 +4165,7 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     summary: "Admin-only ICP LLM candidate test across the listed model strings using one shared prompt.",
     contextLength: contextText.length,
     model: selectedModels.join(", "),
+    policyReceipt: buildCandidatePolicyReceipt(policyPreflight),
     results,
   });
 };
