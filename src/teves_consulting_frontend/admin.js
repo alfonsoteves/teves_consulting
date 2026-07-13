@@ -7,6 +7,7 @@ const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
+const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const DEFAULT_CANDIDATE_MODELS = [
   LLM_CANDIDATE_MODEL,
   "qwen3:32b",
@@ -3781,6 +3782,112 @@ function candidateFormatPassed(response = "") {
   return candidateAnswerShapePassed(response) && candidateOutputGuardrailsPassed(response);
 }
 
+function setCandidateTestControlsEnabled(enabled) {
+  [
+    "runSingleIcpTestButton",
+    "runAionFitBatchButton",
+    "runProductionStyleBatchButton",
+  ].forEach((id) => {
+    const button = document.getElementById(id);
+    if (button) {
+      button.disabled = !enabled;
+    }
+  });
+}
+
+function candidatePolicyPreflightPassed(data = {}) {
+  const readiness = data.adminCandidateReadiness || {};
+  const decision = readiness.decision || {};
+  return readiness.eligible === true
+    && readiness.status === "eligible_for_admin_only_adapter_review"
+    && decision.providerId === "icp-llm"
+    && decision.routeId === "icp-admin-candidate"
+    && decision.invocationPermitted === true
+    && decision.explicitOperatorAction === true
+    && decision.promotionRequired === true
+    && decision.automaticFallback === false;
+}
+
+function renderCandidatePolicyPreflight(data = {}, errorMessage = "") {
+  const container = document.getElementById("candidatePolicyPreflightResults");
+  if (!container) {
+    return;
+  }
+
+  if (errorMessage) {
+    container.innerHTML = `
+      <div class="memory-card candidate-result-card error">
+        <h3>Candidate Policy Preflight</h3>
+        <p>${escapeHtml(errorMessage)}</p>
+        <p class="meta">Candidate controls remain disabled. No candidate provider call was made.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const readiness = data.adminCandidateReadiness || {};
+  const decision = readiness.decision || {};
+  const eligible = candidatePolicyPreflightPassed(data);
+
+  container.innerHTML = `
+    <div class="memory-card candidate-result-card ${eligible ? "success" : "error"}">
+      <h3>Candidate Policy Preflight</h3>
+      <p>${eligible ? "Fresh certified policy evidence permits this Admin-only candidate review." : "Candidate review is blocked by the current certified policy evidence."}</p>
+      ${renderMetricGrid({
+        certificate: eligible ? "verified" : "not verified",
+        route: `${decision.providerId || "n/a"} / ${decision.routeId || "n/a"}`,
+        status: readiness.status || "review",
+        "ICP queries": data.canisterCallsMade ?? 0,
+      })}
+      <p class="meta">Provider calls: no | Memory writes: no | Automatic switching: no</p>
+      <p class="meta">${escapeHtml(readiness.reason || data.trustBoundary?.reason || "")}</p>
+    </div>
+  `;
+}
+
+async function requireCertifiedCandidatePolicyPreflight() {
+  if (!isAuthenticated) {
+    throw new Error("Please sign in first.");
+  }
+
+  const container = document.getElementById("candidatePolicyPreflightResults");
+  if (container) {
+    container.innerHTML = "<p>Checking certified Admin candidate policy...</p>";
+  }
+  setCandidateTestControlsEnabled(false);
+
+  try {
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/certified-admin-candidate-adapter-readiness`
+    );
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || `Candidate policy preflight failed (${res.status})`);
+    }
+    if (!candidatePolicyPreflightPassed(data)) {
+      renderCandidatePolicyPreflight(data);
+      throw new Error("Certified Admin candidate policy did not permit a candidate call.");
+    }
+
+    renderCandidatePolicyPreflight(data);
+    setCandidateTestControlsEnabled(true);
+    return data;
+  } catch (err) {
+    const message = String(err && (err.message || err) || "Candidate policy preflight failed.");
+    renderCandidatePolicyPreflight({}, message);
+    setCandidateTestControlsEnabled(false);
+    throw err;
+  }
+}
+
+window.runCertifiedCandidatePolicyPreflight = async function runCertifiedCandidatePolicyPreflight() {
+  try {
+    await requireCertifiedCandidatePolicyPreflight();
+  } catch (err) {
+    console.error("Certified candidate policy preflight failed:", err);
+  }
+};
+
 function observedBatchScore(value) {
   const rounded = Math.max(1, Math.min(5, Math.round(value)));
   const label = rounded >= 5
@@ -3907,6 +4014,12 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
 
   if (!prompt) {
     alert("Enter a short test prompt first.");
+    return;
+  }
+
+  try {
+    await requireCertifiedCandidatePolicyPreflight();
+  } catch (_err) {
     return;
   }
 
@@ -4103,6 +4216,12 @@ async function runCandidateBatchPromptSet({title, summary, prompts}) {
   const container = document.getElementById("candidateBatchTestResults");
   const contextText = valueFromInput("candidateCallContext") || DEFAULT_AION_CANDIDATE_CONTEXT;
   const selectedModels = getCandidateModelsToTest();
+
+  try {
+    await requireCertifiedCandidatePolicyPreflight();
+  } catch (_err) {
+    return;
+  }
 
   container.innerHTML = `<p>Running ${escapeHtml(title || "Admin-only ICP batch test")}...</p>`;
 

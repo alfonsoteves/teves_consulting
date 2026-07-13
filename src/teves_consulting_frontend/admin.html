@@ -514,10 +514,12 @@
         <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
       </label>
 
-      <button onclick="runManualCandidateCallHarness()">Run Single ICP Test</button>
-      <button onclick="runCandidateBatchTestHarness()">Run Aion-Fit Batch</button>
-      <button onclick="runProductionStyleCandidateBatchTestHarness()">Run Production-Style Batch</button>
+      <button onclick="runCertifiedCandidatePolicyPreflight()">Check Candidate Policy</button>
+      <button id="runSingleIcpTestButton" onclick="runManualCandidateCallHarness()" disabled>Run Single ICP Test</button>
+      <button id="runAionFitBatchButton" onclick="runCandidateBatchTestHarness()" disabled>Run Aion-Fit Batch</button>
+      <button id="runProductionStyleBatchButton" onclick="runProductionStyleCandidateBatchTestHarness()" disabled>Run Production-Style Batch</button>
 
+      <div id="candidatePolicyPreflightResults"></div>
       <div id="manualCandidateCallResults"></div>
       <div id="candidateBatchTestResults"></div>
     </details>
