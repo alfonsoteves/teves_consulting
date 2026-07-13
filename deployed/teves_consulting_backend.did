@@ -43,6 +43,13 @@ type Relationship =
    subject: text;
    target: text;
  };
+type Receipt = 
+ record {
+   isReplicated: bool;
+   responseBytes: nat;
+   status: nat;
+   url: text;
+ };
 type Operation = 
  variant {
    adminCandidateEvaluation;
@@ -115,6 +122,7 @@ service : {
   issueOperatorSessionGrant: (nonce: blob) -> (bool);
   previewAionProviderRoute: (operation: Operation) -> (Response__1) query;
   previewMyContinuity: (queryText: text) -> (Result) query;
+  probeHttpsOutcallTransport: () -> (Receipt);
   redeemOperatorSessionGrant: (nonce: blob) -> (bool);
   storeSummary: (title: text, summary: text, topics: vec text, tags:
    vec text, keyDecisions: vec text, relationships: vec Relationship,
