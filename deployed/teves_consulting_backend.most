@@ -8,6 +8,7 @@ type Feedback__240916034 =
     receivedAt : Int;
     timestamp : Text
   };
+type Grant__612795409 = {digest : Blob; expiresAt : Int};
 type MemorySummary__1057387174 =
   {
     confidence : Nat;
@@ -33,5 +34,6 @@ actor {
   stable var feedbackEntries : [Feedback__240916034];
   stable var memorySummaries : [MemorySummary__1057387174];
   stable var nextId : Nat;
-  stable var nextMemoryId : Nat
+  stable var nextMemoryId : Nat;
+  stable var operatorSessionGrants : [Grant__612795409]
 };

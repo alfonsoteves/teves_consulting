@@ -112,8 +112,10 @@ service : {
   getMyRecentSummaries: (limit: nat) -> (vec MemorySummary) query;
   getOperatorStatus: () -> (Status) query;
   getRecentFeedback: (limit: nat) -> (vec Feedback) query;
+  issueOperatorSessionGrant: (nonce: blob) -> (bool);
   previewAionProviderRoute: (operation: Operation) -> (Response__1) query;
   previewMyContinuity: (queryText: text) -> (Result) query;
+  redeemOperatorSessionGrant: (nonce: blob) -> (bool);
   storeSummary: (title: text, summary: text, topics: vec text, tags:
    vec text, keyDecisions: vec text, relationships: vec Relationship,
    milestone: bool, importance: nat, memoryType: text, sourceSessionId: 
