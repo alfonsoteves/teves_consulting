@@ -3,6 +3,13 @@ type Result =
    err: Error;
    ok: Response;
  };
+type Response__2 = 
+ record {
+   canonicalSnapshot: text;
+   certificate: opt blob;
+   policyVersion: text;
+   snapshotHash: blob;
+ };
 type Response__1 = 
  record {
    automaticFallback: bool;
@@ -90,6 +97,7 @@ service : {
    text) -> (bool);
   deleteAllMySummaries: () -> (bool);
   deleteSummaryById: (id: nat) -> (bool);
+  getCertifiedAionProviderPolicy: () -> (Response__2) query;
   getFeedbackCount: () -> (nat) query;
   getFeedbackEntries: () -> (vec Feedback) query;
   getMyAllSummaries: () -> (vec MemorySummary) query;
