@@ -274,6 +274,22 @@ const idlFactory = ({ IDL }) => {
     status: IDL.Text,
   });
 
+  const MemoryPreview = IDL.Record({
+    id: IDL.Nat,
+    title: IDL.Text,
+    summary: IDL.Text,
+    topics: IDL.Vec(IDL.Text),
+    tags: IDL.Vec(IDL.Text),
+    keyDecisions: IDL.Vec(IDL.Text),
+    relationships: IDL.Vec(Relationship),
+    milestone: IDL.Bool,
+    importance: IDL.Nat,
+    memoryType: IDL.Text,
+    confidence: IDL.Nat,
+    status: IDL.Text,
+    score: IDL.Int,
+  });
+
   const ProviderRouteOperation = IDL.Variant({
     publicAnswer: IDL.Null,
     adminCandidateEvaluation: IDL.Null,
@@ -302,6 +318,26 @@ const idlFactory = ({ IDL }) => {
     status: IDL.Nat,
     responseBytes: IDL.Nat,
     isReplicated: IDL.Bool,
+  });
+
+  const ContinuityPreviewResponse = IDL.Record({
+    queryText: IDL.Text,
+    queryIntent: IDL.Text,
+    memoryCount: IDL.Nat,
+    rankedMemories: IDL.Vec(MemoryPreview),
+    expandedMemories: IDL.Vec(MemoryPreview),
+    contextPreview: IDL.Text,
+  });
+
+  const ContinuityPreviewError = IDL.Variant({
+    unauthenticated: IDL.Null,
+    invalidQuery: IDL.Null,
+    internalError: IDL.Null,
+  });
+
+  const ContinuityPreviewResult = IDL.Variant({
+    ok: ContinuityPreviewResponse,
+    err: ContinuityPreviewError,
   });
 
   return IDL.Service({
@@ -341,6 +377,12 @@ const idlFactory = ({ IDL }) => {
     previewAionProviderRoute: IDL.Func(
       [ProviderRouteOperation],
       [ProviderRoutePreview],
+      ["query"]
+    ),
+
+    previewMyContinuity: IDL.Func(
+      [IDL.Text],
+      [ContinuityPreviewResult],
       ["query"]
     ),
 
@@ -641,6 +683,111 @@ window.runHttpsOutcallTransportProbe = async function runHttpsOutcallTransportPr
   } catch (err) {
     console.error("HTTPS transport probe failed:", err);
     container.innerHTML = `<p>HTTPS transport probe failed: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+};
+
+function nativePreviewIds(memories = []) {
+  if (!Array.isArray(memories)) {
+    return [];
+  }
+
+  return memories.map(memory => ({ id: String(memory.id) }));
+}
+
+function renderShadowIds(ids = []) {
+  return ids.length > 0
+    ? ids.map(id => escapeHtml(String(id))).join(", ")
+    : "none";
+}
+
+window.runNativeContinuityShadow = async function runNativeContinuityShadow() {
+  const container = document.getElementById("nativeContinuityShadowResults");
+  const queryInput = document.getElementById("nativeContinuityShadowQuery");
+  const button = document.getElementById("runNativeContinuityShadowButton");
+  if (!container || !queryInput) {
+    return;
+  }
+
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before running a shadow observation.</p>";
+    return;
+  }
+
+  const query = queryInput.value.trim();
+  if (!query) {
+    container.innerHTML = "<p>Enter a query before running a shadow observation.</p>";
+    queryInput.focus();
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+  }
+  container.innerHTML = "<p>Comparing the signed-in native preview with the current Render selection...</p>";
+
+  try {
+    const [memories, nativeResult] = await Promise.all([
+      window.adminActor.getMyAllSummaries(),
+      window.adminActor.previewMyContinuity(query),
+    ]);
+
+    if ("err" in nativeResult) {
+      const errorName = Object.keys(nativeResult.err || {})[0] || "unknown_error";
+      container.innerHTML = `<p>Native continuity preview returned: ${escapeHtml(errorName)}</p>`;
+      return;
+    }
+
+    const preview = nativeResult.ok;
+    const response = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-continuity-shadow`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          memories: memories.map(serializeMemoryForRanking),
+          nativePreview: {
+            queryText: preview.queryText,
+            queryIntent: preview.queryIntent,
+            rankedMemories: nativePreviewIds(preview.rankedMemories),
+            expandedMemories: nativePreviewIds(preview.expandedMemories),
+          },
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || data.error || `Shadow request failed (${response.status})`);
+    }
+
+    const comparison = data.comparison || {};
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.title || "Native Continuity Shadow Observation")}</h3>
+        <p>Render and Motoko were compared from this signed-in caller's current memory snapshot. The public answer path was not changed.</p>
+        ${renderMetricGrid({
+          status: data.shadowStatus || "unknown",
+          "query match": comparison.queryMatches ? "pass" : "review",
+          "intent match": comparison.intentMatches ? "pass" : "review",
+          "known native IDs": comparison.nativeIdsKnownToCaller ? "pass" : "review",
+          "selection match": comparison.selectedIdsMatch ? "pass" : "review",
+          "provider calls": data.providerCallsMade ? "yes" : "no",
+          "memory writes": data.memoryWrites ? "yes" : "no",
+        })}
+        <p><strong>Render-selected IDs:</strong> ${renderShadowIds(comparison.legacySelectedIds)}</p>
+        <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
+        <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
+        <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Native continuity shadow observation failed:", err);
+    container.innerHTML = `<p>Native continuity shadow observation failed: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
   } finally {
     if (button) {
       button.disabled = false;

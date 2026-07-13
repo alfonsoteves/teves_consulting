@@ -686,6 +686,23 @@
       </details>
 
       <details>
+        <summary><strong>Native Continuity Shadow</strong></summary>
+
+        <p>Compare the current Render selection with the signed-in caller's native Motoko preview without changing a public answer.</p>
+
+        <label for="nativeContinuityShadowQuery">Shadow query</label>
+        <input
+          id="nativeContinuityShadowQuery"
+          type="text"
+          maxlength="500"
+          placeholder="Ask about a saved continuity topic"
+        />
+        <button id="runNativeContinuityShadowButton" onclick="runNativeContinuityShadow()">Run Shadow Observation</button>
+
+        <div id="nativeContinuityShadowResults"></div>
+      </details>
+
+      <details>
         <summary><strong>Read-Only Motoko Continuity Contract</strong></summary>
 
         <p>Define the first caller-scoped continuity API before writing Motoko code.</p>
