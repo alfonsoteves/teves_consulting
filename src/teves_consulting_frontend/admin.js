@@ -3577,6 +3577,7 @@ async function callIcpCandidate(prompt, contextText, llmActor, model = LLM_CANDI
 
 function renderCandidateCallResult(data) {
   const normalizedError = data.normalizedError || null;
+  const policyReceipt = data.policyReceipt || null;
 
   return `
     <div class="memory-card">
@@ -3594,6 +3595,16 @@ function renderCandidateCallResult(data) {
       <h3>Candidate</h3>
       ${renderCountMap(data.candidate || {})}
     </div>
+
+    ${
+      policyReceipt
+        ? `<div class="memory-card">
+            <h3>Certified Policy Receipt</h3>
+            ${renderCountMap(policyReceipt)}
+            <p class="meta">The policy check occurred before this browser-mediated candidate call. It did not invoke a reasoning provider.</p>
+          </div>`
+        : ""
+    }
 
     <div class="memory-card">
       <h3>Prompt</h3>
@@ -3808,6 +3819,20 @@ function candidatePolicyPreflightPassed(data = {}) {
     && decision.automaticFallback === false;
 }
 
+function buildCandidatePolicyReceipt(data = {}) {
+  const readiness = data.adminCandidateReadiness || {};
+  const decision = readiness.decision || {};
+  return {
+    certificate: candidatePolicyPreflightPassed(data) ? "verified" : "not verified",
+    provider: decision.providerId || "n/a",
+    route: decision.routeId || "n/a",
+    explicitAdminAction: decision.explicitOperatorAction ? "required" : "not required",
+    promotion: decision.promotionRequired ? "required" : "not required",
+    automaticFallback: decision.automaticFallback ? "forbidden policy violated" : "forbidden",
+    icpQueries: data.canisterCallsMade ?? 0,
+  };
+}
+
 function renderCandidatePolicyPreflight(data = {}, errorMessage = "") {
   const container = document.getElementById("candidatePolicyPreflightResults");
   if (!container) {
@@ -4017,8 +4042,9 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     return;
   }
 
+  let policyPreflight;
   try {
-    await requireCertifiedCandidatePolicyPreflight();
+    policyPreflight = await requireCertifiedCandidatePolicyPreflight();
   } catch (_err) {
     return;
   }
@@ -4052,6 +4078,7 @@ window.runManualCandidateCallHarness = async function runManualCandidateCallHarn
     contextProvided: Boolean(contextText),
     contextLength: contextText.length,
     contextPreview: contextText.slice(0, 500),
+    policyReceipt: buildCandidatePolicyReceipt(policyPreflight),
     safety,
     guardrails: [
       "Admin-only.",
@@ -4170,6 +4197,16 @@ function renderCandidateBatchResults(data) {
       ${renderCandidateResultSummaryTable(results)}
     </div>
 
+    ${
+      data.policyReceipt
+        ? `<div class="memory-card">
+            <h3>Certified Policy Receipt</h3>
+            ${renderCountMap(data.policyReceipt)}
+            <p class="meta">The policy check occurred before this browser-mediated batch. It did not invoke a reasoning provider.</p>
+          </div>`
+        : ""
+    }
+
     ${renderObservedBatchScorecard(results)}
 
     <div class="memory-card">
@@ -4217,8 +4254,9 @@ async function runCandidateBatchPromptSet({title, summary, prompts}) {
   const contextText = valueFromInput("candidateCallContext") || DEFAULT_AION_CANDIDATE_CONTEXT;
   const selectedModels = getCandidateModelsToTest();
 
+  let policyPreflight;
   try {
-    await requireCertifiedCandidatePolicyPreflight();
+    policyPreflight = await requireCertifiedCandidatePolicyPreflight();
   } catch (_err) {
     return;
   }
@@ -4270,6 +4308,7 @@ ${test.reference}`
     summary,
     contextLength: contextText.length,
     model: selectedModels.join(", "),
+    policyReceipt: buildCandidatePolicyReceipt(policyPreflight),
     results,
   });
 }
