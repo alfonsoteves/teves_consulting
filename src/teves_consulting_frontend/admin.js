@@ -808,7 +808,9 @@ function renderNativeContinuityShadowObservation(container, data) {
       ${renderMetricGrid({
         status: data.shadowStatus || "unknown",
         "query match": comparison.queryMatches ? "pass" : "review",
-        "intent match": comparison.intentMatches ? "pass" : "review",
+        "strict intent match": comparison.intentMatches ? "pass" : "review",
+        "intent compatibility": comparison.intentCompatible ? "pass" : "review",
+        "intent refinement": comparison.intentReviewRequired ? "operator acknowledgement required" : "none",
         "known native IDs": comparison.nativeIdsKnownToCaller ? "pass" : "review",
         "selection match": comparison.selectedIdsMatch ? "pass" : "review",
         "legacy coverage": comparison.legacySelectionCoveragePercent == null
@@ -823,12 +825,14 @@ function renderNativeContinuityShadowObservation(container, data) {
       <p><strong>Native ranked IDs:</strong> ${renderShadowIds(comparison.nativeRankedIds)}</p>
       <p><strong>Native relationship-expanded IDs:</strong> ${renderShadowIds(comparison.nativeExpandedIds)}</p>
       ${diagnosticsHtml}
+      ${comparison.intentReviewDescription ? `<p><strong>Intent refinement:</strong> ${escapeHtml(comparison.intentReviewDescription)}</p>` : ""}
       <p class="meta">Phase ${escapeHtml(data.phase || "7.80")} | ${escapeHtml(data.reason || "observation complete")} | No answer routing changed</p>
     </div>
   `;
 }
 
-const NATIVE_CONTINUITY_SHADOW_EVIDENCE_STORAGE_KEY = "aion.nativeContinuityShadowEvidence.v1";
+const NATIVE_CONTINUITY_SHADOW_EVIDENCE_STORAGE_KEY = "aion.nativeContinuityShadowEvidence.v2";
+const NATIVE_CONTINUITY_SHADOW_ACKNOWLEDGEMENT_STORAGE_KEY = "aion.nativeContinuityShadowAcknowledgements.v2";
 
 function currentShadowEvidenceCaller() {
   return identity?.getPrincipal?.().toText?.() || "";
@@ -856,20 +860,51 @@ function compactShadowObservation(result) {
   return {
     query: result.query,
     shadowStatus: result.data?.shadowStatus || "blocked",
-    structuralPass: Boolean(
+    safetyPass: Boolean(
       comparison.queryMatches
-      && comparison.intentMatches
+      && comparison.intentCompatible
       && comparison.nativeIdsKnownToCaller
       && !result.data?.providerCallsMade
       && !result.data?.memoryWrites
       && !result.data?.publicAnswerChanged
     ),
+    strictIntentMatch: Boolean(comparison.intentMatches),
+    intentReviewRequired: Boolean(comparison.intentReviewRequired),
+    intentReviewKey: comparison.intentReviewKey || null,
+    intentReviewDescription: comparison.intentReviewDescription || null,
     legacySelectedIds: comparison.legacySelectedIds || [],
     legacyOverlapIds: comparison.legacyOverlapIds || [],
     nativeRankedIds: comparison.nativeRankedIds || [],
     coveragePercent: comparison.legacySelectionCoveragePercent ?? null,
     reason: result.data?.reason || result.error || "unknown",
   };
+}
+
+function loadNativeContinuityShadowAcknowledgements() {
+  try {
+    const acknowledgements = JSON.parse(
+      window.localStorage.getItem(NATIVE_CONTINUITY_SHADOW_ACKNOWLEDGEMENT_STORAGE_KEY) || "[]"
+    );
+    return Array.isArray(acknowledgements) ? acknowledgements : [];
+  } catch (err) {
+    console.warn("Could not read native continuity shadow acknowledgements:", err);
+    return [];
+  }
+}
+
+function saveNativeContinuityShadowAcknowledgements(acknowledgements) {
+  window.localStorage.setItem(
+    NATIVE_CONTINUITY_SHADOW_ACKNOWLEDGEMENT_STORAGE_KEY,
+    JSON.stringify(acknowledgements)
+  );
+}
+
+function acknowledgedShadowReviewKeys(caller) {
+  return new Set(
+    loadNativeContinuityShadowAcknowledgements()
+      .filter(acknowledgement => acknowledgement.caller === caller)
+      .map(acknowledgement => acknowledgement.reviewKey)
+  );
 }
 
 function recordNativeContinuityShadowEvidence(results) {
@@ -901,11 +936,17 @@ function renderNativeContinuityShadowEvidence() {
   const caller = currentShadowEvidenceCaller();
   const records = loadNativeContinuityShadowEvidence().filter(record => record.caller === caller);
   const observations = records.flatMap(record => Array.isArray(record.observations) ? record.observations : []);
-  const structuralPasses = observations.filter(observation => observation.structuralPass).length;
+  const safetyPasses = observations.filter(observation => observation.safetyPass).length;
   const legacyTotal = observations.reduce((total, observation) => total + observation.legacySelectedIds.length, 0);
   const overlapTotal = observations.reduce((total, observation) => total + observation.legacyOverlapIds.length, 0);
   const coveragePercent = legacyTotal > 0 ? Math.round((overlapTotal / legacyTotal) * 100) : null;
-  const semanticReviews = observations.filter(observation => observation.coveragePercent != null && observation.coveragePercent < 100).length;
+  const reviewKeys = [...new Set(
+    observations
+      .filter(observation => observation.intentReviewRequired && observation.intentReviewKey)
+      .map(observation => observation.intentReviewKey)
+  )];
+  const acknowledgedKeys = acknowledgedShadowReviewKeys(caller);
+  const pendingReviewKeys = reviewKeys.filter(reviewKey => !acknowledgedKeys.has(reviewKey));
   const firstRecordedAt = records[0]?.recordedAt || null;
   const lastRecordedAt = records.at(-1)?.recordedAt || null;
   const elapsedHours = firstRecordedAt && lastRecordedAt
@@ -914,9 +955,18 @@ function renderNativeContinuityShadowEvidence() {
   const windowThresholdMet = records.length >= 4
     && elapsedHours >= 24
     && observations.length === 12
-    && structuralPasses === observations.length
+    && safetyPasses === observations.length
     && coveragePercent != null
-    && coveragePercent >= 90;
+    && coveragePercent >= 90
+    && pendingReviewKeys.length === 0;
+  const acknowledgementHtml = pendingReviewKeys.length > 0
+    ? `
+      <p><strong>Operator acknowledgement required:</strong> A documented intent refinement is present in this evidence window.</p>
+      <button onclick="acknowledgeNativeContinuityShadowReviews()">Acknowledge documented intent refinement</button>
+    `
+    : reviewKeys.length > 0
+      ? "<p><strong>Operator acknowledgement:</strong> complete</p>"
+      : "<p><strong>Operator acknowledgement:</strong> not required</p>";
 
   container.innerHTML = `
     <div class="memory-card">
@@ -924,12 +974,15 @@ function renderNativeContinuityShadowEvidence() {
       ${renderMetricGrid({
         runs: records.length,
         observations: observations.length,
-        "structural passes": `${structuralPasses}/${observations.length}`,
+        "safety passes": `${safetyPasses}/${observations.length}`,
         "legacy ID coverage": coveragePercent == null ? "n/a" : `${coveragePercent}%`,
-        "semantic reviews": semanticReviews,
+        "documented intent refinements": reviewKeys.length,
+        "pending acknowledgements": pendingReviewKeys.length,
         "elapsed hours": elapsedHours,
         "evidence threshold": windowThresholdMet ? "ready for operator review" : "collecting evidence",
       })}
+      ${acknowledgementHtml}
+      <p>Evidence version 2 begins a fresh window because planning intent refinements are now recorded explicitly rather than counted as unexplained structural failures.</p>
       <p class="meta">Browser-local metadata only | Current caller scope | No canister or memory write | No automatic cutover</p>
     </div>
   `;
@@ -937,10 +990,35 @@ function renderNativeContinuityShadowEvidence() {
 
 window.refreshNativeContinuityShadowEvidence = renderNativeContinuityShadowEvidence;
 
+window.acknowledgeNativeContinuityShadowReviews = function acknowledgeNativeContinuityShadowReviews() {
+  const caller = currentShadowEvidenceCaller();
+  const observations = loadNativeContinuityShadowEvidence()
+    .filter(record => record.caller === caller)
+    .flatMap(record => Array.isArray(record.observations) ? record.observations : []);
+  const reviewKeys = [...new Set(
+    observations
+      .filter(observation => observation.intentReviewRequired && observation.intentReviewKey)
+      .map(observation => observation.intentReviewKey)
+  )];
+  const acknowledgements = loadNativeContinuityShadowAcknowledgements().filter(
+    acknowledgement => acknowledgement.caller !== caller || !reviewKeys.includes(acknowledgement.reviewKey)
+  );
+  acknowledgements.push(...reviewKeys.map(reviewKey => ({
+    caller,
+    reviewKey,
+    acknowledgedAt: new Date().toISOString(),
+  })));
+  saveNativeContinuityShadowAcknowledgements(acknowledgements);
+  renderNativeContinuityShadowEvidence();
+};
+
 window.clearNativeContinuityShadowEvidence = function clearNativeContinuityShadowEvidence() {
   const caller = currentShadowEvidenceCaller();
   const remaining = loadNativeContinuityShadowEvidence().filter(record => record.caller !== caller);
   saveNativeContinuityShadowEvidence(remaining);
+  saveNativeContinuityShadowAcknowledgements(
+    loadNativeContinuityShadowAcknowledgements().filter(acknowledgement => acknowledgement.caller !== caller)
+  );
   renderNativeContinuityShadowEvidence();
 };
 
