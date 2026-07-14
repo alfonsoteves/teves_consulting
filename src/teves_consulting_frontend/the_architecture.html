@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Aion Architecture — Aion</title>
+<meta name="description" content="The Aion Architecture: a public paper describing how Aion is structured around continuity, sovereignty, and human judgment." />
+<style>
+:root{
+  --ink:#0f172a;
+  --muted:#475569;
+  --soft:#64748b;
+  --line:#e2e8f0;
+  --blue:#2563eb;
+  --blue-soft:#dbeafe;
+  --paper:#ffffff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#f8fafc;
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height:1.65;
+}
+.page{
+  width:min(920px, calc(100% - 32px));
+  margin:32px auto;
+  background:var(--paper);
+  box-shadow:0 24px 80px rgba(15,23,42,.10);
+  border:1px solid var(--line);
+}
+.cover{
+  min-height:920px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+  padding:72px;
+}
+.wave{
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:-12%;
+  height:330px;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(37,99,235,.18), transparent 55%),
+    radial-gradient(ellipse at 70% 50%, rgba(56,189,248,.18), transparent 55%);
+  filter:blur(10px);
+}
+.cover h1{
+  font-size:76px;
+  letter-spacing:-.055em;
+  line-height:.9;
+  margin:0;
+}
+.cover h2{
+  margin:24px 0 8px;
+  font-size:34px;
+  font-weight:600;
+  letter-spacing:-.035em;
+}
+.tagline{
+  color:var(--blue);
+  font-size:22px;
+  margin:0;
+}
+.cover-quote{
+  margin-top:86px;
+  max-width:560px;
+  font-size:25px;
+  line-height:1.35;
+  color:var(--muted);
+}
+.meta{
+  position:absolute;
+  bottom:72px;
+  color:var(--soft);
+  font-size:14px;
+  letter-spacing:.02em;
+}
+.content{
+  padding:72px 92px 84px;
+}
+.paper-note{
+  border-left:4px solid var(--blue);
+  padding:18px 22px;
+  background:#f8fbff;
+  color:var(--muted);
+  margin-bottom:64px;
+}
+section{
+  margin:0 0 58px;
+}
+h3{
+  font-size:30px;
+  letter-spacing:-.035em;
+  line-height:1.15;
+  margin:0 0 18px;
+}
+p{
+  font-size:17px;
+  color:#334155;
+  margin:0 0 18px;
+}
+.lead{
+  font-size:20px;
+  color:#1e293b;
+}
+.pull{
+  margin:36px 0;
+  padding:34px 38px;
+  border-radius:28px;
+  background:linear-gradient(135deg,#eff6ff,#ffffff);
+  border:1px solid #bfdbfe;
+  font-size:29px;
+  line-height:1.28;
+  letter-spacing:-.03em;
+  color:#0f172a;
+  font-weight:650;
+}
+.principles{
+  display:grid;
+  gap:12px;
+  margin:28px 0 0;
+}
+.principle{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px 18px;
+  color:#334155;
+  background:#fff;
+}
+.stack{
+  margin:38px auto;
+  max-width:560px;
+  display:grid;
+  gap:10px;
+}
+.layer{
+  border:1px solid #bfdbfe;
+  background:#f8fbff;
+  border-radius:18px;
+  padding:18px 20px;
+  text-align:center;
+}
+.layer strong{
+  display:block;
+  font-size:18px;
+  margin-bottom:4px;
+}
+.layer span{
+  color:#475569;
+  font-size:15px;
+}
+.arrow{
+  text-align:center;
+  color:var(--blue);
+  font-size:25px;
+  line-height:1;
+}
+.split{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin:28px 0;
+}
+.card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:20px;
+  background:#fff;
+}
+.card strong{
+  display:block;
+  color:#0f172a;
+  margin-bottom:8px;
+}
+.not-list{
+  margin:24px 0 0;
+  padding:0;
+  list-style:none;
+}
+.not-list li{
+  padding:12px 0 12px 28px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  color:#334155;
+}
+.not-list li:before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:var(--blue);
+  position:absolute;
+  left:4px;
+  top:23px;
+}
+.closing{
+  min-height:680px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  padding:92px;
+  border-top:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+.closing h3{
+  font-size:44px;
+}
+.closing p{
+  max-width:620px;
+  font-size:21px;
+}
+.footerline{
+  margin-top:52px;
+  color:var(--blue);
+  font-weight:700;
+  font-size:23px;
+}
+@media print{
+  body{background:white}
+  .page{width:100%; margin:0; box-shadow:none; border:0}
+  .cover,.closing{min-height:100vh; page-break-after:always}
+  section{break-inside:avoid}
+  .content{padding:64px 78px}
+}
+@media(max-width:700px){
+  .cover,.content,.closing{padding:42px 28px}
+  .cover h1{font-size:56px}
+  h3{font-size:26px}
+  .pull{font-size:23px}
+  .split{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+<article class="page">
+  <header class="cover">
+    <div class="wave" aria-hidden="true"></div>
+    <h1>Aion</h1>
+    <h2>The Architecture</h2>
+    <p class="tagline">Built around continuity. Designed for sovereignty.</p>
+    <p class="cover-quote">Aion is designed so that intelligence can change without asking people to surrender their continuity, judgment, or long-term control.</p>
+    <div class="meta">First Edition · Version 1.0 · Teves Consulting · 2026</div>
+  </header>
+
+  <main class="content">
+    <div class="paper-note">
+      The Aion Papers document the philosophy, architecture, and long-term direction of Aion. They are living documents that evolve thoughtfully as the system matures while remaining grounded in the principles that define it.
+    </div>
+
+    <section>
+      <h3>The Architectural Question</h3>
+      <p class="lead">Most AI systems are organized around the model. Aion is organized around the relationship between a human partner and a continuity-aware system.</p>
+      <p>Models improve. Providers change. Interfaces evolve. Infrastructure is replaced.</p>
+      <p><strong>The architecture must allow those changes without forcing people to abandon the context, decisions, and understanding they have built over time.</strong></p>
+    </section>
+
+    <section>
+      <h3>A Different Center of Gravity</h3>
+      <p>Aion does not treat the reasoning model as the owner of the experience. The model is one capability inside a larger system.</p>
+      <div class="pull">The model generates. Aion preserves. The human partner decides.</div>
+    </section>
+
+    <section>
+      <h3>The Architectural Layers</h3>
+      <div class="stack" aria-label="Aion architectural layers">
+        <div class="layer">
+          <strong>Human Partner</strong>
+          <span>Goals, values, judgment, approval, and final decisions</span>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="layer">
+          <strong>Aion</strong>
+          <span>Identity, continuity, context, governance, memory selection, and provider policy</span>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="layer">
+          <strong>Reasoning Providers</strong>
+          <span>Language generation, analysis, and specialized reasoning capabilities</span>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="layer">
+          <strong>Infrastructure</strong>
+          <span>Storage, compute, networking, identity services, and deployment environments</span>
+        </div>
+      </div>
+      <p>The arrangement matters. The human partner remains above the system. Aion remains above the provider. Infrastructure supports the architecture rather than defining it.</p>
+    </section>
+
+    <section>
+      <h3>What Aion Owns</h3>
+      <div class="principles">
+        <div class="principle"><strong>Identity:</strong> who is participating and what scope applies</div>
+        <div class="principle"><strong>Continuity:</strong> the decisions, milestones, relationships, and context that persist over time</div>
+        <div class="principle"><strong>Selection:</strong> which memories and knowledge are relevant to the present question</div>
+        <div class="principle"><strong>Context:</strong> how the selected information is assembled for reasoning</div>
+        <div class="principle"><strong>Governance:</strong> what the system is allowed to do and what requires approval</div>
+        <div class="principle"><strong>Provider policy:</strong> which external reasoning capability may be used and under what conditions</div>
+      </div>
+    </section>
+
+    <section>
+      <h3>What Providers Own</h3>
+      <p>Reasoning providers contribute generated output. They may analyze a question, compare alternatives, summarize evidence, or produce language.</p>
+      <p>They do not own Aion's identity, continuity, governance, long-term memory, or relationship with the human partner.</p>
+      <div class="pull">Providers are powerful components. They are not Aion.</div>
+    </section>
+
+    <section>
+      <h3>Continuity as an Independent Layer</h3>
+      <p>Continuity should not disappear when a model changes. It should not depend on the lifespan of a conversation, the limits of a provider, or the availability of one company.</p>
+      <p>Aion therefore treats continuity as a first-class architectural layer. Reasoning providers receive the context needed for a task, but the enduring record remains outside the provider.</p>
+    </section>
+
+    <section>
+      <h3>Memory Is Not the Same as Continuity</h3>
+      <div class="split">
+        <div class="card">
+          <strong>Memory</strong>
+          Stores information that may be useful later.
+        </div>
+        <div class="card">
+          <strong>Continuity</strong>
+          Preserves meaning, relevance, relationships, and the reasons behind prior decisions.
+        </div>
+      </div>
+      <p>The architecture is designed to select and connect what matters rather than simply accumulate everything.</p>
+    </section>
+
+    <section>
+      <h3>Sovereignty by Design</h3>
+      <p>Sovereignty in Aion is not a marketing label. It is an architectural direction.</p>
+      <p>It means that the essential elements of the relationship—identity, continuity, governance, and long-term direction—should become increasingly independent of any single provider or infrastructure vendor.</p>
+      <div class="pull">Data sovereignty is a destination built into Aion's direction, not an afterthought added later.</div>
+    </section>
+
+    <section>
+      <h3>Data Belongs with the Person</h3>
+      <p>Aion's long-term goal is straightforward: the information that gives continuity meaning should remain under the control of the human partner.</p>
+      <p>That goal includes greater privacy, portability, verifiability, and the ability to reset or remove saved continuity.</p>
+      <p>Aion cannot honestly claim perfect security today. No serious system should. It can, however, be designed so that stronger ownership and protection become easier to achieve as the underlying technology matures.</p>
+    </section>
+
+    <section>
+      <h3>Security as a Direction, Not a Slogan</h3>
+      <p>Security is not a single feature. It is the result of boundaries, identity, scoped access, minimized data exposure, careful governance, and continuous review.</p>
+      <p>Aion's architecture aims to reduce unnecessary trust and progressively strengthen the partner's control over personal continuity.</p>
+    </section>
+
+    <section>
+      <h3>Replaceable Intelligence</h3>
+      <p>Aion should be able to use different reasoning systems without becoming a different product each time.</p>
+      <p>Some providers may be stronger at language. Others may be better at technical reasoning, research, speed, privacy, or cost. The architecture should allow Aion to benefit from those differences while preserving a stable identity and behavior.</p>
+      <p><strong>The goal is not loyalty to a model. The goal is continuity of character.</strong></p>
+    </section>
+
+    <section>
+      <h3>Provider-Neutral Behavior</h3>
+      <p>Public improvements should belong to Aion rather than to one provider.</p>
+      <div class="principles">
+        <div class="principle">Clear response structure</div>
+        <div class="principle">Evidence-conscious reasoning</div>
+        <div class="principle">Consistent language behavior</div>
+        <div class="principle">Continuity-aware answers</div>
+        <div class="principle">Honest uncertainty</div>
+        <div class="principle">Human final judgment</div>
+      </div>
+      <p>If the reasoning provider changes, these qualities should remain.</p>
+    </section>
+
+    <section>
+      <h3>Governance Before Automation</h3>
+      <p>Aion is designed so that authority is not silently expanded.</p>
+      <p>New capabilities should begin with narrow permissions, explicit review, and reversible steps. Automation should be earned through evidence rather than assumed by default.</p>
+    </section>
+
+    <section>
+      <h3>Validation Before Promotion</h3>
+      <p>Important architectural changes should be tested alongside existing behavior before they become authoritative.</p>
+      <p>This approach allows differences to be observed, weaknesses to be corrected, and rollback paths to remain available.</p>
+      <div class="pull">Capability should be proven before behavior changes.</div>
+    </section>
+
+    <section>
+      <h3>Public Experience, Private Complexity</h3>
+      <p>The human partner should not have to understand every provider, deployment environment, or internal subsystem.</p>
+      <p>The architecture exists to absorb that complexity while presenting a coherent Aion experience.</p>
+      <p>The measure of success is not that people understand the machinery. It is that the machinery preserves trust, continuity, and control.</p>
+    </section>
+
+    <section>
+      <h3>What the Architecture Is Not</h3>
+      <ul class="not-list">
+        <li>A model wrapped in a website</li>
+        <li>A permanent dependency on one provider</li>
+        <li>A claim of perfect security</li>
+        <li>A system where more automation automatically means more progress</li>
+        <li>A reason to collect more personal information than continuity requires</li>
+        <li>An architecture that places the machine above the human partner</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Long-Term Direction</h3>
+      <p>The long-term direction is toward a more sovereign form of AI partnership:</p>
+      <div class="principles">
+        <div class="principle">Continuity that can survive provider changes</div>
+        <div class="principle">Identity and access controlled by the person</div>
+        <div class="principle">Reasoning providers that remain replaceable</div>
+        <div class="principle">Data that becomes increasingly portable and privately controlled</div>
+        <div class="principle">Governance that remains visible and reviewable</div>
+        <div class="principle">Architecture that strengthens human judgment rather than displacing it</div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Design Reflection</h3>
+      <p>Technology will continue to change faster than any single architecture can predict.</p>
+      <p>Aion does not need to predict every model, platform, or interface. It needs to preserve the right boundaries.</p>
+      <div class="pull">The human partner owns the decision. Aion owns the continuity. Providers contribute the reasoning.</div>
+      <p>If those boundaries remain intact, Aion can evolve without losing its identity.</p>
+    </section>
+  </main>
+
+  <footer class="closing">
+    <h3>About Aion</h3>
+    <p>Aion is a continuity-aware thinking companion designed to help people preserve context, recognize patterns, and make better decisions over time.</p>
+    <p class="footerline">Built around continuity. Designed for sovereignty.</p>
+    <p style="margin-top:32px;color:#64748b;font-size:15px;">www.tevesconsulting.com</p>
+  </footer>
+</article>
+</body>
+</html>

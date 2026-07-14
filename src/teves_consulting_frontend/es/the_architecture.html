@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>La Arquitectura de Aion — Aion</title>
+<meta content="La Arquitectura de Aion: un documento público que describe cómo Aion está estructurado en torno a la continuidad, la soberanía y el juicio humano." name="description"/>
+<style>
+:root{
+  --ink:#0f172a;
+  --muted:#475569;
+  --soft:#64748b;
+  --line:#e2e8f0;
+  --blue:#2563eb;
+  --blue-soft:#dbeafe;
+  --paper:#ffffff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#f8fafc;
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height:1.65;
+}
+.page{
+  width:min(920px, calc(100% - 32px));
+  margin:32px auto;
+  background:var(--paper);
+  box-shadow:0 24px 80px rgba(15,23,42,.10);
+  border:1px solid var(--line);
+}
+.cover{
+  min-height:920px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+  padding:72px;
+}
+.wave{
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:-12%;
+  height:330px;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(37,99,235,.18), transparent 55%),
+    radial-gradient(ellipse at 70% 50%, rgba(56,189,248,.18), transparent 55%);
+  filter:blur(10px);
+}
+.cover h1{
+  font-size:76px;
+  letter-spacing:-.055em;
+  line-height:.9;
+  margin:0;
+}
+.cover h2{
+  margin:24px 0 8px;
+  font-size:34px;
+  font-weight:600;
+  letter-spacing:-.035em;
+}
+.tagline{
+  color:var(--blue);
+  font-size:22px;
+  margin:0;
+}
+.cover-quote{
+  margin-top:86px;
+  max-width:560px;
+  font-size:25px;
+  line-height:1.35;
+  color:var(--muted);
+}
+.meta{
+  position:absolute;
+  bottom:72px;
+  color:var(--soft);
+  font-size:14px;
+  letter-spacing:.02em;
+}
+.content{
+  padding:72px 92px 84px;
+}
+.paper-note{
+  border-left:4px solid var(--blue);
+  padding:18px 22px;
+  background:#f8fbff;
+  color:var(--muted);
+  margin-bottom:64px;
+}
+section{
+  margin:0 0 58px;
+}
+h3{
+  font-size:30px;
+  letter-spacing:-.035em;
+  line-height:1.15;
+  margin:0 0 18px;
+}
+p{
+  font-size:17px;
+  color:#334155;
+  margin:0 0 18px;
+}
+.lead{
+  font-size:20px;
+  color:#1e293b;
+}
+.pull{
+  margin:36px 0;
+  padding:34px 38px;
+  border-radius:28px;
+  background:linear-gradient(135deg,#eff6ff,#ffffff);
+  border:1px solid #bfdbfe;
+  font-size:29px;
+  line-height:1.28;
+  letter-spacing:-.03em;
+  color:#0f172a;
+  font-weight:650;
+}
+.principles{
+  display:grid;
+  gap:12px;
+  margin:28px 0 0;
+}
+.principle{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px 18px;
+  color:#334155;
+  background:#fff;
+}
+.stack{
+  margin:38px auto;
+  max-width:560px;
+  display:grid;
+  gap:10px;
+}
+.layer{
+  border:1px solid #bfdbfe;
+  background:#f8fbff;
+  border-radius:18px;
+  padding:18px 20px;
+  text-align:center;
+}
+.layer strong{
+  display:block;
+  font-size:18px;
+  margin-bottom:4px;
+}
+.layer span{
+  color:#475569;
+  font-size:15px;
+}
+.arrow{
+  text-align:center;
+  color:var(--blue);
+  font-size:25px;
+  line-height:1;
+}
+.split{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin:28px 0;
+}
+.card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:20px;
+  background:#fff;
+}
+.card strong{
+  display:block;
+  color:#0f172a;
+  margin-bottom:8px;
+}
+.not-list{
+  margin:24px 0 0;
+  padding:0;
+  list-style:none;
+}
+.not-list li{
+  padding:12px 0 12px 28px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  color:#334155;
+}
+.not-list li:before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:var(--blue);
+  position:absolute;
+  left:4px;
+  top:23px;
+}
+.closing{
+  min-height:680px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  padding:92px;
+  border-top:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+.closing h3{
+  font-size:44px;
+}
+.closing p{
+  max-width:620px;
+  font-size:21px;
+}
+.footerline{
+  margin-top:52px;
+  color:var(--blue);
+  font-weight:700;
+  font-size:23px;
+}
+@media print{
+  body{background:white}
+  .page{width:100%; margin:0; box-shadow:none; border:0}
+  .cover,.closing{min-height:100vh; page-break-after:always}
+  section{break-inside:avoid}
+  .content{padding:64px 78px}
+}
+@media(max-width:700px){
+  .cover,.content,.closing{padding:42px 28px}
+  .cover h1{font-size:56px}
+  h3{font-size:26px}
+  .pull{font-size:23px}
+  .split{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<article class="page">
+<header class="cover">
+<div aria-hidden="true" class="wave"></div>
+<h1>Aion</h1>
+<h2>La Arquitectura</h2>
+<p class="tagline">Construido en torno a la continuidad. Diseñado para la soberanía.</p>
+<p class="cover-quote">Aion está diseñado para que la inteligencia pueda cambiar sin exigir a las personas que renuncien a su continuidad, su juicio o su control a largo plazo.</p>
+<div class="meta">Primera Edición · Versión 1.0 · Teves Consulting · 2026</div>
+</header>
+<main class="content">
+<div class="paper-note">Los Documentos de Aion describen la filosofía, la arquitectura y la dirección a largo plazo de Aion. Son documentos vivos que evolucionan cuidadosamente a medida que el sistema madura, manteniéndose fieles a los principios que lo definen.</div>
+<section>
+<h3>La Pregunta Arquitectónica</h3>
+<p class="lead">La mayoría de los sistemas de inteligencia artificial están organizados alrededor del modelo. Aion está organizado alrededor de la relación entre una persona y un sistema capaz de preservar continuidad.</p>
+<p>Los modelos mejoran. Los proveedores cambian. Las interfaces evolucionan. La infraestructura se reemplaza.</p>
+<p>La arquitectura debe permitir esos cambios sin obligar a las personas a abandonar el contexto, las decisiones y la comprensión que han construido con el tiempo.</p>
+</section>
+<section>
+<h3>Un Centro de Gravedad Diferente</h3>
+<p>Aion no trata al modelo de razonamiento como propietario de la experiencia. El modelo es una capacidad dentro de un sistema más amplio.</p>
+<div class="pull">El modelo genera. Aion preserva. La persona decide.</div>
+</section>
+<section>
+<h3>Las Capas Arquitectónicas</h3>
+<div aria-label="Aion architectural layers" class="stack">
+<div class="layer">
+<strong>Persona</strong>
+<span>Objetivos, valores, juicio, aprobación y decisiones finales</span>
+</div>
+<div class="arrow">↓</div>
+<div class="layer">
+<strong>Aion</strong>
+<span>Identidad, continuidad, contexto, gobernanza, selección de memoria y política de proveedores</span>
+</div>
+<div class="arrow">↓</div>
+<div class="layer">
+<strong>Proveedores de Razonamiento</strong>
+<span>Generación de lenguaje, análisis y capacidades especializadas de razonamiento</span>
+</div>
+<div class="arrow">↓</div>
+<div class="layer">
+<strong>Infraestructura</strong>
+<span>Almacenamiento, cómputo, redes, servicios de identidad y entornos de ejecución</span>
+</div>
+</div>
+<p>El orden importa. La persona permanece por encima del sistema. Aion permanece por encima del proveedor. La infraestructura sostiene la arquitectura en lugar de definirla.</p>
+</section>
+<section>
+<h3>Lo Que Pertenece a Aion</h3>
+<div class="principles">
+<div class="principle"><strong>Identidad:</strong> quién participa y qué alcance corresponde</div>
+<div class="principle"><strong>Continuidad:</strong> las decisiones, los hitos, las relaciones y el contexto que perduran con el tiempo</div>
+<div class="principle"><strong>Selección:</strong> qué recuerdos y conocimientos son relevantes para la pregunta actual</div>
+<div class="principle"><strong>Contexto:</strong> cómo se organiza la información seleccionada para el razonamiento</div>
+<div class="principle"><strong>Gobernanza:</strong> qué puede hacer el sistema y qué requiere aprobación</div>
+<div class="principle"><strong>Política de proveedores:</strong> qué capacidad externa de razonamiento puede utilizarse y bajo qué condiciones</div>
+</div>
+</section>
+<section>
+<h3>Lo Que Corresponde a los Proveedores</h3>
+<p>Los proveedores de razonamiento aportan resultados generados. Pueden analizar una pregunta, comparar alternativas, resumir evidencia o producir lenguaje.</p>
+<p>No son propietarios de la identidad, la continuidad, la gobernanza, la memoria a largo plazo ni la relación de Aion con la persona.</p>
+<div class="pull">Los proveedores son componentes poderosos. No son Aion.</div>
+</section>
+<section>
+<h3>La Continuidad como Capa Independiente</h3>
+<p>La continuidad no debería desaparecer cuando cambia un modelo. Tampoco debería depender de la duración de una conversación, de los límites de un proveedor o de la disponibilidad de una empresa.</p>
+<p>Por eso Aion trata la continuidad como una capa arquitectónica de primer nivel. Los proveedores reciben el contexto necesario para una tarea, mientras que el registro duradero permanece fuera del proveedor.</p>
+</section>
+<section>
+<h3>La Memoria No Es Igual a la Continuidad</h3>
+<div class="split">
+<div class="card">
+<strong>Memoria</strong>Almacena información que podría resultar útil más adelante.</div>
+<div class="card">
+<strong>Continuidad</strong>Preserva el significado, la relevancia, las relaciones y las razones detrás de decisiones anteriores.</div>
+</div>
+<p>La arquitectura está diseñada para seleccionar y conectar lo importante, no simplemente para acumularlo todo.</p>
+</section>
+<section>
+<h3>Soberanía por Diseño</h3>
+<p>La soberanía en Aion no es una etiqueta de mercadeo. Es una dirección arquitectónica.</p>
+<p>Significa que los elementos esenciales de la relación —identidad, continuidad, gobernanza y dirección a largo plazo— deben volverse cada vez menos dependientes de un único proveedor o de una sola plataforma de infraestructura.</p>
+<div class="pull">La soberanía de los datos es una dirección incorporada al diseño de Aion, no una idea añadida al final.</div>
+</section>
+<section>
+<h3>Los Datos Deben Permanecer con la Persona</h3>
+<p>El objetivo a largo plazo de Aion es sencillo: la información que da significado a la continuidad debe permanecer bajo el control de la persona.</p>
+<p>Ese objetivo incluye una mayor privacidad, portabilidad, verificabilidad y la capacidad de restablecer o eliminar la continuidad guardada.</p>
+<p>Aion no puede afirmar honestamente que ofrece seguridad perfecta en la actualidad. Ningún sistema serio debería hacerlo. Sin embargo, puede diseñarse de manera que una mayor propiedad y protección sean cada vez más alcanzables a medida que madure la tecnología.</p>
+</section>
+<section>
+<h3>La Seguridad como Dirección, No como Eslogan</h3>
+<p>La seguridad no es una sola función. Es el resultado de límites claros, identidad, acceso restringido, exposición mínima de datos, gobernanza cuidadosa y revisión continua.</p>
+<p>La arquitectura de Aion busca reducir la confianza innecesaria y fortalecer progresivamente el control de la persona sobre su continuidad.</p>
+</section>
+<section>
+<h3>Inteligencia Reemplazable</h3>
+<p>Aion debe poder utilizar distintos sistemas de razonamiento sin convertirse en un producto diferente cada vez.</p>
+<p>Algunos proveedores pueden ser mejores en lenguaje. Otros pueden destacar en razonamiento técnico, investigación, velocidad, privacidad o costo. La arquitectura debe permitir que Aion aproveche esas diferencias sin perder una identidad ni un comportamiento estables.</p>
+<p>El objetivo no es la lealtad a un modelo. El objetivo es la continuidad de carácter.</p>
+</section>
+<section>
+<h3>Un Comportamiento Independiente del Proveedor</h3>
+<p>Las mejoras públicas deben pertenecer a Aion y no a un proveedor en particular.</p>
+<div class="principles">
+<div class="principle">Estructura clara de las respuestas</div>
+<div class="principle">Razonamiento atento a la evidencia</div>
+<div class="principle">Comportamiento lingüístico coherente</div>
+<div class="principle">Respuestas conscientes de la continuidad</div>
+<div class="principle">Incertidumbre expresada con honestidad</div>
+<div class="principle">Juicio final humano</div>
+</div>
+<p>Si cambia el proveedor de razonamiento, estas cualidades deben permanecer.</p>
+</section>
+<section>
+<h3>Gobernanza Antes que Automatización</h3>
+<p>Aion está diseñado para que la autoridad no se expanda en silencio.</p>
+<p>Las nuevas capacidades deben comenzar con permisos limitados, revisión explícita y pasos reversibles. La automatización debe ganarse mediante evidencia y no asumirse por defecto.</p>
+</section>
+<section>
+<h3>Validación Antes de la Adopción</h3>
+<p>Los cambios arquitectónicos importantes deben probarse junto al comportamiento existente antes de convertirse en la opción principal.</p>
+<p>Este enfoque permite observar diferencias, corregir debilidades y mantener disponibles los caminos de reversión.</p>
+<div class="pull">La capacidad debe demostrarse antes de cambiar el comportamiento.</div>
+</section>
+<section>
+<h3>Experiencia Pública, Complejidad Interna</h3>
+<p>La persona no debería tener que comprender cada proveedor, entorno de ejecución o subsistema interno.</p>
+<p>La arquitectura existe para absorber esa complejidad y presentar una experiencia coherente de Aion.</p>
+<p>El éxito no consiste en que las personas comprendan la maquinaria. Consiste en que la maquinaria preserve la confianza, la continuidad y el control.</p>
+</section>
+<section>
+<h3>Lo Que la Arquitectura No Es</h3>
+<ul class="not-list">
+<li>Un modelo envuelto en un sitio web</li>
+<li>Una dependencia permanente de un único proveedor</li>
+<li>Una promesa de seguridad perfecta</li>
+<li>Un sistema donde más automatización signifique automáticamente más progreso</li>
+<li>Una razón para recopilar más información personal de la que exige la continuidad</li>
+<li>Una arquitectura que coloca a la máquina por encima de la persona</li>
+</ul>
+</section>
+<section>
+<h3>Dirección a Largo Plazo</h3>
+<p>La dirección a largo plazo apunta hacia una forma más soberana de colaboración con la inteligencia artificial:</p>
+<div class="principles">
+<div class="principle">Continuidad capaz de sobrevivir a cambios de proveedor</div>
+<div class="principle">Identidad y acceso controlados por la persona</div>
+<div class="principle">Proveedores de razonamiento que sigan siendo reemplazables</div>
+<div class="principle">Datos cada vez más portables y bajo control privado</div>
+<div class="principle">Gobernanza visible y revisable</div>
+<div class="principle">Una arquitectura que fortalezca el juicio humano en lugar de desplazarlo</div>
+</div>
+</section>
+<section>
+<h3>Reflexión de Diseño</h3>
+<p>La tecnología continuará cambiando más rápido de lo que cualquier arquitectura puede anticipar.</p>
+<p>Aion no necesita predecir cada modelo, plataforma o interfaz. Necesita preservar los límites correctos.</p>
+<div class="pull">La persona conserva la decisión. Aion conserva la continuidad. Los proveedores aportan el razonamiento.</div>
+<p>Si esos límites se mantienen, Aion podrá evolucionar sin perder su identidad.</p>
+</section>
+</main>
+<footer class="closing">
+<h3>Acerca de Aion</h3>
+<p>Aion es un compañero de pensamiento con continuidad diseñado para ayudar a las personas a preservar el contexto, reconocer patrones y tomar mejores decisiones con el tiempo.</p>
+<p class="footerline">Construido en torno a la continuidad. Diseñado para la soberanía.</p>
+<p style="margin-top:32px;color:#64748b;font-size:15px;">www.tevesconsulting.com</p>
+</footer>
+</article>
+</body>
+</html>
