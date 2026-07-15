@@ -343,6 +343,45 @@
       font-weight: 500;
     }
 
+    .operator-workspace {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .operator-workspace > h2,
+    .operator-workspace > .section-note {
+      order: 0;
+    }
+
+    .primary-operator-tool {
+      order: 1;
+      border-color: #475569;
+    }
+
+    .primary-operator-tool summary::after {
+      content: "Primary view";
+      margin-left: 10px;
+      color: #93c5fd;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .advanced-operator-tool {
+      order: 2;
+    }
+
+    .advanced-operator-tool summary::after {
+      content: "Advanced";
+      margin-left: 10px;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .active-transition-tool {
+      border-color: #365f8d;
+    }
+
     @media (max-width: 640px) {
       .admin-shell {
         padding: 24px 16px 48px;
@@ -544,11 +583,11 @@
     </details>
     </section>
 
-    <section id="memoryHealth" class="admin-section">
+    <section id="memoryHealth" class="admin-section operator-workspace">
       <h2>Memory Health</h2>
-      <p class="section-note">Inspect graph health, overlaps, relationships, and operator cleanup plans.</p>
+      <p class="section-note">Start with the operator dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
 
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Memory Health Preview</strong></summary>
 
       <p>Inspect memory graph health without changing memories or live retrieval.</p>
@@ -557,7 +596,7 @@
 
       <div id="memoryHealthResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Memory Consolidation Preview</strong></summary>
 
       <p>Inspect consolidation suggestions without changing memories or live retrieval.</p>
@@ -566,7 +605,7 @@
 
       <div id="memoryConsolidationResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Decision Evolution Preview</strong></summary>
 
       <p>Inspect decision evolution without changing memories or live retrieval.</p>
@@ -575,7 +614,7 @@
 
       <div id="decisionEvolutionResults"></div>
     </details>
-    <details>
+    <details class="primary-operator-tool" open>
       <summary><strong>Memory Health Dashboard</strong></summary>
 
       <p>Review health, consolidation, and decision-evolution status in one operator view.</p>
@@ -584,7 +623,7 @@
 
       <div id="memoryHealthDashboardResults"></div>
     </details>
-    <details>
+    <details class="primary-operator-tool" open>
       <summary><strong>Memory Maintenance Plan</strong></summary>
 
       <p>Build an operator action plan without changing memories or live retrieval.</p>
@@ -593,7 +632,7 @@
 
       <div id="memoryMaintenancePlanResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Relationship Confidence Preview</strong></summary>
 
       <p>Inspect computed relationship confidence without changing memories or live retrieval.</p>
@@ -604,11 +643,11 @@
     </details>
     </section>
 
-    <section id="operatorInsights" class="admin-section">
+    <section id="operatorInsights" class="admin-section operator-workspace">
       <h2>Operator Insights</h2>
-      <p class="section-note">Review grounded patterns, questions, assumptions, and operator reports. Transitional tools may move to the future Operator workspace.</p>
+      <p class="section-note">Start with the consolidated operator report. Its component analyses remain available for deeper review and may move to the future Operator workspace.</p>
 
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Knowledge Synthesis</strong></summary>
 
       <p>Inspect grounded memory synthesis without changing memories or live retrieval.</p>
@@ -617,7 +656,7 @@
 
       <div id="knowledgeSynthesisResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Strategic Reasoning Brief</strong></summary>
 
       <p>Build an operator reasoning brief without changing memories or live retrieval.</p>
@@ -626,7 +665,7 @@
 
       <div id="strategicReasoningResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Assumption Review</strong></summary>
 
       <p>Inspect stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
@@ -635,7 +674,7 @@
 
       <div id="assumptionEvolutionResults"></div>
     </details>
-    <details>
+    <details class="advanced-operator-tool">
       <summary><strong>Reflective Intelligence</strong></summary>
 
       <p>Build a grounded reflection without changing memories or live retrieval.</p>
@@ -644,7 +683,7 @@
 
       <div id="reflectiveIntelligenceResults"></div>
     </details>
-    <details>
+    <details class="primary-operator-tool" open>
       <summary><strong>Operator Insight Report</strong></summary>
 
       <p>Build an operator insight report without changing memories or live retrieval.</p>
@@ -657,10 +696,10 @@
 
     <section id="providers" class="admin-section">
       <h2>Providers</h2>
-      <p class="section-note">Inspect, test, and compare candidate model providers without changing production answers.</p>
+      <p class="section-note">Review the active baseline and evaluate Admin-only candidates without changing public answers.</p>
 
     <details open>
-      <summary><strong>Provider Setup</strong></summary>
+      <summary><strong>Provider Status And Registry</strong></summary>
 
       <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
 
@@ -767,7 +806,7 @@
       <div id="candidateBatchTestResults"></div>
     </details>
     <details>
-      <summary><strong>Advanced Provider Reports</strong></summary>
+      <summary><strong>Archived Provider Evidence</strong></summary>
 
       <p>Review provider design and prompt hardening artifacts without changing routing.</p>
 
@@ -807,7 +846,7 @@
         <div id="nativeIntelligenceManifestResults"></div>
       </details>
 
-      <details>
+      <details class="active-transition-tool">
         <summary><strong>Native Continuity Shadow</strong></summary>
 
         <p>Compare the current Render selection with the signed-in caller's native Motoko preview without changing a public answer.</p>
@@ -824,7 +863,7 @@
         <div id="nativeContinuityShadowResults"></div>
       </details>
 
-      <details>
+      <details class="active-transition-tool">
         <summary><strong>Shadow Observation Set</strong></summary>
 
         <p>Run the fixed technical, project-status, and next-action comparisons without changing a public answer.</p>
@@ -834,7 +873,7 @@
         <div id="nativeContinuityShadowObservationSetResults"></div>
       </details>
 
-      <details>
+      <details class="active-transition-tool">
         <summary><strong>Shadow Window Evidence</strong></summary>
 
         <p>Review the local operator evidence for the current caller's shadow window.</p>
@@ -888,7 +927,7 @@
 
     <section id="systemValidation" class="admin-section">
       <h2>System Validation</h2>
-      <p class="section-note">Run answer-quality checks and deployment validation used after a reviewed change.</p>
+      <p class="section-note">Run answer-quality, security, transport, and deployment checks after a reviewed change. The security and transport probes above remain here as operational validation tools.</p>
 
     <details>
       <summary><strong>Golden Tests</strong></summary>
