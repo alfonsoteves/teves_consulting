@@ -522,18 +522,24 @@ function updateAdminVisibility() {
 
   if (!isAuthenticated) {
     access.textContent = "Sign in with Internet Identity to continue.";
+    setAdminHealthMetric("healthOperatorStatus", "Signed out");
+    setAdminHealthMetric("healthSessionStatus", "Unavailable");
     return;
   }
 
   if (operatorAccessIssue) {
     access.classList.add("denied");
     access.textContent = "Operator access could not be verified. Refresh after the operator session service is available.";
+    setAdminHealthMetric("healthOperatorStatus", "Review needed");
+    setAdminHealthMetric("healthSessionStatus", "Unavailable");
     return;
   }
 
   if (!isOperator) {
     access.classList.add("denied");
     access.textContent = "Access denied. This interface is restricted to the Teves Consulting operator.";
+    setAdminHealthMetric("healthOperatorStatus", "Denied");
+    setAdminHealthMetric("healthSessionStatus", "Unavailable");
     return;
   }
 
@@ -541,6 +547,20 @@ function updateAdminVisibility() {
   access.textContent = renderOperatorSessionExpiresAt
     ? `Operator access verified. This Admin session expires at ${new Date(renderOperatorSessionExpiresAt * 1000).toLocaleTimeString()}.`
     : "Operator access verified.";
+  setAdminHealthMetric("healthOperatorStatus", "Verified");
+  setAdminHealthMetric(
+    "healthSessionStatus",
+    renderOperatorSessionExpiresAt
+      ? `Expires ${new Date(renderOperatorSessionExpiresAt * 1000).toLocaleTimeString()}`
+      : "Verified"
+  );
+}
+
+function setAdminHealthMetric(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = value;
+  }
 }
 
 function encodeOperatorGrant(nonce) {
@@ -687,6 +707,92 @@ window.runHttpsOutcallTransportProbe = async function runHttpsOutcallTransportPr
     if (button) {
       button.disabled = false;
     }
+  }
+};
+
+window.runContinuityInspector = async function runContinuityInspector() {
+  const input = document.getElementById("continuityInspectorQuery");
+  const container = document.getElementById("continuityInspectorResults");
+  if (!input || !container) {
+    return;
+  }
+
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before inspecting continuity.</p>";
+    return;
+  }
+
+  const query = input.value.trim();
+  if (!query) {
+    container.innerHTML = "<p>Enter a query before inspecting continuity.</p>";
+    input.focus();
+    return;
+  }
+
+  [
+    "retrievalQuery",
+    "retrievalRawQuery",
+    "contextQuery",
+    "memoryRankingQuery",
+    "relationshipExpansionQuery",
+  ].forEach((id) => {
+    const advancedInput = document.getElementById(id);
+    if (advancedInput) {
+      advancedInput.value = query;
+    }
+  });
+
+  container.innerHTML = "<p>Inspecting the signed-in caller's native continuity preview...</p>";
+
+  try {
+    const result = await window.adminActor.previewMyContinuity(query);
+    if ("err" in result) {
+      const errorName = Object.keys(result.err || {})[0] || "unknown_error";
+      throw new Error(`Native continuity preview returned: ${errorName}`);
+    }
+
+    const preview = result.ok;
+    const ranked = preview.rankedMemories || [];
+    const expanded = preview.expandedMemories || [];
+    const entries = [
+      ...ranked.map(memory => ({ source: "ranked", memory })),
+      ...expanded.map(memory => ({ source: "expanded", memory })),
+    ];
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Native Continuity Preview</h3>
+        ${renderMetricGrid({
+          intent: preview.queryIntent,
+          "ranked memories": ranked.length,
+          "relationship-expanded": expanded.length,
+          "provider calls": "no",
+          "memory writes": "no",
+        })}
+        <p><strong>Query:</strong> ${escapeHtml(preview.queryText)}</p>
+        <p><strong>Context packet:</strong></p>
+        <pre>${escapeHtml(preview.contextPreview)}</pre>
+        ${entries.length > 0 ? `
+          <table>
+            <thead><tr><th>Source</th><th>ID</th><th>Title</th><th>Type</th><th>Score</th></tr></thead>
+            <tbody>
+              ${entries.map(({ source, memory }) => `
+                <tr>
+                  <td>${escapeHtml(source)}</td>
+                  <td>${escapeHtml(memory.id)}</td>
+                  <td>${escapeHtml(memory.title)}</td>
+                  <td>${escapeHtml(memory.memoryType)}</td>
+                  <td>${escapeHtml(memory.score)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : "<p>No continuity memories matched this query.</p>"}
+        <p class="meta">Native read-only inspection. The public answer path remains unchanged.</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Native continuity inspection failed:", err);
+    container.innerHTML = `<p>Could not inspect continuity: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
   }
 };
 
@@ -1270,6 +1376,7 @@ window.loadMemories = async function loadMemories() {
   document.getElementById("totalMemories").textContent = total;
   document.getElementById("totalMilestones").textContent = milestones;
   document.getElementById("totalRegular").textContent = regular;
+  setAdminHealthMetric("healthMemoryCount", total);
 
   if (memories.length > 0) {
     const latest = memories[memories.length - 1];
@@ -1358,6 +1465,7 @@ window.loadFeedback = async function loadFeedback() {
       feedback.filter(f => f.rating === "up").length;
     document.getElementById("feedbackDown").textContent =
       feedback.filter(f => f.rating === "down").length;
+    setAdminHealthMetric("healthFeedbackCount", feedback.length);
 
     if (feedback.length === 0) {
       list.innerHTML = "<p>No feedback yet.</p>";

@@ -267,29 +267,135 @@
       color: #bbf7d0;
     }
 
+    .admin-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 72px;
+    }
+
+    .admin-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 8px 0 22px;
+      border-bottom: 1px solid #2c3138;
+    }
+
+    .admin-header h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      line-height: 1.15;
+    }
+
+    .admin-header .section-note {
+      max-width: 680px;
+      margin: 8px 0 0;
+    }
+
+    .admin-section {
+      padding: 30px 0;
+      margin: 0;
+    }
+
+    .admin-section h2 {
+      font-size: 1.25rem;
+      margin-bottom: 6px;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card {
+      min-height: 86px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #171b20;
+    }
+
+    details {
+      margin: 12px 0;
+      padding: 14px 16px;
+      background: #171b20;
+    }
+
+    details[open] {
+      background: #171b20;
+    }
+
+    summary {
+      font-weight: 650;
+    }
+
+    .transition-note {
+      border-left: 3px solid #60a5fa;
+      padding-left: 12px;
+    }
+
+    .archived-phase-tool summary::after {
+      content: "Reference only";
+      margin-left: 10px;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    @media (max-width: 640px) {
+      .admin-shell {
+        padding: 24px 16px 48px;
+      }
+
+      .admin-header {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+
   </style>
 </head>
 
-<body>
-  <h1>Teves Consulting Admin</h1>
-  <p class="section-note">Operator tools for Aion continuity review.</p>
+<body class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <h1>Teves Consulting Admin</h1>
+      <p class="section-note">A focused operator view of Aion's continuity, evidence, and provider boundaries.</p>
+    </div>
+    <button id="authButton" onclick="handleAuth()">Sign In</button>
+  </header>
 
-  <button id="authButton" onclick="handleAuth()">Sign In</button>
   <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
   <div id="adminContent" style="display:none;">
 
-    <section class="admin-section">
-      <h2>Operator Access</h2>
-      <p class="section-note">Review the signed-in operator and the short-lived Admin session.</p>
+    <section id="aionHealth" class="admin-section">
+      <h2>Aion Health</h2>
+      <p class="section-note">Live operator-scoped facts. Public answer routing remains unchanged.</p>
+      <div class="dashboard-grid">
+        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
+        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Render active</div></div>
+        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Ready for review</div></div>
+        <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
+        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
+        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
+      </div>
+    </section>
+
+    <section id="securityDiagnostics" class="admin-section">
+      <h2>Security Diagnostics</h2>
+      <p class="section-note">Review operator authorization and the short-lived protected Admin session.</p>
 
       <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
 
       <div id="operatorAuthorizationResults"></div>
     </section>
 
-    <section class="admin-section">
-      <h2>HTTPS Transport</h2>
-      <p class="section-note">Run the fixed operator-only non-replicated transport proof.</p>
+    <section id="transportValidation" class="admin-section">
+      <h2>HTTPS Transport Validation</h2>
+      <p class="section-note">Run the fixed operator-only non-replicated transport proof when validating a deployment.</p>
 
       <details>
         <summary><strong>Transport Probe</strong></summary>
@@ -301,8 +407,8 @@
       </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Memory Records</h2>
+    <section id="memoryAndFeedback" class="admin-section">
+      <h2>Memory And Feedback</h2>
       <p class="section-note">Review saved continuity memories and feedback.</p>
 
     <details open>
@@ -339,9 +445,25 @@
     </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Retrieval And Context</h2>
-      <p class="section-note">Preview what Aion retrieves and sends as continuity context.</p>
+    <section id="continuityInspector" class="admin-section">
+      <h2>Continuity Inspector</h2>
+      <p class="section-note">Inspect caller-scoped native continuity first. Legacy retrieval tools remain available for comparison.</p>
+
+    <details open>
+      <summary><strong>Current Native Continuity Preview</strong></summary>
+
+      <p>See intent, ranked memories, relationship expansion, and the bounded context packet without changing a public answer.</p>
+
+      <input
+        id="continuityInspectorQuery"
+        placeholder="Ask about a saved continuity topic..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runContinuityInspector()">Inspect Continuity</button>
+
+      <div id="continuityInspectorResults"></div>
+    </details>
 
     <details>
       <summary><strong>Retrieval Preview</strong></summary>
@@ -422,8 +544,8 @@
     </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Memory Graph Maintenance</h2>
+    <section id="memoryHealth" class="admin-section">
+      <h2>Memory Health</h2>
       <p class="section-note">Inspect graph health, overlaps, relationships, and operator cleanup plans.</p>
 
     <details>
@@ -482,9 +604,9 @@
     </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Insight And Reasoning</h2>
-      <p class="section-note">Review grounded patterns, questions, assumptions, and operator reports.</p>
+    <section id="operatorInsights" class="admin-section">
+      <h2>Operator Insights</h2>
+      <p class="section-note">Review grounded patterns, questions, assumptions, and operator reports. Transitional tools may move to the future Operator workspace.</p>
 
     <details>
       <summary><strong>Knowledge Synthesis</strong></summary>
@@ -533,8 +655,8 @@
     </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Model Providers</h2>
+    <section id="providers" class="admin-section">
+      <h2>Providers</h2>
       <p class="section-note">Inspect, test, and compare candidate model providers without changing production answers.</p>
 
     <details open>
@@ -671,11 +793,11 @@
     </details>
     </section>
 
-    <section class="admin-section">
-      <h2>Native Intelligence</h2>
-      <p class="section-note">Map what Aion should own on ICP before moving Python continuity logic into Motoko.</p>
+    <section id="phaseTransitionEvidence" class="admin-section">
+      <h2>Phase Transition Evidence</h2>
+      <p class="section-note transition-note">Native continuity is validated in shadow mode and awaits the separate cutover decision. Construction artifacts remain available as reference only.</p>
 
-      <details open>
+      <details class="archived-phase-tool">
         <summary><strong>Native Intelligence Manifest</strong></summary>
 
         <p>Review the current migration boundary without changing production behavior.</p>
@@ -723,7 +845,7 @@
         <div id="nativeContinuityShadowEvidenceResults"></div>
       </details>
 
-      <details>
+      <details class="archived-phase-tool">
         <summary><strong>Read-Only Motoko Continuity Contract</strong></summary>
 
         <p>Define the first caller-scoped continuity API before writing Motoko code.</p>
@@ -733,7 +855,7 @@
         <div id="motokoContinuityContractResults"></div>
       </details>
 
-      <details>
+      <details class="archived-phase-tool">
         <summary><strong>Private Module Integration</strong></summary>
 
         <p>Plan the private Motoko intelligence package and local build proof before changing repositories or toolchains.</p>
@@ -743,7 +865,7 @@
         <div id="privateModuleIntegrationResults"></div>
       </details>
 
-      <details>
+      <details class="archived-phase-tool">
         <summary><strong>Public Motoko Toolchain</strong></summary>
 
         <p>Plan the legacy-to-modern backend migration before importing private intelligence or changing the live canister.</p>
@@ -753,7 +875,7 @@
         <div id="motokoToolchainModernizationResults"></div>
       </details>
 
-      <details>
+      <details class="archived-phase-tool">
         <summary><strong>Backend Compatibility Baseline</strong></summary>
 
         <p>Prepare a read-only capture of the live backend interface before starting local toolchain migration work.</p>
@@ -764,9 +886,9 @@
       </details>
     </section>
 
-    <section class="admin-section">
-      <h2>System Checks</h2>
-      <p class="section-note">Run validation checks used to monitor answer quality.</p>
+    <section id="systemValidation" class="admin-section">
+      <h2>System Validation</h2>
+      <p class="section-note">Run answer-quality checks and deployment validation used after a reviewed change.</p>
 
     <details>
       <summary><strong>Golden Tests</strong></summary>
