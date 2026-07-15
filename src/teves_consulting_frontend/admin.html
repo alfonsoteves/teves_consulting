@@ -378,6 +378,14 @@
       font-weight: 500;
     }
 
+    .legacy-reference-tool summary::after {
+      content: "Legacy diagnostic";
+      margin-left: 10px;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
     .active-transition-tool {
       border-color: #365f8d;
     }
@@ -421,29 +429,6 @@
         <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
         <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
       </div>
-    </section>
-
-    <section id="securityDiagnostics" class="admin-section">
-      <h2>Security Diagnostics</h2>
-      <p class="section-note">Review operator authorization and the short-lived protected Admin session.</p>
-
-      <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
-
-      <div id="operatorAuthorizationResults"></div>
-    </section>
-
-    <section id="transportValidation" class="admin-section">
-      <h2>HTTPS Transport Validation</h2>
-      <p class="section-note">Run the fixed operator-only non-replicated transport proof when validating a deployment.</p>
-
-      <details>
-        <summary><strong>Transport Probe</strong></summary>
-
-        <p>The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
-        <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run HTTPS Transport Probe</button>
-
-        <div id="httpsOutcallTransportResults"></div>
-      </details>
     </section>
 
     <section id="memoryAndFeedback" class="admin-section">
@@ -504,7 +489,7 @@
       <div id="continuityInspectorResults"></div>
     </details>
 
-    <details>
+    <details class="legacy-reference-tool">
       <summary><strong>Retrieval Preview</strong></summary>
 
       <p>Final post-filtered retrieval used by Aion.</p>
@@ -519,7 +504,7 @@
 
       <div id="retrievalResults"></div>
     </details>
-    <details>
+    <details class="legacy-reference-tool">
       <summary><strong>Raw Retrieval Preview</strong></summary>
 
       <p>Inspect raw search results before filtering and boosting.</p>
@@ -536,7 +521,7 @@
 
       <div id="retrievalRawResults"></div>
     </details>
-    <details>
+    <details class="legacy-reference-tool">
       <summary><strong>Context Viewer</strong></summary>
 
       <p>Build and inspect the context Aion would send for a query.</p>
@@ -551,7 +536,7 @@
 
       <div id="contextResults"></div>
     </details>
-    <details>
+    <details class="legacy-reference-tool">
       <summary><strong>Memory Ranking Preview</strong></summary>
 
       <p>Inspect memory ranking without changing live retrieval.</p>
@@ -566,7 +551,7 @@
 
       <div id="memoryRankingResults"></div>
     </details>
-    <details>
+    <details class="legacy-reference-tool">
       <summary><strong>Relationship Expansion Preview</strong></summary>
 
       <p>Inspect relationship-aware expansion without changing live retrieval.</p>
@@ -927,7 +912,7 @@
 
     <section id="systemValidation" class="admin-section">
       <h2>System Validation</h2>
-      <p class="section-note">Run answer-quality, security, transport, and deployment checks after a reviewed change. The security and transport probes above remain here as operational validation tools.</p>
+      <p class="section-note">Run answer-quality, security, transport, and deployment checks after a reviewed change.</p>
 
     <details>
       <summary><strong>Golden Tests</strong></summary>
@@ -938,6 +923,24 @@
       <button onclick="runGoldenTests()">Run Golden Tests</button>
 
       <div id="goldenResults"></div>
+    </details>
+
+    <details id="securityDiagnostics">
+      <summary><strong>Security Diagnostics</strong></summary>
+
+      <p>Review operator authorization and the short-lived protected Admin session.</p>
+      <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
+
+      <div id="operatorAuthorizationResults"></div>
+    </details>
+
+    <details id="transportValidation">
+      <summary><strong>HTTPS Transport Validation</strong></summary>
+
+      <p>Run the fixed operator-only non-replicated transport proof when validating a deployment. The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
+      <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run HTTPS Transport Probe</button>
+
+      <div id="httpsOutcallTransportResults"></div>
     </details>
     </section>
   </div>
