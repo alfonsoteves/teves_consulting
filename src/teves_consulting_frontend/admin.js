@@ -787,7 +787,7 @@ window.runContinuityInspector = async function runContinuityInspector() {
             </tbody>
           </table>
         ` : "<p>No continuity memories matched this query.</p>"}
-        <p class="meta">Native read-only inspection. The public answer path remains unchanged.</p>
+        <p class="meta">Native read-only inspection. Signed-in Aion uses this bounded context before the existing OpenAI answer request.</p>
       </div>
     `;
   } catch (err) {

@@ -410,13 +410,13 @@
 
     <section id="aionHealth" class="admin-section">
       <h2>Aion Health</h2>
-      <p class="section-note">Live operator-scoped facts. Public answer routing remains unchanged.</p>
+      <p class="section-note">Live operator-scoped facts. Native continuity is active; the approved OpenAI answer route remains unchanged.</p>
       <div class="dashboard-grid">
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
-        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Render active</div></div>
-        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Ready for review</div></div>
+        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
+        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
         <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
         <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
         <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
@@ -486,12 +486,12 @@
 
     <section id="continuityInspector" class="admin-section">
       <h2>Continuity Inspector</h2>
-      <p class="section-note">Inspect caller-scoped native continuity first. Legacy retrieval tools remain available for comparison.</p>
+      <p class="section-note">Inspect the caller-scoped native continuity used by signed-in Aion requests. Legacy retrieval tools remain reference diagnostics.</p>
 
     <details open>
       <summary><strong>Current Native Continuity Preview</strong></summary>
 
-      <p>See intent, ranked memories, relationship expansion, and the bounded context packet without changing a public answer.</p>
+      <p>See the intent, ranked memories, relationship expansion, and bounded context packet used before the existing OpenAI answer request.</p>
 
       <input
         id="continuityInspectorQuery"
@@ -833,8 +833,8 @@
     </section>
 
     <section id="phaseTransitionEvidence" class="admin-section">
-      <h2>Phase Transition Evidence</h2>
-      <p class="section-note transition-note">Native continuity is validated in shadow mode and awaits the separate cutover decision. Construction artifacts remain available as reference only.</p>
+      <h2>Archived Phase Transition Evidence</h2>
+      <p class="section-note transition-note">Native continuity is active after the Phase 7.82 cutover. Shadow evidence and construction artifacts remain preserved as reference only.</p>
 
       <details class="archived-phase-tool">
         <summary><strong>Native Intelligence Manifest</strong></summary>
@@ -846,10 +846,10 @@
         <div id="nativeIntelligenceManifestResults"></div>
       </details>
 
-      <details class="active-transition-tool">
+      <details class="archived-phase-tool">
         <summary><strong>Native Continuity Shadow</strong></summary>
 
-        <p>Compare the current Render selection with the signed-in caller's native Motoko preview without changing a public answer.</p>
+        <p>Reference comparison between the legacy Render selector and the signed-in caller's native Motoko preview.</p>
 
         <label for="nativeContinuityShadowQuery">Shadow query</label>
         <input
@@ -863,20 +863,20 @@
         <div id="nativeContinuityShadowResults"></div>
       </details>
 
-      <details class="active-transition-tool">
+      <details class="archived-phase-tool">
         <summary><strong>Shadow Observation Set</strong></summary>
 
-        <p>Run the fixed technical, project-status, and next-action comparisons without changing a public answer.</p>
+        <p>Review the fixed technical, project-status, and next-action comparison set used for the cutover evidence.</p>
 
         <button id="runNativeContinuityShadowObservationSetButton" onclick="runNativeContinuityShadowObservationSet()">Run Observation Set</button>
 
         <div id="nativeContinuityShadowObservationSetResults"></div>
       </details>
 
-      <details class="active-transition-tool">
+      <details class="archived-phase-tool">
         <summary><strong>Shadow Window Evidence</strong></summary>
 
-        <p>Review the local operator evidence for the current caller's shadow window.</p>
+        <p>Review the browser-local operator evidence captured for the completed shadow window.</p>
 
         <button onclick="refreshNativeContinuityShadowEvidence()">Refresh Window Evidence</button>
         <button onclick="clearNativeContinuityShadowEvidence()">Clear Current Caller Evidence</button>
