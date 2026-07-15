@@ -615,6 +615,40 @@
       status: IDL.Text,
     });
 
+    const MemoryPreview = IDL.Record({
+      id: IDL.Nat,
+      title: IDL.Text,
+      summary: IDL.Text,
+      topics: IDL.Vec(IDL.Text),
+      tags: IDL.Vec(IDL.Text),
+      keyDecisions: IDL.Vec(IDL.Text),
+      relationships: IDL.Vec(Relationship),
+      milestone: IDL.Bool,
+      importance: IDL.Nat,
+      memoryType: IDL.Text,
+      confidence: IDL.Nat,
+      status: IDL.Text,
+      score: IDL.Int,
+    });
+
+    const ContinuityPreviewResponse = IDL.Record({
+      queryText: IDL.Text,
+      queryIntent: IDL.Text,
+      memoryCount: IDL.Nat,
+      rankedMemories: IDL.Vec(MemoryPreview),
+      expandedMemories: IDL.Vec(MemoryPreview),
+      contextPreview: IDL.Text,
+    });
+
+    const ContinuityPreviewResult = IDL.Variant({
+      ok: ContinuityPreviewResponse,
+      err: IDL.Variant({
+        unauthenticated: IDL.Null,
+        invalidQuery: IDL.Null,
+        internalError: IDL.Null,
+      }),
+    });
+
     return IDL.Service({
       addFeedback: IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
@@ -655,6 +689,11 @@
       getMyMilestoneSummaries: IDL.Func(
         [],
         [IDL.Vec(MemorySummary)],
+        ["query"]
+      ),
+      previewMyContinuity: IDL.Func(
+        [IDL.Text],
+        [ContinuityPreviewResult],
         ["query"]
       ),
       deleteAllMySummaries: IDL.Func([], [IDL.Bool], []),
@@ -1053,6 +1092,8 @@
     queryInput.value = "";
     queryInput.placeholder = "";
 
+    const nativeContinuityContextText = await getNativeContinuityContext(query);
+
     try {
       const response = await fetch("https://aionic-agent-api.onrender.com/ask", {
         method: "POST",
@@ -1061,7 +1102,8 @@
         },
         body: JSON.stringify({
           query,
-          continuityContext: window.continuityContext || []
+          continuityMode: "native",
+          nativeContinuityContextText
         })
       });
 
@@ -1115,6 +1157,25 @@
         "Feedback failed.";
     }
   };
+
+  async function getNativeContinuityContext(query) {
+    if (!isAuthenticated) {
+      return "";
+    }
+
+    try {
+      const result = await window.feedbackActor.previewMyContinuity(query);
+      if (!result || !("ok" in result)) {
+        console.warn("Native continuity preview was not available for this answer.");
+        return "";
+      }
+
+      return String(result.ok.contextPreview || "").trim();
+    } catch (err) {
+      console.warn("Native continuity preview failed; continuing without continuity.", err);
+      return "";
+    }
+  }
 
 	  window.loadContinuityContext = async function loadContinuityContext() {
 	    if (!isAuthenticated) {
