@@ -69,18 +69,31 @@ Follow-up required:
 
 An accepted substitution must identify why the native result is at least as useful for the query. A ranking issue or insufficient evidence blocks cutover until resolved and observed again.
 
-## Current Evidence
+## Completed Evidence
 
-The first fixed observation set produced two full-coverage observations and one 50-percent-coverage semantic-review observation. It is useful diagnostic evidence only; it does not satisfy this window.
+The completed browser-local, caller-scoped evidence window recorded four fixed
+observation-set runs over more than 24 hours. It produced twelve observations,
+twelve safety passes, 100-percent aggregate legacy-ID coverage, zero pending
+acknowledgements, and zero unresolved semantic reviews.
 
-## Promotion Decision
+The planning-intent refinement for the next-action query was explicitly
+acknowledged: Motoko correctly classifies this question as `planning` while
+the legacy selector classified it as `general`. This refinement did not omit
+the legacy selection and remains documented evidence rather than a failure.
 
-Native continuity is eligible for the Phase 7.82 cutover review only when:
+## Cutover Record
 
-- the complete shadow window passes the structural and selection gates;
-- all semantic substitutions have explicit accepted records;
-- any relevance concern has a documented resolution or a deliberate native ranking adjustment with its own tests and shadow evidence;
-- existing public Aion, memory, feedback, and operator security regression checks remain green;
-- an explicit operator approval is recorded.
+The Phase 7.82 operator cutover review confirmed that:
 
-Until then, Render remains the public continuity selection path and the native result remains shadow evidence only.
+- the completed window satisfied the structural and selection gates;
+- the planning refinement had an explicit operator acknowledgement;
+- public Aion, memory, feedback, operator security, and the continuity
+  indicator remained healthy;
+- signed-in public Aion now uses the native Motoko continuity path;
+- anonymous public Aion continues without caller continuity; and
+- the approved public OpenAI answer route and no-fallback policy remain
+  unchanged.
+
+The browser-local evidence remains preserved as a completed Phase 7 artifact.
+It is not a permanent operational data store or a reason to keep the shadow
+controls active after cutover.
