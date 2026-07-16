@@ -28,26 +28,15 @@ body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica
 </head>
 
 <body class="bg-white text-slate-800">
-<header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-slate-200">
-  <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-end">
-    <button id="navToggle" aria-label="Abrir menú" class="md:hidden inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm">Menú</button>
-
-    <nav id="nav" class="hidden md:flex items-center gap-6 text-sm">
-      <a href="/es/index.html" class="hover:text-slate-900">Aion</a>
-      <a href="/es/insights.html" class="font-semibold text-slate-950">Perspectivas</a>
-      <a href="/es/about.html" class="hover:text-slate-900">Acerca de</a>
+<header class="border-b border-slate-200">
+  <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-end">
+    <nav class="hidden sm:flex gap-6 text-sm">
+      <a class="hover:text-slate-600" href="/es/index.html">Aion</a>
+      <a class="hover:text-slate-600" href="/es/insights.html">Perspectivas</a>
+      <a class="hover:text-slate-600" href="/es/about.html">Acerca de</a>
       <span class="ml-4"></span>
-      <a href="https://www.tevesconsulting.com/insights.html" class="hover:underline">EN</a>
+      <a class="hover:underline" href="https://www.tevesconsulting.com/insights.html">EN</a>
     </nav>
-  </div>
-
-  <div id="mobileNav" class="md:hidden hidden border-t border-slate-200">
-    <div class="px-4 py-3 flex flex-col gap-3 text-sm">
-      <a href="/es/index.html" class="hover:text-slate-900">Aion</a>
-      <a href="/es/insights.html" class="font-semibold text-slate-950">Perspectivas</a>
-      <a href="/es/about.html" class="hover:text-slate-900">Acerca de</a>
-      <a href="https://www.tevesconsulting.com/insights.html" class="hover:underline">EN</a>
-    </div>
   </div>
 </header>
 
@@ -311,14 +300,5 @@ body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica
   </div>
 </footer>
 
-<script>
-const navToggle = document.getElementById('navToggle');
-const mobileNav = document.getElementById('mobileNav');
-if (navToggle) {
-  navToggle.addEventListener('click', () => {
-    mobileNav.classList.toggle('hidden');
-  });
-}
-</script>
 </body>
 </html>
