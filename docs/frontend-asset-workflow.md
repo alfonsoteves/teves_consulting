@@ -49,17 +49,12 @@ allowlist behavior.
 
 ## Legacy React/Vite Material
 
-The current public site is static HTML. The previous React/Vite migration
-material is excluded from `site_dist` and is not part of the live asset build.
-It includes the frontend-local `src/`, `dist/`, `public/`, Vite configuration,
-and associated workspace metadata, plus the older root React scaffold.
+The previous React/Vite migration scaffold and its Node workspace metadata were
+retired after the static staging command, ICP frontend build, and live homepage,
+Aion, and Admin checks all passed. The root TypeScript configuration is retired
+with the same cleanup because it had no remaining consumer.
 
-Those files may be removed after a focused cleanup verifies that:
-
-1. the static staging command still produces the intended asset set;
-2. the ICP frontend builds and deploys successfully;
-3. Aion, Admin, and representative public pages load normally;
-4. no active script, deployment workflow, or documentation requires Vite.
+The current public site is static HTML and does not require a Node build step.
 
 ## Standard Frontend Deployment
 
