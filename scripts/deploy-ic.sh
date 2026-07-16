@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Preparing frontend assets..."
-rm -rf site_dist
-
-rsync -av \
-  --exclude dist \
-  --exclude src \
-  --exclude .DS_Store \
-  src/teves_consulting_frontend/ \
-  site_dist/
+scripts/prepare-frontend-assets.sh
 
 echo "Building project..."
 icp build
