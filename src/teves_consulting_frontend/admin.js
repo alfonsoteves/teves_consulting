@@ -1222,6 +1222,135 @@ window.runPublicRetrievalPreview = async function runPublicRetrievalPreview() {
   }
 };
 
+function renderBoolean(value) {
+  return value ? "true" : "false";
+}
+
+function renderComparisonPairs(items) {
+  return items.map(([label, value]) => `
+    <p class="meta"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value ?? "unknown")}</p>
+  `).join("");
+}
+
+function renderSourceComparisons(sources = []) {
+  if (!Array.isArray(sources) || sources.length === 0) {
+    return "<p>No source comparisons returned.</p>";
+  }
+
+  return sources.map((source) => `
+    <div class="memory-card">
+      <h4>Rank ${escapeHtml(source.rank ?? "unknown")}</h4>
+      <p class="meta">Document: ${escapeHtml(source.renderDocumentId || "unknown")} to ${escapeHtml(source.nativeDocumentId || "unknown")} | Match: ${escapeHtml(renderBoolean(Boolean(source.documentIdMatches)))}</p>
+      <p class="meta">Chunk: ${escapeHtml(source.renderChunkId || "unknown")} to ${escapeHtml(source.nativeChunkId || "unknown")} | Match: ${escapeHtml(renderBoolean(Boolean(source.chunkIdMatches)))}</p>
+      <p class="meta">Render type: ${escapeHtml(source.renderSourceType || "unknown")} | Native content included: ${escapeHtml(renderBoolean(Boolean(source.nativeContentIncluded)))}</p>
+    </div>
+  `).join("");
+}
+
+window.runNativeRetrievalFixtureComparison = async function runNativeRetrievalFixtureComparison() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const fixtureId = document.getElementById("nativeRetrievalComparisonFixture").value;
+  const container = document.getElementById("nativeRetrievalComparisonResults");
+  container.innerHTML = "<p>Building fixture comparison...</p>";
+
+  try {
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-fixture-comparison`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ fixtureId })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    if (data.status === "unsupported_fixture") {
+      container.innerHTML = `
+        <div class="memory-card">
+          <h3>Unsupported Fixture</h3>
+          <p class="meta">Fixture: ${escapeHtml(data.fixtureId || fixtureId)}</p>
+          <p class="meta">Allowed fixtures: ${escapeHtml((data.allowedFixtureIds || []).join(", "))}</p>
+          <pre>${escapeHtml(JSON.stringify(data.safety || {}, null, 2))}</pre>
+        </div>
+      `;
+      return;
+    }
+
+    const comparison = data.comparison || {};
+    const safety = comparison.safety || {};
+    const boundary = data.boundary || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.comparisonVersion || "Native retrieval fixture comparison")}</h3>
+        ${renderComparisonPairs([
+          ["Status", data.status],
+          ["Fixture", comparison.fixtureId],
+          ["Query", comparison.originalQuery],
+          ["Render intent", comparison.renderIntent],
+          ["Native intent", comparison.nativeIntent],
+          ["Intent match", renderBoolean(Boolean(comparison.intentMatches))],
+          ["Corpus SHA-256", comparison.corpusSha256],
+          ["Corpus match", renderBoolean(Boolean(comparison.corpusMatches))],
+          ["Selected source count match", renderBoolean(Boolean(comparison.selectedSourceCountMatches))],
+          ["Selected sources match", renderBoolean(Boolean(comparison.selectedSourcesMatch))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Source Comparison</h3>
+        ${renderSourceComparisons(comparison.sourceComparisons || [])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Readiness</h3>
+        ${renderComparisonPairs([
+          ["Render provider content ready", renderBoolean(Boolean(comparison.renderProviderFacingContentReady))],
+          ["Native provider content ready", renderBoolean(Boolean(comparison.nativeProviderFacingContentReady))],
+          ["Render grounded context present", renderBoolean(Boolean(comparison.renderGroundedContextPresent))],
+          ["Native grounded context present", renderBoolean(Boolean(comparison.nativeGroundedContextPresent))],
+          ["Native packet schema", comparison.nativePacketSchemaVersion],
+          ["Native content version", comparison.nativeContentVersion],
+          ["Native budget version", comparison.nativeContextBudgetVersion],
+          ["Native replay key", comparison.nativeReplayKey]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Status</h3>
+        ${renderComparisonPairs([
+          ["Public Aion route changed", renderBoolean(Boolean(boundary.publicAionRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundary.publicAnswerProviderChanged))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundary.automaticFallbackEnabled))],
+          ["Native retrieval scope", boundary.nativeRetrievalScope],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundary.publicTrafficUsesNativeRetrieval))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval fixture comparison failed:", err);
+    container.innerHTML = "<p>Native retrieval fixture comparison failed.</p>";
+  }
+};
+
 window.runRetrievalDebug = async function runRetrievalDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");

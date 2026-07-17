@@ -505,6 +505,25 @@
       <div id="publicRetrievalPreviewResults"></div>
     </details>
 
+    <details open>
+      <summary><strong>Native Retrieval Fixture Comparison</strong></summary>
+
+      <p>Compare reviewed Render/Admin preview evidence with the native fixture packet without changing public routing or calling a provider.</p>
+
+      <select
+        id="nativeRetrievalComparisonFixture"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="water_outage">Water outage</option>
+        <option value="spanish_water_storage">Spanish water storage</option>
+        <option value="generic_sports">Generic sports</option>
+      </select>
+
+      <button onclick="runNativeRetrievalFixtureComparison()">Preview Fixture Comparison</button>
+
+      <div id="nativeRetrievalComparisonResults"></div>
+    </details>
+
     <details class="legacy-reference-tool">
       <summary><strong>Retrieval Preview</strong></summary>
 
