@@ -489,6 +489,22 @@
       <div id="continuityInspectorResults"></div>
     </details>
 
+    <details open>
+      <summary><strong>Native Grounded Public Retrieval Preview</strong></summary>
+
+      <p>Inspect the bounded public retrieval packet without generating an answer or returning chunk text.</p>
+
+      <input
+        id="publicRetrievalPreviewQuery"
+        placeholder="Enter public retrieval query..."
+        style="width: 70%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runPublicRetrievalPreview()">Preview Public Retrieval</button>
+
+      <div id="publicRetrievalPreviewResults"></div>
+    </details>
+
     <details class="legacy-reference-tool">
       <summary><strong>Retrieval Preview</strong></summary>
 

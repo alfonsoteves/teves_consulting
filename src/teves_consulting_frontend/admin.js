@@ -1133,6 +1133,95 @@ window.runGoldenTests = async function runGoldenTests() {
   }
 };
 
+window.runPublicRetrievalPreview = async function runPublicRetrievalPreview() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const query = document.getElementById("publicRetrievalPreviewQuery").value.trim();
+
+  if (!query) {
+    alert("Enter a query.");
+    return;
+  }
+
+  const container = document.getElementById("publicRetrievalPreviewResults");
+  container.innerHTML = "<p>Building preview...</p>";
+
+  try {
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/public-retrieval-preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const selected = Array.isArray(data.selected) ? data.selected : [];
+    const terms = Array.isArray(data.query?.terms) ? data.query.terms : [];
+    const safety = data.safety || {};
+    const corpus = data.corpus || {};
+    const ruleVersions = data.ruleVersions || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.previewVersion || "Public retrieval preview")}</h3>
+        <p class="meta">
+          Intent: ${escapeHtml(data.query?.intent || "unknown")} |
+          Corpus: ${escapeHtml(corpus.schemaVersion || "unknown")} |
+          Documents: ${escapeHtml(corpus.documentCount ?? "unknown")} |
+          Chunks: ${escapeHtml(corpus.chunkCount ?? "unknown")}
+        </p>
+        <p class="meta">Corpus SHA-256: ${escapeHtml(corpus.corpusSha256 || "unavailable")}</p>
+        <p class="meta">Rule versions: ${escapeHtml(JSON.stringify(ruleVersions))}</p>
+        <pre>${escapeHtml(terms.join(", "))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Selected Sources</h3>
+        ${
+          selected.length > 0
+            ? selected.map((item) => `
+                <p class="meta">
+                  ${escapeHtml(item.rank)}.
+                  ${escapeHtml(item.documentId || "unknown")}
+                  |
+                  Chunk: ${escapeHtml(item.chunkId || "unknown")}
+                  |
+                  Score: ${escapeHtml(item.score ?? "N/A")}
+                  |
+                  Boosted: ${escapeHtml(item.boostedScore ?? "N/A")}
+                  |
+                  Type: ${escapeHtml(item.sourceType || "unknown")}
+                </p>
+              `).join("")
+            : "<p>No sources selected.</p>"
+        }
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Public retrieval preview failed:", err);
+    container.innerHTML = "<p>Public retrieval preview failed.</p>";
+  }
+};
+
 window.runRetrievalDebug = async function runRetrievalDebug() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
