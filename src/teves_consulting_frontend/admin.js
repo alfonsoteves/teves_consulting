@@ -1232,6 +1232,110 @@ function renderComparisonPairs(items) {
   `).join("");
 }
 
+function renderListValue(value) {
+  return Array.isArray(value) ? value.join(", ") : value;
+}
+
+window.runNativeRetrievalState = async function runNativeRetrievalState() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalStateResults");
+  container.innerHTML = "<p>Loading native retrieval state...</p>";
+
+  try {
+    const res = await fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-state`);
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const route = data.currentRoute || {};
+    const corpus = data.corpus || {};
+    const native = data.nativeRetrieval || {};
+    const evidence = data.evidence || {};
+    const safety = data.safety || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.stateVersion || "Native retrieval state")}</h3>
+        ${renderComparisonPairs([
+          ["Status", data.status],
+          ["Phase", data.phase],
+          ["Stage", data.stage],
+          ["Next approval", data.nextApproval]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Current Route</h3>
+        ${renderComparisonPairs([
+          ["Public Aion route", route.publicAionRoute],
+          ["Public answer provider", route.publicAnswerProvider],
+          ["Native retrieval scope", route.nativeRetrievalScope],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(route.publicTrafficUsesNativeRetrieval))],
+          ["Feature flag enabled", renderBoolean(Boolean(route.featureFlagEnabled))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(route.automaticFallbackEnabled))],
+          ["Manual provider switch available", renderBoolean(Boolean(route.manualProviderSwitchAvailable))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Corpus Identity</h3>
+        ${renderComparisonPairs([
+          ["Schema", corpus.schemaVersion],
+          ["Source type", corpus.sourceType],
+          ["Documents", corpus.documentCount],
+          ["Chunks", corpus.chunkCount],
+          ["Corpus SHA-256", corpus.corpusSha256],
+          ["Website corpus identity preserved", renderBoolean(Boolean(corpus.websiteCorpusIdentityPreserved))],
+          ["Aion policy groundings separated", renderBoolean(Boolean(corpus.aionPolicyGroundingsSeparated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Native Preview Scope</h3>
+        ${renderComparisonPairs([
+          ["Comparison version", native.comparisonVersion],
+          ["Packet schema", native.packetSchemaVersion],
+          ["Content version", native.contentVersion],
+          ["Context budget version", native.contextBudgetVersion],
+          ["Selection version", native.selectionVersion],
+          ["Provider content ready", renderBoolean(Boolean(native.providerFacingContentReady))],
+          ["Grounded context preview available", renderBoolean(Boolean(native.groundedContextPreviewAvailable))],
+          ["Approved cases", renderListValue(native.approvedCaseIds)],
+          ["Legacy fixtures", renderListValue(native.legacyFixtureIds)],
+          ["Supported comparison IDs", renderListValue(native.supportedComparisonIds)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Evidence</h3>
+        ${renderComparisonPairs([
+          ["Render bridge commit", evidence.renderBridgeCommit],
+          ["Admin UI commit", evidence.adminUiCommit],
+          ["Approved-case live evidence commit", evidence.approvedCaseLiveEvidenceCommit],
+          ["Approved-case live evidence recorded", renderBoolean(Boolean(evidence.approvedCaseLiveEvidenceRecorded))],
+          ["Approved-case comparison ready", renderBoolean(Boolean(evidence.approvedCaseComparisonReady))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval state failed:", err);
+    container.innerHTML = "<p>Native retrieval state failed.</p>";
+  }
+};
+
 function renderSourceComparisons(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) {
     return "<p>No source comparisons returned.</p>";
