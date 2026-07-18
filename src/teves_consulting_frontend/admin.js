@@ -1923,6 +1923,104 @@ window.runNativeRetrievalPacketValidationPreview = async function runNativeRetri
   }
 };
 
+window.runNativeRetrievalInternalTestAnswer = async function runNativeRetrievalInternalTestAnswer() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalInternalTestAnswerResults");
+  container.innerHTML = "<p>Generating internal-test answer...</p>";
+
+  try {
+    const packet = buildNativeRetrievalValidationSamplePacket();
+    const request = {
+      query: "How should I prepare for a water outage?",
+      packet,
+      operatorAcknowledgedInternalTestOnly: true,
+      operatorAcknowledgedPublicTrafficDisabled: true,
+      operatorAcknowledgedNoFallback: true,
+      operatorAcknowledgedContinuityMemoryPreserved: true,
+      operatorNotes: "Admin internal-test answer from validated native packet."
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-internal-test-answer`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const packetValidation = data.packetValidation || {};
+
+    if (data.error && data.error !== "native_internal_test_packet_intake_failed") {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.intakeVersion || "Native retrieval internal-test answer")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Status", data.status],
+          ["Retrieval mode", data.retrievalMode],
+          ["Provider route", data.providerRoute],
+          ["Packet validation category", data.packetValidationCategory || packetValidation.category],
+          ["Replay key", data.replayKey || packetValidation.replayKey],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Grounded context length", data.groundedContextLength],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Answer</h3>
+        <pre>${escapeHtml(data.answer || "No answer returned.")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(data.publicAnswerProviderChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Sample</h3>
+        ${renderComparisonPairs([
+          ["Query", request.query],
+          ["Schema", packet.packetSchemaVersion],
+          ["Corpus SHA-256", packet.corpusSha256],
+          ["Content version", packet.contentVersion],
+          ["Budget version", packet.contextBudgetVersion],
+          ["Selection version", packet.selectionVersion],
+          ["Query evidence", packet.queryEvidence],
+          ["Selected sources", packet.selectedSources.map((source) => `${source.rank}:${source.documentId}:${source.chunkId}`).join(", ")]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval internal-test answer failed:", err);
+    container.innerHTML = "<p>Native retrieval internal-test answer failed.</p>";
+  }
+};
+
 function renderSourceComparisons(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) {
     return "<p>No source comparisons returned.</p>";
