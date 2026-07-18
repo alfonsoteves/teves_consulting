@@ -558,6 +558,19 @@
     </details>
 
     <details open>
+      <summary><strong>Native Retrieval Limited Public Window</strong></summary>
+
+      <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
+
+      <button onclick="runNativeRetrievalLimitedWindowPreview(false)">Preview Missing Acknowledgement</button>
+      <button onclick="runNativeRetrievalLimitedWindowPreview(true)">Preview Ready Window</button>
+      <button onclick="runNativeRetrievalLimitedWindowApply()">Apply Limited Window</button>
+      <button onclick="runNativeRetrievalLimitedWindowRollback()">Rollback to Render Selection</button>
+
+      <div id="nativeRetrievalLimitedWindowResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>

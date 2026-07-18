@@ -1389,6 +1389,11 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
           ["Manual provider switch available", renderBoolean(Boolean(data.manualProviderSwitchAvailable))],
           ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
           ["Native packet accepted for internal test traffic", renderBoolean(Boolean(data.nativePacketAcceptedForInternalTestTraffic))],
+          ["Limited window active", renderBoolean(Boolean(data.limitedWindowActive))],
+          ["Limited window audience scope", data.limitedWindowAudienceScope],
+          ["Limited window approved cases", renderListValue(data.limitedWindowApprovedCases)],
+          ["Limited window started at", data.limitedWindowStartedAt],
+          ["Limited window expires at", data.limitedWindowExpiresAt],
           ["Last changed at", data.lastChangedAt],
           ["Last changed by", data.lastChangedBy],
           ["Next approval", data.nextApproval]
@@ -1410,6 +1415,11 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
           ["Last change reason", storage.lastChangeReason],
           ["Last transition category", storage.lastTransitionCategory],
           ["Transition count", storage.transitionCount],
+          ["Active window status", storage.activeWindowStatus],
+          ["Active window audience scope", storage.activeWindowAudienceScope],
+          ["Active window approved cases", renderListValue(storage.activeWindowApprovedCases)],
+          ["Active window started at", storage.activeWindowStartedAt],
+          ["Active window expires at", storage.activeWindowExpiresAt],
           ["Public traffic uses native retrieval", renderBoolean(Boolean(storage.publicTrafficUsesNativeRetrieval))],
           ["Native packet accepted for public traffic", renderBoolean(Boolean(storage.nativePacketAcceptedForPublicTraffic))],
           ["Automatic fallback enabled", renderBoolean(Boolean(storage.automaticFallbackEnabled))],
@@ -1811,6 +1821,256 @@ window.runNativeRetrievalInternalTestModeRollback = async function runNativeRetr
   } catch (err) {
     console.error("Native retrieval internal-test mode rollback failed:", err);
     container.innerHTML = "<p>Native retrieval internal-test mode rollback failed.</p>";
+  }
+};
+
+function buildNativeRetrievalLimitedWindowRequest(ready = false) {
+  return {
+    requestedMode: "native_packet_limited_public_window",
+    operatorAuthorized: true,
+    operatorIdentifier: "admin-preview-operator",
+    reason: "Admin limited public-window smoke test for signed-in approved cases.",
+    approvals: [
+      "operator_authorized_manual_flag",
+      "packet_validation_module",
+      "limited_window_implementation_decision",
+      "rollback_to_render_selection_only",
+      "signed_in_operator_approved_scope",
+      "public_answer_route_preservation",
+      "no_python_retrieval_fallback",
+      "spanish_smoke_tests"
+    ],
+    audienceScope: "signed_in_operator_approved",
+    approvedCases: ["water_outage", "spanish_water_storage"],
+    maxDurationMinutes: 15,
+    rollbackAcknowledged: true,
+    publicTrafficAcknowledged: Boolean(ready),
+    noFallbackAcknowledged: true,
+    continuityMemoryPreservedAcknowledged: true
+  };
+}
+
+function renderNativeRetrievalLimitedWindowResult(data = {}, request = {}) {
+  const storage = data.storage || {};
+  const rollback = data.rollback || {};
+  const safety = data.safety || {};
+
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(data.applyVersion || data.previewVersion || data.rollbackVersion || "Native retrieval limited window")}</h3>
+      ${renderComparisonPairs([
+        ["Valid", renderBoolean(Boolean(data.valid))],
+        ["Category", data.category],
+        ["Detail", data.detail],
+        ["Current mode", data.currentMode],
+        ["Requested mode", data.requestedMode],
+        ["Rollback mode", data.rollbackMode],
+        ["Audience scope", data.audienceScope],
+        ["Approved cases", renderListValue(data.approvedCases)],
+        ["Max duration minutes", data.maxDurationMinutes],
+        ["Activation applied", renderBoolean(Boolean(data.activationApplied))],
+        ["Rollback applied", renderBoolean(Boolean(data.rollbackApplied))],
+        ["Mode changed", renderBoolean(Boolean(data.modeChanged))],
+        ["Started at", data.startedAt],
+        ["Expires at", data.expiresAt],
+        ["Changed at", data.changedAt],
+        ["Changed by", data.changedBy]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Stored Mode</h3>
+      ${renderComparisonPairs([
+        ["Storage version", storage.storageVersion],
+        ["Current mode", storage.currentMode],
+        ["Active window status", storage.activeWindowStatus],
+        ["Active window audience scope", storage.activeWindowAudienceScope],
+        ["Active window approved cases", renderListValue(storage.activeWindowApprovedCases)],
+        ["Active window started at", storage.activeWindowStartedAt],
+        ["Active window expires at", storage.activeWindowExpiresAt],
+        ["Last changed at", storage.lastChangedAt],
+        ["Last changed by", storage.lastChangedBy],
+        ["Last change reason", storage.lastChangeReason],
+        ["Last transition category", storage.lastTransitionCategory],
+        ["Transition count", storage.transitionCount],
+        ["Public traffic uses native retrieval", renderBoolean(Boolean(storage.publicTrafficUsesNativeRetrieval))],
+        ["Native packet accepted for public traffic", renderBoolean(Boolean(storage.nativePacketAcceptedForPublicTraffic))],
+        ["Automatic fallback enabled", renderBoolean(Boolean(storage.automaticFallbackEnabled))],
+        ["Fallback to Python retrieval", renderBoolean(Boolean(storage.fallbackToPythonRetrieval))]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Boundary Evidence</h3>
+      ${renderComparisonPairs([
+        ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+        ["Public answer provider changed", renderBoolean(Boolean(data.publicAnswerProviderChanged))],
+        ["Provider call", renderBoolean(Boolean(data.providerCall))],
+        ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+        ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+        ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+        ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+        ["Automatic fallback enabled", renderBoolean(Boolean(data.automaticFallbackEnabled))],
+        ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+        ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Rollback</h3>
+      ${renderComparisonPairs([
+        ["Target mode", rollback.targetMode],
+        ["Immediate", renderBoolean(Boolean(rollback.immediate))],
+        ["Requires provider change", renderBoolean(Boolean(rollback.requiresProviderChange))],
+        ["Fallback to Python retrieval", renderBoolean(Boolean(rollback.fallbackToPythonRetrieval))],
+        ["Public answer route changed", renderBoolean(Boolean(rollback.publicAnswerRouteChanged))]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Missing Approvals</h3>
+      <pre>${escapeHtml(renderListValue(data.requiredApprovalsMissing) || "")}</pre>
+    </div>
+
+    <div class="memory-card">
+      <h3>Submitted Request</h3>
+      ${renderComparisonPairs([
+        ["Requested mode", request.requestedMode],
+        ["Operator authorized", renderBoolean(Boolean(request.operatorAuthorized))],
+        ["Operator identifier", request.operatorIdentifier],
+        ["Audience scope", request.audienceScope],
+        ["Approved cases", renderListValue(request.approvedCases)],
+        ["Max duration minutes", request.maxDurationMinutes],
+        ["Rollback acknowledged", renderBoolean(Boolean(request.rollbackAcknowledged))],
+        ["Public traffic acknowledged", renderBoolean(Boolean(request.publicTrafficAcknowledged))],
+        ["No fallback acknowledged", renderBoolean(Boolean(request.noFallbackAcknowledged))],
+        ["Continuity and memory preserved acknowledged", renderBoolean(Boolean(request.continuityMemoryPreservedAcknowledged))],
+        ["Approvals", renderListValue(request.approvals)]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Safety</h3>
+      <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+    </div>
+  `;
+}
+
+window.runNativeRetrievalLimitedWindowPreview = async function runNativeRetrievalLimitedWindowPreview(ready = false) {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalLimitedWindowResults");
+  container.innerHTML = "<p>Previewing limited window...</p>";
+
+  try {
+    const request = buildNativeRetrievalLimitedWindowRequest(Boolean(ready));
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-limited-window-preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = renderNativeRetrievalLimitedWindowResult(data, request);
+
+  } catch (err) {
+    console.error("Native retrieval limited-window preview failed:", err);
+    container.innerHTML = "<p>Native retrieval limited-window preview failed.</p>";
+  }
+};
+
+window.runNativeRetrievalLimitedWindowApply = async function runNativeRetrievalLimitedWindowApply() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalLimitedWindowResults");
+  container.innerHTML = "<p>Applying limited window...</p>";
+
+  try {
+    const request = buildNativeRetrievalLimitedWindowRequest(true);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-limited-window-apply`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = renderNativeRetrievalLimitedWindowResult(data, request);
+
+  } catch (err) {
+    console.error("Native retrieval limited-window apply failed:", err);
+    container.innerHTML = "<p>Native retrieval limited-window apply failed.</p>";
+  }
+};
+
+window.runNativeRetrievalLimitedWindowRollback = async function runNativeRetrievalLimitedWindowRollback() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalLimitedWindowResults");
+  container.innerHTML = "<p>Rolling back limited window...</p>";
+
+  try {
+    const request = {
+      requestedMode: "render_selection_only",
+      operatorAuthorized: true,
+      operatorIdentifier: "admin-preview-operator",
+      reason: "Admin rollback from native retrieval limited-window mode.",
+      approvals: [],
+      rollbackAcknowledged: true,
+      publicTrafficDisabledAcknowledged: true,
+      noFallbackAcknowledged: true,
+      continuityMemoryPreservedAcknowledged: true
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-rollback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = renderNativeRetrievalLimitedWindowResult(data, request);
+
+  } catch (err) {
+    console.error("Native retrieval limited-window rollback failed:", err);
+    container.innerHTML = "<p>Native retrieval limited-window rollback failed.</p>";
   }
 };
 
