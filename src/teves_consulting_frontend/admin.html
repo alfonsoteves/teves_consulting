@@ -578,6 +578,30 @@
     </details>
 
     <details open>
+      <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
+
+      <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
+
+      <select
+        id="nativeRetrievalApprovedCaseAnswerCase"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="water_outage">Water outage</option>
+        <option value="food_reserve">Food reserve</option>
+        <option value="power_outage">Power outage</option>
+        <option value="bread_selection">Bread selection</option>
+        <option value="spanish_water_storage">Spanish water storage</option>
+        <option value="generic_sports">Generic sports</option>
+        <option value="spanish_generic_sports">Spanish generic sports</option>
+        <option value="sports_hydration_detail">Sports hydration detail</option>
+      </select>
+
+      <button onclick="runNativeRetrievalApprovedCaseInternalTestAnswer()">Generate Approved-Case Answer</button>
+
+      <div id="nativeRetrievalApprovedCaseInternalTestAnswerResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Comparison</strong></summary>
 
       <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>

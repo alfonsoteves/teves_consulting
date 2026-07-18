@@ -2021,6 +2021,107 @@ window.runNativeRetrievalInternalTestAnswer = async function runNativeRetrievalI
   }
 };
 
+window.runNativeRetrievalApprovedCaseInternalTestAnswer = async function runNativeRetrievalApprovedCaseInternalTestAnswer() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const caseId = document.getElementById("nativeRetrievalApprovedCaseAnswerCase").value;
+  const container = document.getElementById("nativeRetrievalApprovedCaseInternalTestAnswerResults");
+  container.innerHTML = "<p>Generating approved-case internal-test answer...</p>";
+
+  try {
+    const request = {
+      caseId,
+      operatorAcknowledgedInternalTestOnly: true,
+      operatorAcknowledgedPublicTrafficDisabled: true,
+      operatorAcknowledgedNoFallback: true,
+      operatorAcknowledgedContinuityMemoryPreserved: true,
+      operatorNotes: "Admin approved-case internal-test answer from Render-built native packet."
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-approved-case-internal-test-answer`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const packetValidation = data.packetValidation || {};
+    const knownFailure = data.error === "native_approved_case_internal_test_answer_failed"
+      || data.error === "native_internal_test_packet_intake_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.approvedCaseIntakeVersion || "Native retrieval approved-case internal-test answer")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Case", data.caseId || caseId],
+          ["Query", data.query],
+          ["Status", data.status],
+          ["Retrieval mode", data.retrievalMode],
+          ["Provider route", data.providerRoute],
+          ["Approved-case packet built", renderBoolean(Boolean(data.approvedCasePacketBuilt))],
+          ["Packet validation category", data.packetValidationCategory || packetValidation.category],
+          ["Replay key", data.replayKey || packetValidation.replayKey],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Grounded context length", data.groundedContextLength],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Answer</h3>
+        <pre>${escapeHtml(data.answer || "No answer returned.")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(data.publicAnswerProviderChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Case", request.caseId],
+          ["Internal test only acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedInternalTestOnly))],
+          ["Public traffic disabled acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedPublicTrafficDisabled))],
+          ["No fallback acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedNoFallback))],
+          ["Continuity and memory preserved acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedContinuityMemoryPreserved))],
+          ["Allowed cases", renderListValue(data.allowedCaseIds)],
+          ["Selected sources", renderListValue(data.selectedSourceIds)]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval approved-case internal-test answer failed:", err);
+    container.innerHTML = "<p>Native retrieval approved-case internal-test answer failed.</p>";
+  }
+};
+
 function renderSourceComparisons(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) {
     return "<p>No source comparisons returned.</p>";
