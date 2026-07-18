@@ -1426,6 +1426,96 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
   }
 };
 
+window.runNativeRetrievalFeatureFlagTransitionContract = async function runNativeRetrievalFeatureFlagTransitionContract() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalFeatureFlagTransitionContractResults");
+  container.innerHTML = "<p>Loading transition contract...</p>";
+
+  try {
+    const res = await fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-transition-contract`);
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const rollback = data.rollback || {};
+    const transition = data.allowedTransition || {};
+    const safety = data.safety || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.contractVersion || "Native retrieval transition contract")}</h3>
+        ${renderComparisonPairs([
+          ["Status", data.status],
+          ["Current mode", data.currentMode],
+          ["Selected next mode", data.selectedNextMode],
+          ["Rollback mode", data.rollbackMode],
+          ["Transition enabled", renderBoolean(Boolean(data.transitionEnabled))],
+          ["Setter available", renderBoolean(Boolean(data.setterAvailable))],
+          ["Operator authorization required", renderBoolean(Boolean(data.operatorAuthorizationRequired))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+          ["Native packet accepted for internal test after approval", renderBoolean(Boolean(data.nativePacketAcceptedForInternalTestTrafficAfterApproval))],
+          ["Selected mode uses public native retrieval", renderBoolean(Boolean(data.selectedModePublicTrafficUsesNativeRetrieval))],
+          ["Next approval", data.nextApproval]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Required Approvals</h3>
+        <pre>${escapeHtml(renderListValue(data.requiredApprovals) || "")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Rollback</h3>
+        ${renderComparisonPairs([
+          ["Target mode", rollback.targetMode],
+          ["Immediate", renderBoolean(Boolean(rollback.immediate))],
+          ["Requires provider change", renderBoolean(Boolean(rollback.requiresProviderChange))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(rollback.fallbackToPythonRetrieval))],
+          ["Public answer route changed", renderBoolean(Boolean(rollback.publicAnswerRouteChanged))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Allowed Transition</h3>
+        ${renderComparisonPairs([
+          ["From", transition.from],
+          ["To", transition.to],
+          ["Requires operator authorization", renderBoolean(Boolean(transition.requiresOperatorAuthorization))],
+          ["Requires all approvals", renderBoolean(Boolean(transition.requiresAllApprovals))],
+          ["Changes public traffic", renderBoolean(Boolean(transition.changesPublicTraffic))],
+          ["Changes provider", renderBoolean(Boolean(transition.changesProvider))],
+          ["Changes continuity", renderBoolean(Boolean(transition.changesContinuity))],
+          ["Writes memory", renderBoolean(Boolean(transition.writesMemory))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Blocked Transitions</h3>
+        ${(data.blockedTransitions || []).map((blocked) => `
+          <p class="meta"><strong>${escapeHtml(blocked.to || "unknown")}:</strong> ${escapeHtml(blocked.reason || "unknown")}</p>
+        `).join("") || "<p>No blocked transitions returned.</p>"}
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval transition contract failed:", err);
+    container.innerHTML = "<p>Native retrieval transition contract failed.</p>";
+  }
+};
+
 function buildNativeRetrievalValidationSamplePacket() {
   const corpusSha256 = "639f3e9e32fdf121b83ceb6e2111d5b56dab6d2c22abfae95111c1190c6d669f";
   const contentVersion = "aion-public-retrieval-approved-case-content-v1";
