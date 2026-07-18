@@ -1236,6 +1236,24 @@ function renderListValue(value) {
   return Array.isArray(value) ? value.join(", ") : value;
 }
 
+function renderModeRegistry(modes = []) {
+  if (!Array.isArray(modes) || modes.length === 0) {
+    return "<p>No modes returned.</p>";
+  }
+
+  return modes.map((mode) => `
+    <div class="memory-card">
+      <h4>${escapeHtml(mode.mode || "unknown")}</h4>
+      ${renderComparisonPairs([
+        ["Available", renderBoolean(Boolean(mode.available))],
+        ["Requires operator approval", renderBoolean(Boolean(mode.requiresOperatorApproval))],
+        ["Public traffic uses native retrieval", renderBoolean(Boolean(mode.publicTrafficUsesNativeRetrieval))],
+        ["Description", mode.description]
+      ])}
+    </div>
+  `).join("");
+}
+
 window.runNativeRetrievalState = async function runNativeRetrievalState() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
@@ -1277,6 +1295,7 @@ window.runNativeRetrievalState = async function runNativeRetrievalState() {
           ["Public Aion route", route.publicAionRoute],
           ["Public answer provider", route.publicAnswerProvider],
           ["Native retrieval scope", route.nativeRetrievalScope],
+          ["Feature flag mode", route.featureFlagMode],
           ["Public traffic uses native retrieval", renderBoolean(Boolean(route.publicTrafficUsesNativeRetrieval))],
           ["Feature flag enabled", renderBoolean(Boolean(route.featureFlagEnabled))],
           ["Automatic fallback enabled", renderBoolean(Boolean(route.automaticFallbackEnabled))],
@@ -1333,6 +1352,77 @@ window.runNativeRetrievalState = async function runNativeRetrievalState() {
   } catch (err) {
     console.error("Native retrieval state failed:", err);
     container.innerHTML = "<p>Native retrieval state failed.</p>";
+  }
+};
+
+window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFeatureFlagState() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalFeatureFlagStateResults");
+  container.innerHTML = "<p>Loading feature-flag state...</p>";
+
+  try {
+    const res = await fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-state`);
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const rejection = data.rejectionBehavior || {};
+    const safety = data.safety || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.stateVersion || "Native retrieval feature-flag state")}</h3>
+        ${renderComparisonPairs([
+          ["Status", data.status],
+          ["Current mode", data.currentMode],
+          ["Enabled", renderBoolean(Boolean(data.enabled))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(data.automaticFallbackEnabled))],
+          ["Manual provider switch available", renderBoolean(Boolean(data.manualProviderSwitchAvailable))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+          ["Native packet accepted for internal test traffic", renderBoolean(Boolean(data.nativePacketAcceptedForInternalTestTraffic))],
+          ["Last changed at", data.lastChangedAt],
+          ["Last changed by", data.lastChangedBy],
+          ["Next approval", data.nextApproval]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Mode Registry</h3>
+        ${renderModeRegistry(data.allowedModes || [])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Rejection Behavior</h3>
+        ${renderComparisonPairs([
+          ["Invalid native packet", rejection.invalidNativePacket],
+          ["Disabled feature flag", rejection.disabledFeatureFlag],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(rejection.fallbackToPythonRetrieval))],
+          ["Provider call with invalid native packet", renderBoolean(Boolean(rejection.providerCallWithInvalidNativePacket))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Required Approval Before Enablement</h3>
+        <pre>${escapeHtml(renderListValue(data.requiredApprovalBeforeEnablement) || "")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval feature-flag state failed:", err);
+    container.innerHTML = "<p>Native retrieval feature-flag state failed.</p>";
   }
 };
 
