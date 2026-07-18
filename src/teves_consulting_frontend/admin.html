@@ -571,6 +571,24 @@
     </details>
 
     <details open>
+      <summary><strong>Native Retrieval Limited-Window Answer</strong></summary>
+
+      <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
+
+      <select
+        id="nativeRetrievalLimitedWindowAnswerCase"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="water_outage">Water outage</option>
+        <option value="spanish_water_storage">Spanish water storage</option>
+      </select>
+
+      <button onclick="runNativeRetrievalLimitedWindowAnswer()">Generate Limited-Window Answer</button>
+
+      <div id="nativeRetrievalLimitedWindowAnswerResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>

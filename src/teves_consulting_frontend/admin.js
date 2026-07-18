@@ -2074,6 +2074,109 @@ window.runNativeRetrievalLimitedWindowRollback = async function runNativeRetriev
   }
 };
 
+window.runNativeRetrievalLimitedWindowAnswer = async function runNativeRetrievalLimitedWindowAnswer() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const caseSelect = document.getElementById("nativeRetrievalLimitedWindowAnswerCase");
+  const caseId = caseSelect ? caseSelect.value : "water_outage";
+  const container = document.getElementById("nativeRetrievalLimitedWindowAnswerResults");
+  container.innerHTML = "<p>Generating limited-window answer...</p>";
+
+  try {
+    const request = {
+      caseId,
+      operatorAcknowledgedLimitedWindowOnly: true,
+      operatorAcknowledgedSignedInApprovedScope: true,
+      operatorAcknowledgedNoFallback: true,
+      operatorAcknowledgedContinuityMemoryPreserved: true,
+      operatorNotes: `Admin limited-window answer from Render-built native packet: ${caseId}.`
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-limited-window-answer`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const packetValidation = data.packetValidation || {};
+    const knownFailure = data.error === "native_limited_window_answer_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.limitedWindowAnswerVersion || "Native retrieval limited-window answer")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Case", data.caseId || caseId],
+          ["Query", data.query],
+          ["Status", data.status],
+          ["Retrieval mode", data.retrievalMode],
+          ["Provider route", data.providerRoute],
+          ["Packet validation category", data.packetValidationCategory || packetValidation.category],
+          ["Replay key", data.replayKey || packetValidation.replayKey],
+          ["Handoff accepted", renderBoolean(Boolean(data.handoffAccepted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Grounded context length", data.groundedContextLength],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Answer</h3>
+        <pre>${escapeHtml(data.answer || "No answer returned.")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(data.publicAnswerProviderChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+          ["Render selected public knowledge", renderBoolean(Boolean(data.renderSelectedPublicKnowledge))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Case", request.caseId],
+          ["Limited window only acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedLimitedWindowOnly))],
+          ["Signed-in approved scope acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedSignedInApprovedScope))],
+          ["No fallback acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedNoFallback))],
+          ["Continuity and memory preserved acknowledged", renderBoolean(Boolean(request.operatorAcknowledgedContinuityMemoryPreserved))],
+          ["Allowed limited-window cases", renderListValue(data.allowedCaseIds)],
+          ["All approved cases", renderListValue(data.allApprovedCaseIds)],
+          ["Selected sources", renderListValue(data.selectedSourceIds)]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval limited-window answer failed:", err);
+    container.innerHTML = "<p>Native retrieval limited-window answer failed.</p>";
+  }
+};
+
 function buildNativeRetrievalValidationSamplePacket() {
   const corpusSha256 = "639f3e9e32fdf121b83ceb6e2111d5b56dab6d2c22abfae95111c1190c6d669f";
   const contentVersion = "aion-public-retrieval-approved-case-content-v1";
