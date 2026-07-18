@@ -692,6 +692,60 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Bounded No-Op Call Gate</strong></summary>
+
+      <p>Validate the explicit target, method, timeout, response budget, and operator approvals required before any bounded no-op canister call implementation.</p>
+
+      <input
+        id="nativeLlmBoundedNoopGatePrincipal"
+        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmBoundedNoopGateNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmBoundedNoopGateMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="capabilities">capabilities</option>
+        <option value="health">health</option>
+        <option value="metadata">metadata</option>
+        <option value="probe">probe</option>
+      </select>
+
+      <input
+        id="nativeLlmBoundedNoopGateTimeout"
+        type="number"
+        value="1500"
+        min="250"
+        max="10000"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmBoundedNoopGateResponseBytes"
+        type="number"
+        value="2048"
+        min="128"
+        max="32768"
+        style="width: 140px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterBoundedNoopGate(false)">Preview Gate Ready</button>
+      <button onclick="runNativeLlmCanisterBoundedNoopGate(true)">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterBoundedNoopGateResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
