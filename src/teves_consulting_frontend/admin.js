@@ -2021,6 +2021,110 @@ window.runNativeRetrievalInternalTestAnswer = async function runNativeRetrievalI
   }
 };
 
+window.runNativeRetrievalHandoffInternalTestAnswer = async function runNativeRetrievalHandoffInternalTestAnswer() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalHandoffInternalTestAnswerResults");
+  container.innerHTML = "<p>Generating handoff internal-test answer...</p>";
+
+  try {
+    const packet = buildNativeRetrievalValidationSamplePacket();
+    const request = {
+      query: "How should I prepare for a water outage?",
+      packet,
+      operatorAcknowledgedInternalTestOnly: true,
+      operatorAcknowledgedPublicTrafficDisabled: true,
+      operatorAcknowledgedNoFallback: true,
+      operatorAcknowledgedContinuityMemoryPreserved: true,
+      operatorNotes: "Admin handoff internal-test answer from explicit native packet."
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-handoff-internal-test-answer`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const packetValidation = data.packetValidation || {};
+    const knownFailure = data.error === "native_handoff_internal_test_answer_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.handoffVersion || "Native retrieval handoff internal-test answer")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Status", data.status],
+          ["Retrieval mode", data.retrievalMode],
+          ["Provider route", data.providerRoute],
+          ["Packet intake version", data.packetIntakeVersion],
+          ["Packet intake category", data.packetIntakeCategory],
+          ["Packet validation category", data.packetValidationCategory || packetValidation.category],
+          ["Replay key", data.replayKey || packetValidation.replayKey],
+          ["Handoff accepted", renderBoolean(Boolean(data.handoffAccepted))],
+          ["Native packet accepted for internal test traffic", renderBoolean(Boolean(data.nativePacketAcceptedForInternalTestTraffic))],
+          ["Render selected public knowledge", renderBoolean(Boolean(data.renderSelectedPublicKnowledge))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Grounded context length", data.groundedContextLength],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Answer</h3>
+        <pre>${escapeHtml(data.answer || "No answer returned.")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(data.publicAnswerProviderChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Packet</h3>
+        ${renderComparisonPairs([
+          ["Query", request.query],
+          ["Schema", packet.packetSchemaVersion],
+          ["Corpus SHA-256", packet.corpusSha256],
+          ["Content version", packet.contentVersion],
+          ["Budget version", packet.contextBudgetVersion],
+          ["Selection version", packet.selectionVersion],
+          ["Query evidence", packet.queryEvidence],
+          ["Selected sources", packet.selectedSources.map((source) => `${source.rank}:${source.documentId}:${source.chunkId}`).join(", ")]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval handoff internal-test answer failed:", err);
+    container.innerHTML = "<p>Native retrieval handoff internal-test answer failed.</p>";
+  }
+};
+
 window.runNativeRetrievalApprovedCaseInternalTestAnswer = async function runNativeRetrievalApprovedCaseInternalTestAnswer() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
