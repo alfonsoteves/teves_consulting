@@ -1851,6 +1851,103 @@ function buildNativeRetrievalValidationSamplePacket() {
   };
 }
 
+function buildNativeRetrievalHandoffSource(rank, documentId, chunkId) {
+  return {
+    rank,
+    documentId,
+    chunkId,
+    sourceType: "website",
+    providerFacingContentReady: true
+  };
+}
+
+const NATIVE_RETRIEVAL_HANDOFF_CASES = {
+  water_outage: {
+    label: "Water outage",
+    query: "How should I prepare for a water outage?",
+    selectedSources: [
+      buildNativeRetrievalHandoffSource(1, "website_water_using_water_wisely_under_constraint", "website_water_using_water_wisely_under_constraint_chunk_001"),
+      buildNativeRetrievalHandoffSource(2, "website_water", "website_water_chunk_005"),
+      buildNativeRetrievalHandoffSource(3, "website_water_clarity", "website_water_clarity_chunk_000"),
+      buildNativeRetrievalHandoffSource(4, "website_water_practical", "website_water_practical_chunk_000")
+    ],
+    groundedContext: [
+      "[source 1] website_water_using_water_wisely_under_constraint / website_water_using_water_wisely_under_constraint_chunk_001\nTitle: Reliable Water Access: Using Water Wisely Under Constraint - Teves Consulting\nWater constraints are a temporary operating mode. Continuity matters more than intensity, and calm prioritization helps preserve morale and clarity.",
+      "[source 2] website_water / website_water_chunk_005\nTitle: Water Resilience - Insights - Teves Consulting\nWater planning includes filtration, treatment, storage rotation, realistic contingency planning, access, storage, quality, and reliable supply under constraint.",
+      "[source 3] website_water_clarity / website_water_clarity_chunk_000\nTitle: Water - Clarity - Teves Consulting\nWater clarity starts with reliable access, usable storage, and safe quality. Storage comes before optimization, and simple systems are more reliable.",
+      "[source 4] website_water_practical / website_water_practical_chunk_000\nTitle: Water - Practical - Teves Consulting\nPractical water resilience comes from layered planning: stored water, treatment, refill source, and mobility. The plan should stay manageable during disruptions."
+    ].join("\n\n")
+  },
+  food_reserve: {
+    label: "Food reserve",
+    query: "What food should I keep at home?",
+    selectedSources: [
+      buildNativeRetrievalHandoffSource(1, "website_superfoods_onions", "website_superfoods_onions_chunk_003"),
+      buildNativeRetrievalHandoffSource(2, "website_superfoods_potatoes", "website_superfoods_potatoes_chunk_007"),
+      buildNativeRetrievalHandoffSource(3, "website_superfoods_eggs", "website_superfoods_eggs_chunk_009"),
+      buildNativeRetrievalHandoffSource(4, "website_superfoods_bread", "website_superfoods_bread_chunk_001"),
+      buildNativeRetrievalHandoffSource(5, "website_superfoods_garlic", "website_superfoods_garlic_chunk_001"),
+      buildNativeRetrievalHandoffSource(6, "website_food_foundations", "website_food_foundations_chunk_003")
+    ],
+    groundedContext: [
+      "[source 1] website_superfoods_onions / website_superfoods_onions_chunk_003\nTitle: Superfoods: Onions - Teves Consulting\nOnions are affordable, available, easy to use regularly, and improve everyday meals with flavor and cooking versatility.",
+      "[source 2] website_superfoods_potatoes / website_superfoods_potatoes_chunk_007\nTitle: Superfoods: Potatoes - A Foundation Food - Teves Consulting\nPotatoes are a foundation food: affordable, satisfying, useful for families, and helpful for simple home cooking routines.",
+      "[source 3] website_superfoods_eggs / website_superfoods_eggs_chunk_009\nTitle: Superfoods: Eggs - Teves Consulting\nWhole eggs are practical protein with useful micronutrients when they fit the person's appetite, activity, and overall diet.",
+      "[source 4] website_superfoods_bread / website_superfoods_bread_chunk_001\nTitle: Superfoods: Real Bread - Teves Consulting\nSimpler bread with fewer ingredients and slower methods is different from highly processed commercial bread optimized for shelf life and softness.",
+      "[source 5] website_superfoods_garlic / website_superfoods_garlic_chunk_001\nTitle: Superfoods: Garlic - Teves Consulting\nGarlic is inexpensive, versatile, useful across soups, rice dishes, protein cooking, and sauces, and helps make simple meals easier.",
+      "[source 6] website_food_foundations / website_food_foundations_chunk_003\nTitle: Food - Foundations - Teves Consulting\nA useful home reserve overlaps with what you already eat: no-cook options, canned meals, ready protein, crackers, dry staples, fats, and flavor."
+    ].join("\n\n")
+  },
+  spanish_water_storage: {
+    label: "Spanish water storage",
+    query: "¿Cómo debo almacenar agua en casa?",
+    selectedSources: [
+      buildNativeRetrievalHandoffSource(1, "website_water_foundations", "website_water_foundations_chunk_000"),
+      buildNativeRetrievalHandoffSource(2, "website_water", "website_water_chunk_005"),
+      buildNativeRetrievalHandoffSource(3, "website_water_securing_reliable_supply", "website_water_securing_reliable_supply_chunk_003"),
+      buildNativeRetrievalHandoffSource(4, "website_water_securing_reliable_supply", "website_water_securing_reliable_supply_chunk_000")
+    ],
+    groundedContext: [
+      "[source 1] website_water_foundations / website_water_foundations_chunk_000\nTitle: Water - Foundations - Teves Consulting\nWater resilience is about reliability, not volume. Store, rotate, and treat water so the household can maintain safe supply without overcomplicating the system.",
+      "[source 2] website_water / website_water_chunk_005\nTitle: Water Resilience - Insights - Teves Consulting\nWater planning includes storage rotation, realistic contingency planning, access, storage, quality, and reliable supply.",
+      "[source 3] website_water_securing_reliable_supply / website_water_securing_reliable_supply_chunk_003\nTitle: Reliable Water Access: Securing Reliable Supply - Teves Consulting\nSeparate storage from treatment. Storage is about having water available; treatment is about making water safe when needed.",
+      "[source 4] website_water_securing_reliable_supply / website_water_securing_reliable_supply_chunk_000\nTitle: Reliable Water Access: Securing Reliable Supply - Teves Consulting\nReliable water access is about continuity. A small realistic buffer, simple redundancy, and manageable systems are more useful than a complex perfect setup."
+    ].join("\n\n")
+  }
+};
+
+function buildNativeRetrievalHandoffPacket(caseId = "water_outage") {
+  const handoffCase = NATIVE_RETRIEVAL_HANDOFF_CASES[caseId]
+    || NATIVE_RETRIEVAL_HANDOFF_CASES.water_outage;
+  const corpusSha256 = "639f3e9e32fdf121b83ceb6e2111d5b56dab6d2c22abfae95111c1190c6d669f";
+  const contentVersion = "aion-public-retrieval-approved-case-content-v1";
+  const contextBudgetVersion = "aion-public-retrieval-context-budget-v1";
+  const selectionVersion = "aion-public-retrieval-selection-v1";
+  const queryEvidence = NATIVE_RETRIEVAL_HANDOFF_CASES[caseId] ? caseId : "water_outage";
+
+  return {
+    packetSchemaVersion: "aion-grounded-public-context-packet-v1",
+    corpusSha256,
+    contentVersion,
+    contextBudgetVersion,
+    selectionVersion,
+    queryEvidence,
+    selectedSources: handoffCase.selectedSources,
+    groundedContext: handoffCase.groundedContext,
+    replayKey: `${queryEvidence}:${corpusSha256}:${contentVersion}:${contextBudgetVersion}:${selectionVersion}`,
+    safety: {
+      providerCall: false,
+      memoryRead: false,
+      memoryWrite: false,
+      continuityInputAccepted: false,
+      publicAnswerRouteChanged: false,
+      publicAnswerProviderChanged: false,
+      automaticFallbackEnabled: false,
+      publicTrafficUsesNativeRetrieval: false
+    }
+  };
+}
+
 window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
@@ -2027,19 +2124,23 @@ window.runNativeRetrievalHandoffInternalTestAnswer = async function runNativeRet
     return;
   }
 
+  const caseSelect = document.getElementById("nativeRetrievalHandoffAnswerCase");
+  const caseId = caseSelect ? caseSelect.value : "water_outage";
+  const handoffCase = NATIVE_RETRIEVAL_HANDOFF_CASES[caseId]
+    || NATIVE_RETRIEVAL_HANDOFF_CASES.water_outage;
   const container = document.getElementById("nativeRetrievalHandoffInternalTestAnswerResults");
   container.innerHTML = "<p>Generating handoff internal-test answer...</p>";
 
   try {
-    const packet = buildNativeRetrievalValidationSamplePacket();
+    const packet = buildNativeRetrievalHandoffPacket(caseId);
     const request = {
-      query: "How should I prepare for a water outage?",
+      query: handoffCase.query,
       packet,
       operatorAcknowledgedInternalTestOnly: true,
       operatorAcknowledgedPublicTrafficDisabled: true,
       operatorAcknowledgedNoFallback: true,
       operatorAcknowledgedContinuityMemoryPreserved: true,
-      operatorNotes: "Admin handoff internal-test answer from explicit native packet."
+      operatorNotes: `Admin handoff internal-test answer from explicit native packet: ${caseId}.`
     };
     const res = await fetch(
       `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-handoff-internal-test-answer`,
@@ -2068,6 +2169,7 @@ window.runNativeRetrievalHandoffInternalTestAnswer = async function runNativeRet
           ["Error", data.error],
           ["Category", data.category],
           ["Detail", data.detail],
+          ["Case", caseId],
           ["Status", data.status],
           ["Retrieval mode", data.retrievalMode],
           ["Provider route", data.providerRoute],
@@ -2108,6 +2210,7 @@ window.runNativeRetrievalHandoffInternalTestAnswer = async function runNativeRet
         <h3>Submitted Packet</h3>
         ${renderComparisonPairs([
           ["Query", request.query],
+          ["Case", caseId],
           ["Schema", packet.packetSchemaVersion],
           ["Corpus SHA-256", packet.corpusSha256],
           ["Content version", packet.contentVersion],

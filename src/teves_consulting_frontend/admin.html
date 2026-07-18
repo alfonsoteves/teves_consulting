@@ -582,6 +582,15 @@
 
       <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
 
+      <select
+        id="nativeRetrievalHandoffAnswerCase"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="water_outage">Water outage</option>
+        <option value="food_reserve">Food reserve</option>
+        <option value="spanish_water_storage">Spanish water storage</option>
+      </select>
+
       <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Generate Handoff Answer</button>
 
       <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
