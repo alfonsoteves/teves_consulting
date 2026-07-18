@@ -1426,6 +1426,115 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
   }
 };
 
+function buildNativeRetrievalValidationSamplePacket() {
+  const corpusSha256 = "639f3e9e32fdf121b83ceb6e2111d5b56dab6d2c22abfae95111c1190c6d669f";
+  const contentVersion = "aion-public-retrieval-approved-case-content-v1";
+  const contextBudgetVersion = "aion-public-retrieval-context-budget-v1";
+  const selectionVersion = "aion-public-retrieval-selection-v1";
+
+  return {
+    packetSchemaVersion: "aion-grounded-public-context-packet-v1",
+    corpusSha256,
+    contentVersion,
+    contextBudgetVersion,
+    selectionVersion,
+    queryEvidence: "water_outage",
+    selectedSources: [
+      {
+        rank: 1,
+        documentId: "website_water",
+        chunkId: "website_water_chunk_005",
+        sourceType: "website",
+        providerFacingContentReady: true
+      }
+    ],
+    groundedContext: "Public website context about storing water safely.",
+    replayKey: `water_outage:${corpusSha256}:${contentVersion}:${contextBudgetVersion}:${selectionVersion}`,
+    safety: {
+      providerCall: false,
+      memoryRead: false,
+      memoryWrite: false,
+      continuityInputAccepted: false,
+      publicAnswerRouteChanged: false,
+      publicAnswerProviderChanged: false,
+      automaticFallbackEnabled: false,
+      publicTrafficUsesNativeRetrieval: false
+    }
+  };
+}
+
+window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalPacketValidationResults");
+  container.innerHTML = "<p>Validating sample packet...</p>";
+
+  try {
+    const packet = buildNativeRetrievalValidationSamplePacket();
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-packet-validation-preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ packet })
+      }
+    );
+    const data = await res.json();
+
+    if (data.error && data.error !== "native_packet_validation_failed") {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.validationVersion || "Native packet validation preview")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Replay key", data.replayKey]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Sample</h3>
+        ${renderComparisonPairs([
+          ["Schema", packet.packetSchemaVersion],
+          ["Corpus SHA-256", packet.corpusSha256],
+          ["Content version", packet.contentVersion],
+          ["Budget version", packet.contextBudgetVersion],
+          ["Selection version", packet.selectionVersion],
+          ["Query evidence", packet.queryEvidence],
+          ["Selected sources", packet.selectedSources.map((source) => `${source.rank}:${source.documentId}:${source.chunkId}`).join(", ")]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval packet validation preview failed:", err);
+    container.innerHTML = "<p>Native retrieval packet validation preview failed.</p>";
+  }
+};
+
 function renderSourceComparisons(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) {
     return "<p>No source comparisons returned.</p>";
