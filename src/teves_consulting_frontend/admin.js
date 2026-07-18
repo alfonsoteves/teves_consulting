@@ -2311,6 +2311,158 @@ function buildNativeRetrievalHandoffPacket(caseId = "water_outage") {
   };
 }
 
+window.runNativeLlmCanisterEvaluationStub = async function runNativeLlmCanisterEvaluationStub() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const caseSelect = document.getElementById("nativeLlmCanisterEvaluationCase");
+  const providerSelect = document.getElementById("nativeLlmCanisterEvaluationProvider");
+  const caseId = caseSelect ? caseSelect.value : "water_outage";
+  const requestedProvider = providerSelect ? providerSelect.value : "llm_canister_admin_eval";
+  const container = document.getElementById("nativeLlmCanisterEvaluationResults");
+  container.innerHTML = "<p>Running mock evaluation...</p>";
+
+  try {
+    const request = {
+      caseId,
+      requestedProvider,
+      operatorIdentifier: "admin-preview-operator",
+      operatorNotes: `Admin 8.2 LLM canister evaluation contract stub: ${caseId}/${requestedProvider}.`,
+      mockRawOutput: `Mock ${requestedProvider} answer for ${caseId} using the same Phase 8.1 grounded packet.`
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-evaluation-stub`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const packetIdentity = data.packetIdentity || {};
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const providerInput = data.providerInput || {};
+    const knownFailure = data.error === "native_llm_canister_evaluation_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.resultVersion || "Native LLM canister evaluation result")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Evaluation ID", data.evaluationId],
+          ["Case", data.caseId || caseId],
+          ["Query", data.query],
+          ["Provider route", data.providerRoute],
+          ["Packet validation category", data.packetValidationCategory],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Quality review required", renderBoolean(Boolean(data.qualityReviewRequired))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Packet Identity</h3>
+        ${renderComparisonPairs([
+          ["Packet ID", packetIdentity.packetId],
+          ["Packet hash", packetIdentity.packetHash],
+          ["Packet schema", packetIdentity.packetSchemaVersion],
+          ["Corpus SHA-256", packetIdentity.corpusSha256],
+          ["Content version", packetIdentity.contentVersion],
+          ["Context budget version", packetIdentity.contextBudgetVersion],
+          ["Selection version", packetIdentity.selectionVersion],
+          ["Replay key", packetIdentity.replayKey || data.packetReplayKey],
+          ["Case ID", packetIdentity.caseId]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Status Separation</h3>
+        ${renderComparisonPairs([
+          ["Transport status", data.transportStatus],
+          ["Inference status", data.inferenceStatus],
+          ["Normalization status", data.normalizationStatus],
+          ["Answer validation status", data.answerValidationStatus],
+          ["Quality review status", data.qualityReviewStatus],
+          ["Latency ms", data.latencyMs],
+          ["Cycle use estimate", data.cycleUseEstimate]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Raw Provider Output</h3>
+        <pre>${escapeHtml(data.rawProviderOutput || "No raw provider output returned.")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Normalized Output</h3>
+        <pre>${escapeHtml(JSON.stringify(data.normalizedOutput || {}, null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Public Response</h3>
+        <pre>${escapeHtml(JSON.stringify(data.publicResponse || {}, null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Provider-Facing Input</h3>
+        <pre>${escapeHtml(JSON.stringify(providerInput, null, 2))}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Provider call", renderBoolean(Boolean(boundaryEvidence.providerCall))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Review Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Quality review dimensions", renderListValue(data.qualityReviewDimensions)],
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Case", request.caseId],
+          ["Requested provider", request.requestedProvider],
+          ["Operator identifier", request.operatorIdentifier],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))],
+          ["Mock raw output provided", renderBoolean(Boolean(request.mockRawOutput))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM canister evaluation stub failed:", err);
+    container.innerHTML = "<p>Native LLM canister evaluation stub failed.</p>";
+  }
+};
+
 window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
   if (!isAuthenticated) {
     alert("Please sign in first.");

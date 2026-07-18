@@ -628,6 +628,33 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Canister Evaluation Stub</strong></summary>
+
+      <p>Run the Phase 8.2 Admin-only mock evaluation contract against the same native grounded packet, without calling a real canister, switching providers, or changing public routing.</p>
+
+      <select
+        id="nativeLlmCanisterEvaluationCase"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="water_outage">Water outage</option>
+        <option value="spanish_water_storage">Spanish water storage</option>
+        <option value="generic_sports">Generic sports</option>
+      </select>
+
+      <select
+        id="nativeLlmCanisterEvaluationProvider"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="llm_canister_admin_eval">LLM canister admin eval</option>
+        <option value="openai_via_render">OpenAI via Render</option>
+      </select>
+
+      <button onclick="runNativeLlmCanisterEvaluationStub()">Run Mock Evaluation</button>
+
+      <div id="nativeLlmCanisterEvaluationResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
