@@ -2463,6 +2463,173 @@ window.runNativeLlmCanisterEvaluationStub = async function runNativeLlmCanisterE
   }
 };
 
+function buildNativeLlmCanisterCapabilityProbeRequest(probeMode = "metadata_only") {
+  const principalInput = document.getElementById("nativeLlmCapabilityProbePrincipal");
+  const networkSelect = document.getElementById("nativeLlmCapabilityProbeNetwork");
+  const methodSelect = document.getElementById("nativeLlmCapabilityProbeMethod");
+  const targetCanisterPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "ryjl3-tyaaa-aaaaa-aaaba-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const methodName = probeMode === "metadata_only"
+    ? ""
+    : (methodSelect ? methodSelect.value : "capabilities");
+
+  return {
+    requestVersion: "aion-native-llm-canister-capability-probe-request-v1",
+    probeId: `${targetCanisterPrincipal || "unconfigured"}:${network}:${probeMode}:${methodName || "none"}`,
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode,
+    methodName,
+    timeoutMs: 1500,
+    maxResponseBytes: 2048,
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 LLM canister capability probe: ${probeMode}.`,
+    realCanisterCallsEnabled: false,
+    safetyAcknowledgements: {
+      adminOnlyAcknowledged: true,
+      noPublicRoutingAcknowledged: true,
+      noProviderSwitchAcknowledged: true,
+      noFallbackAcknowledged: true,
+      noProductionTrafficAcknowledged: true,
+      noGroundedPacketAcknowledged: true,
+      noPrivateDataAcknowledged: true,
+      noMemoryReadAcknowledged: true,
+      noMemoryWriteAcknowledged: true,
+      noContinuityMutationAcknowledged: true,
+      noQualityConclusionAcknowledged: true
+    }
+  };
+}
+
+window.runNativeLlmCanisterCapabilityProbe = async function runNativeLlmCanisterCapabilityProbe(probeMode = "metadata_only") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterCapabilityProbeResults");
+  container.innerHTML = "<p>Running capability probe...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterCapabilityProbeRequest(probeMode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-capability-probe`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const capabilities = data.capabilities || {};
+    const knownFailure = data.error === "native_llm_canister_capability_probe_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.resultVersion || "Native LLM canister capability probe")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Probe ID", data.probeId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Capability Status</h3>
+        ${renderComparisonPairs([
+          ["Configured", renderBoolean(Boolean(data.configured))],
+          ["Principal valid", renderBoolean(Boolean(data.principalValid))],
+          ["Method allowed", renderBoolean(Boolean(data.methodAllowed))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Transport status", data.transportStatus],
+          ["Interface status", data.interfaceStatus],
+          ["Response shape status", data.responseShapeStatus],
+          ["Latency ms", data.latencyMs],
+          ["Cycle use estimate", data.cycleUseEstimate],
+          ["Response bytes", data.responseBytes]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Capabilities</h3>
+        ${renderComparisonPairs([
+          ["Supported probe modes", renderListValue(capabilities.supportedProbeModes)],
+          ["Enabled probe modes", renderListValue(capabilities.enabledProbeModes)],
+          ["Allowed methods", renderListValue(capabilities.allowedMethods)],
+          ["Real canister call available", renderBoolean(Boolean(capabilities.realCanisterCallAvailable))],
+          ["Grounded packet submission available", renderBoolean(Boolean(capabilities.groundedPacketSubmissionAvailable))],
+          ["Answer generation available", renderBoolean(Boolean(capabilities.answerGenerationAvailable))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Probe ID", request.probeId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName || "none"],
+          ["Timeout ms", request.timeoutMs],
+          ["Max response bytes", request.maxResponseBytes],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM canister capability probe failed:", err);
+    container.innerHTML = "<p>Native LLM canister capability probe failed.</p>";
+  }
+};
+
 window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
   if (!isAuthenticated) {
     alert("Please sign in first.");

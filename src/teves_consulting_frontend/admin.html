@@ -655,6 +655,43 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Canister Capability Probe</strong></summary>
+
+      <p>Inspect the Phase 8.2 Admin-only canister capability probe contract without sending a grounded packet, generating an answer, or making a real canister call.</p>
+
+      <input
+        id="nativeLlmCapabilityProbePrincipal"
+        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmCapabilityProbeNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmCapabilityProbeMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="capabilities">capabilities</option>
+        <option value="health">health</option>
+        <option value="metadata">metadata</option>
+        <option value="probe">probe</option>
+      </select>
+
+      <button onclick="runNativeLlmCanisterCapabilityProbe('metadata_only')">Run Metadata Probe</button>
+      <button onclick="runNativeLlmCanisterCapabilityProbe('interface_check')">Run Interface Check</button>
+      <button onclick="runNativeLlmCanisterCapabilityProbe('bounded_noop_call')">Preview Blocked No-Op Call</button>
+
+      <div id="nativeLlmCanisterCapabilityProbeResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
