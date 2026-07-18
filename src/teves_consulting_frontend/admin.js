@@ -1516,6 +1516,135 @@ window.runNativeRetrievalFeatureFlagTransitionContract = async function runNativ
   }
 };
 
+function buildNativeRetrievalOperatorTransitionPreviewRequest(ready = false) {
+  const approvals = [
+    "operator_authorized_manual_flag",
+    "packet_validation_module",
+    "rollback_to_render_selection_only",
+    "internal_test_route_tests",
+    "public_answer_route_preservation",
+    "no_python_retrieval_fallback"
+  ];
+
+  return {
+    requestedMode: "native_packet_internal_test",
+    operatorAuthorized: true,
+    operatorIdentifier: "admin-preview-operator",
+    reason: "Admin preview for native retrieval internal-test transition readiness.",
+    approvals,
+    rollbackAcknowledged: true,
+    publicTrafficDisabledAcknowledged: Boolean(ready),
+    noFallbackAcknowledged: true,
+    continuityMemoryPreservedAcknowledged: true
+  };
+}
+
+window.runNativeRetrievalOperatorTransitionPreview = async function runNativeRetrievalOperatorTransitionPreview(ready = false) {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalOperatorTransitionPreviewResults");
+  container.innerHTML = "<p>Previewing operator transition...</p>";
+
+  try {
+    const request = buildNativeRetrievalOperatorTransitionPreviewRequest(Boolean(ready));
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-transition-preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    const rollback = data.rollback || {};
+    const safety = data.safety || {};
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.previewVersion || "Native retrieval transition preview")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Current mode", data.currentMode],
+          ["Requested mode", data.requestedMode],
+          ["Requested by", data.requestedBy],
+          ["Reason provided", renderBoolean(Boolean(data.reasonProvided))],
+          ["Transition applied", renderBoolean(Boolean(data.transitionApplied))],
+          ["Setter available", renderBoolean(Boolean(data.setterAvailable))],
+          ["Mode changed", renderBoolean(Boolean(data.modeChanged))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+          ["Provider call", renderBoolean(Boolean(data.providerCall))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+          ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Rollback</h3>
+        ${renderComparisonPairs([
+          ["Target mode", rollback.targetMode],
+          ["Immediate", renderBoolean(Boolean(rollback.immediate))],
+          ["Requires provider change", renderBoolean(Boolean(rollback.requiresProviderChange))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(rollback.fallbackToPythonRetrieval))],
+          ["Public answer route changed", renderBoolean(Boolean(rollback.publicAnswerRouteChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(rollback.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(rollback.nativePacketAcceptedForPublicTraffic))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Missing Approvals</h3>
+        <pre>${escapeHtml(renderListValue(data.requiredApprovalsMissing) || "")}</pre>
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Requested mode", request.requestedMode],
+          ["Operator authorized", renderBoolean(Boolean(request.operatorAuthorized))],
+          ["Operator identifier", request.operatorIdentifier],
+          ["Rollback acknowledged", renderBoolean(Boolean(request.rollbackAcknowledged))],
+          ["Public traffic disabled acknowledged", renderBoolean(Boolean(request.publicTrafficDisabledAcknowledged))],
+          ["No fallback acknowledged", renderBoolean(Boolean(request.noFallbackAcknowledged))],
+          ["Continuity and memory preserved acknowledged", renderBoolean(Boolean(request.continuityMemoryPreservedAcknowledged))],
+          ["Approvals", renderListValue(request.approvals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Safety</h3>
+        <pre>${escapeHtml(JSON.stringify(safety, null, 2))}</pre>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native retrieval operator transition preview failed:", err);
+    container.innerHTML = "<p>Native retrieval operator transition preview failed.</p>";
+  }
+};
+
 function buildNativeRetrievalValidationSamplePacket() {
   const corpusSha256 = "639f3e9e32fdf121b83ceb6e2111d5b56dab6d2c22abfae95111c1190c6d669f";
   const contentVersion = "aion-public-retrieval-approved-case-content-v1";

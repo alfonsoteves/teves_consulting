@@ -536,6 +536,17 @@
     </details>
 
     <details open>
+      <summary><strong>Native Retrieval Operator Transition Preview</strong></summary>
+
+      <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
+
+      <button onclick="runNativeRetrievalOperatorTransitionPreview(false)">Preview Missing Acknowledgement</button>
+      <button onclick="runNativeRetrievalOperatorTransitionPreview(true)">Preview Ready Transition</button>
+
+      <div id="nativeRetrievalOperatorTransitionPreviewResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
