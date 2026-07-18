@@ -547,6 +547,17 @@
     </details>
 
     <details open>
+      <summary><strong>Native Retrieval Internal-Test Mode Storage</strong></summary>
+
+      <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
+
+      <button onclick="runNativeRetrievalInternalTestModeApply()">Apply Internal-Test Mode</button>
+      <button onclick="runNativeRetrievalInternalTestModeRollback()">Rollback to Render Selection</button>
+
+      <div id="nativeRetrievalInternalTestModeStorageResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>

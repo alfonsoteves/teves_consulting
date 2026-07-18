@@ -1375,6 +1375,7 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
 
     const rejection = data.rejectionBehavior || {};
     const safety = data.safety || {};
+    const storage = data.modeStorage || {};
 
     container.innerHTML = `
       <div class="memory-card">
@@ -1397,6 +1398,23 @@ window.runNativeRetrievalFeatureFlagState = async function runNativeRetrievalFea
       <div class="memory-card">
         <h3>Mode Registry</h3>
         ${renderModeRegistry(data.allowedModes || [])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Mode Storage</h3>
+        ${renderComparisonPairs([
+          ["Storage version", storage.storageVersion],
+          ["Current mode", storage.currentMode],
+          ["Last changed at", storage.lastChangedAt],
+          ["Last changed by", storage.lastChangedBy],
+          ["Last change reason", storage.lastChangeReason],
+          ["Last transition category", storage.lastTransitionCategory],
+          ["Transition count", storage.transitionCount],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(storage.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(storage.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(storage.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(storage.fallbackToPythonRetrieval))]
+        ])}
       </div>
 
       <div class="memory-card">
@@ -1642,6 +1660,157 @@ window.runNativeRetrievalOperatorTransitionPreview = async function runNativeRet
   } catch (err) {
     console.error("Native retrieval operator transition preview failed:", err);
     container.innerHTML = "<p>Native retrieval operator transition preview failed.</p>";
+  }
+};
+
+function renderNativeRetrievalModeStorageResult(data = {}, request = {}) {
+  const storage = data.storage || {};
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(data.applyVersion || data.rollbackVersion || "Native retrieval mode storage")}</h3>
+      ${renderComparisonPairs([
+        ["Valid", renderBoolean(Boolean(data.valid))],
+        ["Category", data.category],
+        ["Detail", data.detail],
+        ["Current mode", data.currentMode],
+        ["Previous mode", data.previousMode],
+        ["Requested mode", data.requestedMode],
+        ["Target mode", data.targetMode],
+        ["Transition applied", renderBoolean(Boolean(data.transitionApplied))],
+        ["Rollback applied", renderBoolean(Boolean(data.rollbackApplied))],
+        ["Mode changed", renderBoolean(Boolean(data.modeChanged))],
+        ["Changed at", data.changedAt],
+        ["Changed by", data.changedBy]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Stored Mode</h3>
+      ${renderComparisonPairs([
+        ["Storage version", storage.storageVersion],
+        ["Current mode", storage.currentMode],
+        ["Last changed at", storage.lastChangedAt],
+        ["Last changed by", storage.lastChangedBy],
+        ["Last change reason", storage.lastChangeReason],
+        ["Last transition category", storage.lastTransitionCategory],
+        ["Transition count", storage.transitionCount],
+        ["Public traffic uses native retrieval", renderBoolean(Boolean(storage.publicTrafficUsesNativeRetrieval))],
+        ["Native packet accepted for public traffic", renderBoolean(Boolean(storage.nativePacketAcceptedForPublicTraffic))],
+        ["Automatic fallback enabled", renderBoolean(Boolean(storage.automaticFallbackEnabled))],
+        ["Fallback to Python retrieval", renderBoolean(Boolean(storage.fallbackToPythonRetrieval))]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Boundary Evidence</h3>
+      ${renderComparisonPairs([
+        ["Public answer route changed", renderBoolean(Boolean(data.publicAnswerRouteChanged))],
+        ["Provider call", renderBoolean(Boolean(data.providerCall))],
+        ["Fallback to Python retrieval", renderBoolean(Boolean(data.fallbackToPythonRetrieval))],
+        ["Memory read", renderBoolean(Boolean(data.memoryRead))],
+        ["Memory write", renderBoolean(Boolean(data.memoryWrite))],
+        ["Continuity changed", renderBoolean(Boolean(data.continuityChanged))],
+        ["Native packet accepted for public traffic", renderBoolean(Boolean(data.nativePacketAcceptedForPublicTraffic))],
+        ["Public traffic uses native retrieval", renderBoolean(Boolean(data.publicTrafficUsesNativeRetrieval))]
+      ])}
+    </div>
+
+    <div class="memory-card">
+      <h3>Submitted Request</h3>
+      ${renderComparisonPairs([
+        ["Requested mode", request.requestedMode],
+        ["Operator authorized", renderBoolean(Boolean(request.operatorAuthorized))],
+        ["Operator identifier", request.operatorIdentifier],
+        ["Rollback acknowledged", renderBoolean(Boolean(request.rollbackAcknowledged))],
+        ["Public traffic disabled acknowledged", renderBoolean(Boolean(request.publicTrafficDisabledAcknowledged))],
+        ["No fallback acknowledged", renderBoolean(Boolean(request.noFallbackAcknowledged))],
+        ["Continuity and memory preserved acknowledged", renderBoolean(Boolean(request.continuityMemoryPreservedAcknowledged))],
+        ["Approvals", renderListValue(request.approvals)]
+      ])}
+    </div>
+  `;
+}
+
+window.runNativeRetrievalInternalTestModeApply = async function runNativeRetrievalInternalTestModeApply() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalInternalTestModeStorageResults");
+  container.innerHTML = "<p>Applying internal-test mode...</p>";
+
+  try {
+    const request = buildNativeRetrievalOperatorTransitionPreviewRequest(true);
+    request.reason = "Admin apply for native retrieval internal-test mode storage.";
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-transition-apply`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = renderNativeRetrievalModeStorageResult(data, request);
+
+  } catch (err) {
+    console.error("Native retrieval internal-test mode apply failed:", err);
+    container.innerHTML = "<p>Native retrieval internal-test mode apply failed.</p>";
+  }
+};
+
+window.runNativeRetrievalInternalTestModeRollback = async function runNativeRetrievalInternalTestModeRollback() {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeRetrievalInternalTestModeStorageResults");
+  container.innerHTML = "<p>Rolling back to Render selection...</p>";
+
+  try {
+    const request = {
+      requestedMode: "render_selection_only",
+      operatorAuthorized: true,
+      operatorIdentifier: "admin-preview-operator",
+      reason: "Admin rollback to Render-selected retrieval mode.",
+      approvals: [],
+      rollbackAcknowledged: true,
+      publicTrafficDisabledAcknowledged: true,
+      noFallbackAcknowledged: true,
+      continuityMemoryPreservedAcknowledged: true
+    };
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-retrieval-feature-flag-rollback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = renderNativeRetrievalModeStorageResult(data, request);
+
+  } catch (err) {
+    console.error("Native retrieval internal-test mode rollback failed:", err);
+    container.innerHTML = "<p>Native retrieval internal-test mode rollback failed.</p>";
   }
 };
 
