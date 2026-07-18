@@ -506,20 +506,25 @@
     </details>
 
     <details open>
-      <summary><strong>Native Retrieval Fixture Comparison</strong></summary>
+      <summary><strong>Native Retrieval Approved-Case Comparison</strong></summary>
 
-      <p>Compare reviewed Render/Admin preview evidence with the native fixture packet without changing public routing or calling a provider.</p>
+      <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
 
       <select
         id="nativeRetrievalComparisonFixture"
         style="padding: 8px; margin-top: 10px;"
       >
         <option value="water_outage">Water outage</option>
+        <option value="food_reserve">Food reserve</option>
+        <option value="power_outage">Power outage</option>
+        <option value="bread_selection">Bread selection</option>
         <option value="spanish_water_storage">Spanish water storage</option>
         <option value="generic_sports">Generic sports</option>
+        <option value="spanish_generic_sports">Spanish generic sports</option>
+        <option value="sports_hydration_detail">Sports hydration detail</option>
       </select>
 
-      <button onclick="runNativeRetrievalFixtureComparison()">Preview Fixture Comparison</button>
+      <button onclick="runNativeRetrievalFixtureComparison()">Preview Approved-Case Comparison</button>
 
       <div id="nativeRetrievalComparisonResults"></div>
     </details>

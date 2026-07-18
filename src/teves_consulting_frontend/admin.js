@@ -1255,7 +1255,7 @@ window.runNativeRetrievalFixtureComparison = async function runNativeRetrievalFi
 
   const fixtureId = document.getElementById("nativeRetrievalComparisonFixture").value;
   const container = document.getElementById("nativeRetrievalComparisonResults");
-  container.innerHTML = "<p>Building fixture comparison...</p>";
+  container.innerHTML = "<p>Building approved-case comparison...</p>";
 
   try {
     const res = await fetch(
@@ -1294,10 +1294,10 @@ window.runNativeRetrievalFixtureComparison = async function runNativeRetrievalFi
 
     container.innerHTML = `
       <div class="memory-card">
-        <h3>${escapeHtml(data.comparisonVersion || "Native retrieval fixture comparison")}</h3>
+        <h3>${escapeHtml(data.comparisonVersion || "Native retrieval approved-case comparison")}</h3>
         ${renderComparisonPairs([
           ["Status", data.status],
-          ["Fixture", comparison.fixtureId],
+          ["Case", comparison.fixtureId],
           ["Query", comparison.originalQuery],
           ["Render intent", comparison.renderIntent],
           ["Native intent", comparison.nativeIntent],
@@ -1324,6 +1324,7 @@ window.runNativeRetrievalFixtureComparison = async function runNativeRetrievalFi
           ["Native packet schema", comparison.nativePacketSchemaVersion],
           ["Native content version", comparison.nativeContentVersion],
           ["Native budget version", comparison.nativeContextBudgetVersion],
+          ["Native selection version", comparison.nativeSelectionVersion],
           ["Native replay key", comparison.nativeReplayKey]
         ])}
       </div>
@@ -1340,14 +1341,15 @@ window.runNativeRetrievalFixtureComparison = async function runNativeRetrievalFi
           ["Public answer provider changed", renderBoolean(Boolean(boundary.publicAnswerProviderChanged))],
           ["Automatic fallback enabled", renderBoolean(Boolean(boundary.automaticFallbackEnabled))],
           ["Native retrieval scope", boundary.nativeRetrievalScope],
+          ["Legacy fixture compatibility", renderBoolean(Boolean(boundary.legacyFixtureCompatibility))],
           ["Public traffic uses native retrieval", renderBoolean(Boolean(boundary.publicTrafficUsesNativeRetrieval))]
         ])}
       </div>
     `;
 
   } catch (err) {
-    console.error("Native retrieval fixture comparison failed:", err);
-    container.innerHTML = "<p>Native retrieval fixture comparison failed.</p>";
+    console.error("Native retrieval approved-case comparison failed:", err);
+    container.innerHTML = "<p>Native retrieval approved-case comparison failed.</p>";
   }
 };
 
