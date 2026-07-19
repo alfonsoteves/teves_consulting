@@ -804,6 +804,52 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Resolved Transport Diagnostics</strong></summary>
+
+      <p>Preview the Admin-only diagnostics contract for the resolved no-op transport unexpected error, without making another canister call, sending a grounded packet, or changing public routing.</p>
+
+      <input
+        id="nativeLlmResolvedTransportDiagnosticsPrincipal"
+        value="be2us-64aaa-aaaaa-qaabq-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmResolvedTransportDiagnosticsNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmResolvedTransportDiagnosticsMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="noop_status">noop_status</option>
+        <option value="capabilities">capabilities</option>
+        <option value="metadata">metadata</option>
+        <option value="health">health</option>
+        <option value="probe">probe</option>
+      </select>
+
+      <input
+        id="nativeLlmResolvedTransportDiagnosticsSummary"
+        value="unexpected bounded no-op transport error"
+        placeholder="Sanitized error summary"
+        style="width: 56%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('ready')">Preview Diagnostics Ready</button>
+      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('raw_error_unredacted')">Preview Redaction Failure</button>
+      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterResolvedTransportDiagnosticsResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>

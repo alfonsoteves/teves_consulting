@@ -3013,6 +3013,234 @@ window.runNativeLlmCanisterBoundedNoopTransportPreview = async function runNativ
   }
 };
 
+function buildNativeLlmCanisterResolvedTransportDiagnosticsRequest(mode = "ready") {
+  const principalInput = document.getElementById("nativeLlmResolvedTransportDiagnosticsPrincipal");
+  const networkSelect = document.getElementById("nativeLlmResolvedTransportDiagnosticsNetwork");
+  const methodSelect = document.getElementById("nativeLlmResolvedTransportDiagnosticsMethod");
+  const summaryInput = document.getElementById("nativeLlmResolvedTransportDiagnosticsSummary");
+  const targetCanisterPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "be2us-64aaa-aaaaa-qaabq-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const methodName = methodSelect ? methodSelect.value : "noop_status";
+  const sanitizedErrorSummary = summaryInput
+    ? summaryInput.value.trim()
+    : "unexpected bounded no-op transport error";
+  const approvals = {
+    operatorApprovedDiagnostics: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedPayload: true,
+    operatorApprovedResponseShape: true,
+    priorUnexpectedTransportErrorAcknowledged: true,
+    rawErrorRedactionAcknowledged: true,
+    diagnosticsMayFailClosedAcknowledged: true,
+    rollbackAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-resolved-transport-diagnostics-request-v1",
+    decisionVersion: "aion-native-llm-canister-resolved-transport-diagnostics-decision-v1",
+    diagnosticVersion: "aion-native-llm-canister-resolved-transport-diagnostic-v1",
+    diagnosticId: `${targetCanisterPrincipal || "unconfigured"}:${network}:resolved_transport_diagnostics:${methodName}`,
+    diagnosticScope: "resolved_noop_transport_unexpected_error",
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    transportDecisionVersion: "aion-native-llm-canister-provider-boundary-resolution-decision-v1",
+    compatibilityPath: "approve_target_exposes_noop_status",
+    timeoutMs: 1500,
+    maxResponseBytes: 2048,
+    payloadKind: "static_noop_probe",
+    expectedResponseShape: "bounded_noop_status_record",
+    observedTransportVersion: "aion-native-llm-canister-bounded-noop-transport-result-v1",
+    observedTransportCategory: "unexpected_transport_error",
+    observedTransportStatus: mode === "bad_boundary" ? "completed" : "error",
+    observedInterfaceStatus: "unknown",
+    observedResponseShapeStatus: "not_checked",
+    observedCallAttempted: true,
+    observedRealCanisterCall: mode !== "bad_boundary",
+    rawErrorCaptured: mode === "raw_error_unredacted",
+    rawErrorRedacted: false,
+    sanitizedErrorSummary,
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 resolved transport diagnostics: ${mode}.`,
+    realCanisterCallsEnabled: mode === "real_call_block",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterResolvedTransportDiagnostics = async function runNativeLlmCanisterResolvedTransportDiagnostics(mode = "ready") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterResolvedTransportDiagnosticsResults");
+  container.innerHTML = "<p>Checking resolved transport diagnostics...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterResolvedTransportDiagnosticsRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-resolved-transport-diagnostics`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const knownFailure = data.error === "native_llm_canister_resolved_transport_diagnostics_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.diagnosticsVersion || "Native LLM resolved transport diagnostics")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Diagnostic version", data.diagnosticVersion],
+          ["Diagnostic ID", data.diagnosticId],
+          ["Diagnostic scope", data.diagnosticScope],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName],
+          ["Transport decision version", data.transportDecisionVersion],
+          ["Compatibility path", data.compatibilityPath]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Observed Transport</h3>
+        ${renderComparisonPairs([
+          ["Observed transport version", data.observedTransportVersion],
+          ["Observed transport category", data.observedTransportCategory],
+          ["Observed transport status", data.observedTransportStatus],
+          ["Observed interface status", data.observedInterfaceStatus],
+          ["Observed response shape status", data.observedResponseShapeStatus],
+          ["Observed call attempted", renderBoolean(Boolean(data.observedCallAttempted))],
+          ["Observed real canister call", renderBoolean(Boolean(data.observedRealCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Diagnostics</h3>
+        ${renderComparisonPairs([
+          ["Transport error family", data.transportErrorFamily],
+          ["Transport error source", data.transportErrorSource],
+          ["Raw error captured", renderBoolean(Boolean(data.rawErrorCaptured))],
+          ["Raw error redacted", renderBoolean(Boolean(data.rawErrorRedacted))],
+          ["Sanitized error summary", data.sanitizedErrorSummary],
+          ["Failure before response shape", renderBoolean(Boolean(data.failureBeforeResponseShape))],
+          ["Retry same target recommended", renderBoolean(Boolean(data.retrySameTargetRecommended))],
+          ["Select new target recommended", renderBoolean(Boolean(data.selectNewTargetRecommended))],
+          ["Can proceed to retry", renderBoolean(Boolean(data.canProceedToRetry))],
+          ["Can proceed to new target decision", renderBoolean(Boolean(data.canProceedToNewTargetDecision))],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Call Boundary</h3>
+        ${renderComparisonPairs([
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Diagnostic version", request.diagnosticVersion],
+          ["Diagnostic ID", request.diagnosticId],
+          ["Diagnostic scope", request.diagnosticScope],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Observed category", request.observedTransportCategory],
+          ["Raw error captured", renderBoolean(Boolean(request.rawErrorCaptured))],
+          ["Raw error redacted", renderBoolean(Boolean(request.rawErrorRedacted))],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM resolved transport diagnostics failed:", err);
+    container.innerHTML = "<p>Native LLM resolved transport diagnostics failed.</p>";
+  }
+};
+
 function buildNativeLlmCanisterCompatibleNoopInterfaceRequest(mode = "ready") {
   const principalInput = document.getElementById("nativeLlmCompatibleNoopPrincipal");
   const networkSelect = document.getElementById("nativeLlmCompatibleNoopNetwork");
