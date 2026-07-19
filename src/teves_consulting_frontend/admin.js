@@ -3201,6 +3201,215 @@ window.runNativeLlmCanisterCompatibleNoopInterfaceContract = async function runN
   }
 };
 
+function buildNativeLlmCanisterProviderBoundaryResolutionRequest(mode = "ready") {
+  const principalInput = document.getElementById("nativeLlmProviderBoundaryPrincipal");
+  const networkSelect = document.getElementById("nativeLlmProviderBoundaryNetwork");
+  const resolutionPathSelect = document.getElementById("nativeLlmProviderBoundaryResolutionPath");
+  const methodSelect = document.getElementById("nativeLlmProviderBoundaryMethod");
+  const selectedPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "be2us-64aaa-aaaaa-qaabq-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const selectedResolutionPath = resolutionPathSelect
+    ? resolutionPathSelect.value
+    : "approve_target_exposes_noop_status";
+  const selectedMethod = methodSelect ? methodSelect.value : "noop_status";
+  const currentTargetPrincipal = "ryjl3-tyaaa-aaaaa-aaaba-cai";
+  const targetCanisterPrincipal = (
+    mode === "current_unresolved" || mode === "blocked_capabilities"
+  )
+    ? currentTargetPrincipal
+    : selectedPrincipal;
+  const selectedMethodName = mode === "blocked_capabilities" ? "capabilities" : selectedMethod;
+  const resolutionPath = mode === "blocked_capabilities"
+    ? "approve_target_exposes_noop_status"
+    : selectedResolutionPath;
+  const approvals = {
+    operatorApprovedBoundaryResolution: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedPayload: true,
+    operatorApprovedResponseShape: true,
+    priorInterfaceMismatchAcknowledged: true,
+    priorCapabilitiesBlockedAcknowledged: true,
+    rollbackAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    interfaceMismatchMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-provider-boundary-resolution-request-v1",
+    decisionVersion: "aion-native-llm-canister-provider-boundary-resolution-decision-v1",
+    resolutionId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${selectedMethodName}:provider_boundary_resolution`,
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    resolutionPath,
+    selectedMethodName,
+    timeoutMs: 1500,
+    maxResponseBytes: 2048,
+    payloadKind: "static_noop_probe",
+    expectedResponseShape: "bounded_noop_status_record",
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 provider-boundary resolution contract: ${mode}.`,
+    realCanisterCallsEnabled: mode === "real_call_block",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterProviderBoundaryResolutionContract = async function runNativeLlmCanisterProviderBoundaryResolutionContract(mode = "ready") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterProviderBoundaryResolutionResults");
+  container.innerHTML = "<p>Checking provider-boundary resolution contract...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterProviderBoundaryResolutionRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-provider-boundary-resolution-contract`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const knownFailure = data.error === "native_llm_canister_provider_boundary_resolution_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.contractVersion || "Native LLM provider-boundary resolution contract")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Resolution ID", data.resolutionId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Resolution path", data.resolutionPath],
+          ["Selected method name", data.selectedMethodName]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Contract Status</h3>
+        ${renderComparisonPairs([
+          ["Previous target canister principal", data.previousTargetCanisterPrincipal],
+          ["Previous method candidate", data.previousMethodCandidate],
+          ["Prior compatible method candidate", data.priorCompatibleMethodCandidate],
+          ["Current target interface blocked", renderBoolean(Boolean(data.currentTargetInterfaceBlocked))],
+          ["Previous method blocked", renderBoolean(Boolean(data.previousMethodBlocked))],
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Can proceed to transport update", renderBoolean(Boolean(data.canProceedToTransportUpdate))],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Interface Parameters</h3>
+        ${renderComparisonPairs([
+          ["Timeout ms", data.timeoutMs],
+          ["Max response bytes", data.maxResponseBytes],
+          ["Cycle policy", data.cyclePolicy],
+          ["Payload kind", data.payloadKind],
+          ["Expected response shape", data.expectedResponseShape],
+          ["Allowed resolution paths", renderListValue(data.allowedResolutionPaths)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Resolution ID", request.resolutionId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Resolution path", request.resolutionPath],
+          ["Selected method name", request.selectedMethodName],
+          ["Payload kind", request.payloadKind],
+          ["Expected response shape", request.expectedResponseShape],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM provider-boundary resolution contract failed:", err);
+    container.innerHTML = "<p>Native LLM provider-boundary resolution contract failed.</p>";
+  }
+};
+
 window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
   if (!isAuthenticated) {
     alert("Please sign in first.");

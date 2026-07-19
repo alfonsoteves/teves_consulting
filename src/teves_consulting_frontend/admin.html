@@ -841,6 +841,54 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Provider Boundary Resolution Contract</strong></summary>
+
+      <p>Preview the Admin-only provider-boundary resolution decision after compatible no-op transport evidence, without making a canister call, sending a grounded packet, or changing public routing.</p>
+
+      <input
+        id="nativeLlmProviderBoundaryPrincipal"
+        value="be2us-64aaa-aaaaa-qaabq-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmProviderBoundaryNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmProviderBoundaryResolutionPath"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="approve_target_exposes_noop_status">Approve noop_status target</option>
+        <option value="revise_contract_to_exposed_method">Revise to exposed method</option>
+      </select>
+
+      <select
+        id="nativeLlmProviderBoundaryMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="noop_status">noop_status</option>
+        <option value="metadata">metadata</option>
+        <option value="health">health</option>
+        <option value="probe">probe</option>
+        <option value="capabilities">capabilities</option>
+      </select>
+
+      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('ready')">Preview Boundary Ready</button>
+      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('current_unresolved')">Preview Current Target Unresolved</button>
+      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('blocked_capabilities')">Preview Blocked Capabilities</button>
+      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterProviderBoundaryResolutionResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
