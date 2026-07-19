@@ -952,6 +952,66 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Alternate No-Op Health Interface Contract</strong></summary>
+
+      <p>Preview the Admin-only alternate health interface contract for the w36hm candidate, after metadata failed closed, without making a canister call, sending a prompt or grounded packet, generating an answer, or changing public routing.</p>
+
+      <input
+        id="nativeLlmAlternateNoopHealthPrincipal"
+        value="w36hm-eqaaa-aaaal-qr76a-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmAlternateNoopHealthNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmAlternateNoopHealthMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="health">health</option>
+        <option value="metadata">metadata</option>
+        <option value="v1_chat">v1_chat</option>
+        <option value="v0_chat">v0_chat</option>
+        <option value="noop_status">noop_status</option>
+        <option value="probe">probe</option>
+        <option value="capabilities">capabilities</option>
+      </select>
+
+      <input
+        id="nativeLlmAlternateNoopHealthTimeout"
+        type="number"
+        value="1500"
+        min="250"
+        max="10000"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmAlternateNoopHealthResponseBytes"
+        type="number"
+        value="2048"
+        min="128"
+        max="32768"
+        style="width: 140px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('ready')">Preview Health Ready</button>
+      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('metadata_revision')">Preview Metadata Revision Block</button>
+      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterAlternateNoopHealthInterfaceResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>

@@ -3707,6 +3707,245 @@ window.runNativeLlmCanisterNextNoopMetadataTransport = async function runNativeL
   }
 };
 
+function buildNativeLlmCanisterAlternateNoopHealthInterfaceRequest(mode = "ready") {
+  const principalInput = document.getElementById("nativeLlmAlternateNoopHealthPrincipal");
+  const networkSelect = document.getElementById("nativeLlmAlternateNoopHealthNetwork");
+  const methodSelect = document.getElementById("nativeLlmAlternateNoopHealthMethod");
+  const timeoutInput = document.getElementById("nativeLlmAlternateNoopHealthTimeout");
+  const responseBytesInput = document.getElementById("nativeLlmAlternateNoopHealthResponseBytes");
+  const selectedPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "w36hm-eqaaa-aaaal-qr76a-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const selectedMethod = methodSelect ? methodSelect.value : "health";
+  const targetCanisterPrincipal = selectedPrincipal;
+  const methodName = mode === "metadata_revision"
+    ? "metadata"
+    : mode === "answer_method_block"
+      ? "v1_chat"
+      : selectedMethod;
+  const timeoutMs = timeoutInput ? Number(timeoutInput.value || 1500) : 1500;
+  const maxResponseBytes = responseBytesInput ? Number(responseBytesInput.value || 2048) : 2048;
+  const approvals = {
+    operatorApprovedAlternateHealthInterface: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedTimeout: true,
+    operatorApprovedResponseBudget: true,
+    operatorApprovedNoCycles: true,
+    operatorApprovedEmptyPayload: true,
+    operatorApprovedResponseShape: true,
+    priorMetadataMismatchAcknowledged: true,
+    metadataContractNotLoosenedAcknowledged: true,
+    rollbackAcknowledged: true,
+    noPromptAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    transportMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-alternate-noop-health-interface-request-v1",
+    decisionVersion: "aion-native-llm-canister-alternate-noop-health-interface-decision-v1",
+    candidateId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}:alternate_noop_health_interface`,
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    candidatePath: "select_admin_candidate_health_probe",
+    timeoutMs,
+    maxResponseBytes,
+    cyclePolicy: "no_attached_cycles",
+    payloadKind: "empty_noop_probe",
+    expectedResponseShape: "bounded_health_text_or_record",
+    priorMetadataTransportDecisionVersion: "aion-native-llm-canister-next-noop-metadata-transport-decision-v1",
+    priorMetadataTransportVersion: "aion-native-llm-canister-next-noop-metadata-transport-result-v1",
+    priorMetadataTransportCategory: "interface_mismatch",
+    priorMetadataInterfaceStatus: "interface_mismatch",
+    priorMetadataResponseShapeStatus: "not_checked",
+    priorMetadataCallAttempted: true,
+    priorMetadataRealCanisterCall: true,
+    metadataContractRevisionRequested: mode === "metadata_revision",
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 alternate no-op health interface contract: ${mode}.`,
+    realCanisterCallsEnabled: mode === "real_call_block",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterAlternateNoopHealthInterfaceContract = async function runNativeLlmCanisterAlternateNoopHealthInterfaceContract(mode = "ready") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterAlternateNoopHealthInterfaceResults");
+  container.innerHTML = "<p>Checking alternate no-op health interface contract...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterAlternateNoopHealthInterfaceRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-alternate-noop-health-interface-contract`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const knownFailure = data.error === "native_llm_canister_alternate_noop_health_interface_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.contractVersion || "Native LLM alternate no-op health interface contract")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Candidate ID", data.candidateId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName],
+          ["Previous method candidate", data.previousMethodCandidate],
+          ["Candidate path", data.candidatePath]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Contract Status</h3>
+        ${renderComparisonPairs([
+          ["Previous target canister principal", data.previousTargetCanisterPrincipal],
+          ["Previous resolved target canister principal", data.previousResolvedTargetCanisterPrincipal],
+          ["Target matches decision", renderBoolean(Boolean(data.targetMatchesDecision))],
+          ["Method matches decision", renderBoolean(Boolean(data.methodMatchesDecision))],
+          ["Metadata contract revision requested", renderBoolean(Boolean(data.metadataContractRevisionRequested))],
+          ["Metadata contract revision blocked", renderBoolean(Boolean(data.metadataContractRevisionBlocked))],
+          ["Answer generation method blocked", renderBoolean(Boolean(data.answerGenerationMethodBlocked))],
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Prompt submitted", renderBoolean(Boolean(data.promptSubmitted))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Can proceed to contract evidence", renderBoolean(Boolean(data.canProceedToContractEvidence))],
+          ["Can proceed to transport update", renderBoolean(Boolean(data.canProceedToTransportUpdate))],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Prior Metadata Evidence</h3>
+        ${renderComparisonPairs([
+          ["Prior metadata transport decision version", data.priorMetadataTransportDecisionVersion],
+          ["Prior metadata transport version", data.priorMetadataTransportVersion],
+          ["Prior metadata transport category", data.priorMetadataTransportCategory],
+          ["Prior metadata interface status", data.priorMetadataInterfaceStatus],
+          ["Prior metadata response shape status", data.priorMetadataResponseShapeStatus],
+          ["Prior metadata call attempted", renderBoolean(Boolean(data.priorMetadataCallAttempted))],
+          ["Prior metadata real canister call", renderBoolean(Boolean(data.priorMetadataRealCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Interface Parameters</h3>
+        ${renderComparisonPairs([
+          ["Timeout ms", data.timeoutMs],
+          ["Max response bytes", data.maxResponseBytes],
+          ["Cycle policy", data.cyclePolicy],
+          ["Payload kind", data.payloadKind],
+          ["Expected response shape", data.expectedResponseShape],
+          ["Blocked answer-generation methods", renderListValue(data.blockedAnswerGenerationMethods)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Candidate ID", request.candidateId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Candidate path", request.candidatePath],
+          ["Payload kind", request.payloadKind],
+          ["Expected response shape", request.expectedResponseShape],
+          ["Timeout ms", request.timeoutMs],
+          ["Max response bytes", request.maxResponseBytes],
+          ["Metadata contract revision requested", renderBoolean(Boolean(request.metadataContractRevisionRequested))],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM alternate no-op health interface contract failed:", err);
+    container.innerHTML = "<p>Native LLM alternate no-op health interface contract failed.</p>";
+  }
+};
+
 function buildNativeLlmCanisterCompatibleNoopInterfaceRequest(mode = "ready") {
   const principalInput = document.getElementById("nativeLlmCompatibleNoopPrincipal");
   const networkSelect = document.getElementById("nativeLlmCompatibleNoopNetwork");
