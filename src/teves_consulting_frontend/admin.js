@@ -2802,9 +2802,15 @@ function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
   const methodSelect = document.getElementById("nativeLlmBoundedNoopTransportMethod");
   const timeoutInput = document.getElementById("nativeLlmBoundedNoopTransportTimeout");
   const responseBytesInput = document.getElementById("nativeLlmBoundedNoopTransportResponseBytes");
-  const targetCanisterPrincipal = principalInput
+  const previousTargetPrincipal = "ryjl3-tyaaa-aaaaa-aaaba-cai";
+  const selectedPrincipal = principalInput
     ? principalInput.value.trim()
-    : "ryjl3-tyaaa-aaaaa-aaaba-cai";
+    : "be2us-64aaa-aaaaa-qaabq-cai";
+  const targetCanisterPrincipal = (
+    mode === "previous_unresolved" || mode === "blocked_capabilities"
+  )
+    ? previousTargetPrincipal
+    : selectedPrincipal;
   const network = networkSelect ? networkSelect.value : "ic";
   const selectedMethod = methodSelect ? methodSelect.value : "noop_status";
   const methodName = mode === "blocked_capabilities" ? "capabilities" : selectedMethod;
@@ -2838,20 +2844,20 @@ function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
 
   return {
     requestVersion: "aion-native-llm-canister-bounded-noop-transport-request-v1",
-    decisionVersion: "aion-native-llm-canister-compatible-noop-interface-decision-v1",
+    decisionVersion: "aion-native-llm-canister-provider-boundary-resolution-decision-v1",
     probeId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}`,
     candidateProvider: "llm_canister_admin_eval",
     targetCanisterPrincipal,
     network,
     probeMode: "bounded_noop_call",
     methodName,
-    compatibilityPath: "same_target_approved_method",
+    compatibilityPath: "approve_target_exposes_noop_status",
     timeoutMs,
     maxResponseBytes,
     payloadKind: "static_noop_probe",
     expectedResponseShape: "bounded_noop_status_record",
     operatorIdentifier: "admin-preview-operator",
-    operatorNotes: `Admin 8.2 compatible bounded no-op transport preview: ${mode}.`,
+    operatorNotes: `Admin 8.2 resolved bounded no-op transport preview: ${mode}.`,
     realCanisterCallsEnabled: mode === "approved",
     approvals
   };

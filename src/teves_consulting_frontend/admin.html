@@ -748,11 +748,11 @@
     <details open>
       <summary><strong>Native LLM Bounded No-Op Transport Preview</strong></summary>
 
-      <p>Preview the Admin-only compatible bounded no-op canister transport path with approved target, noop_status method, timeout, response budget, and fail-closed safety boundaries.</p>
+      <p>Preview the Admin-only resolved bounded no-op canister transport path with approved target, noop_status method, timeout, response budget, and fail-closed safety boundaries.</p>
 
       <input
         id="nativeLlmBoundedNoopTransportPrincipal"
-        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+        value="be2us-64aaa-aaaaa-qaabq-cai"
         placeholder="Target canister principal"
         style="width: 44%; padding: 8px; margin-top: 10px;"
       />
@@ -796,8 +796,9 @@
 
       <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('disabled')">Preview Disabled Transport</button>
       <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('previous_unresolved')">Preview Previous Target Unresolved</button>
       <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('blocked_capabilities')">Preview Blocked Capabilities</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('approved')">Run Approved No-Op Transport</button>
+      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('approved')">Run Resolved No-Op Transport</button>
 
       <div id="nativeLlmCanisterBoundedNoopTransportResults"></div>
     </details>
