@@ -2806,10 +2806,12 @@ function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
     ? principalInput.value.trim()
     : "ryjl3-tyaaa-aaaaa-aaaba-cai";
   const network = networkSelect ? networkSelect.value : "ic";
-  const methodName = methodSelect ? methodSelect.value : "capabilities";
+  const selectedMethod = methodSelect ? methodSelect.value : "noop_status";
+  const methodName = mode === "blocked_capabilities" ? "capabilities" : selectedMethod;
   const timeoutMs = timeoutInput ? Number(timeoutInput.value || 1500) : 1500;
   const maxResponseBytes = responseBytesInput ? Number(responseBytesInput.value || 2048) : 2048;
   const approvals = {
+    operatorApprovedCompatibilityDecision: true,
     operatorApprovedTarget: true,
     operatorApprovedNetwork: true,
     operatorApprovedMethod: true,
@@ -2817,6 +2819,7 @@ function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
     operatorApprovedResponseBudget: true,
     operatorApprovedNoCycles: true,
     operatorApprovedNoopPayload: true,
+    priorCapabilitiesMismatchAcknowledged: true,
     rollbackAcknowledged: true,
     noGroundedPacketAcknowledged: true,
     noAnswerGenerationAcknowledged: true,
@@ -2835,16 +2838,20 @@ function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
 
   return {
     requestVersion: "aion-native-llm-canister-bounded-noop-transport-request-v1",
+    decisionVersion: "aion-native-llm-canister-compatible-noop-interface-decision-v1",
     probeId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}`,
     candidateProvider: "llm_canister_admin_eval",
     targetCanisterPrincipal,
     network,
     probeMode: "bounded_noop_call",
     methodName,
+    compatibilityPath: "same_target_approved_method",
     timeoutMs,
     maxResponseBytes,
+    payloadKind: "static_noop_probe",
+    expectedResponseShape: "bounded_noop_status_record",
     operatorIdentifier: "admin-preview-operator",
-    operatorNotes: `Admin 8.2 bounded no-op transport preview: ${mode}.`,
+    operatorNotes: `Admin 8.2 compatible bounded no-op transport preview: ${mode}.`,
     realCanisterCallsEnabled: mode === "approved",
     approvals
   };
@@ -2895,6 +2902,12 @@ window.runNativeLlmCanisterBoundedNoopTransportPreview = async function runNativ
           ["Network", data.network],
           ["Probe mode", data.probeMode],
           ["Method name", data.methodName],
+          ["Decision version", data.decisionVersion],
+          ["Compatibility path", data.compatibilityPath],
+          ["Payload kind", data.payloadKind],
+          ["Expected response shape", data.expectedResponseShape],
+          ["Previous method candidate", data.previousMethodCandidate],
+          ["Previous method blocked", renderBoolean(Boolean(data.previousMethodBlocked))],
           ["Timeout ms", data.timeoutMs],
           ["Max response bytes", data.maxResponseBytes],
           ["Cycle policy", data.cyclePolicy]
@@ -2976,6 +2989,10 @@ window.runNativeLlmCanisterBoundedNoopTransportPreview = async function runNativ
           ["Network", request.network],
           ["Probe mode", request.probeMode],
           ["Method name", request.methodName],
+          ["Decision version", request.decisionVersion],
+          ["Compatibility path", request.compatibilityPath],
+          ["Payload kind", request.payloadKind],
+          ["Expected response shape", request.expectedResponseShape],
           ["Timeout ms", request.timeoutMs],
           ["Max response bytes", request.maxResponseBytes],
           ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
