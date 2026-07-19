@@ -850,6 +850,48 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Next No-Op Target Interface Contract</strong></summary>
+
+      <p>Preview the Admin-only next no-op target/interface contract for the w36hm metadata candidate, without making a canister call, sending a grounded packet, generating an answer, or changing public routing.</p>
+
+      <input
+        id="nativeLlmNextNoopTargetPrincipal"
+        value="w36hm-eqaaa-aaaal-qr76a-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmNextNoopTargetNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmNextNoopTargetMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="metadata">metadata</option>
+        <option value="v1_chat">v1_chat</option>
+        <option value="v0_chat">v0_chat</option>
+        <option value="noop_status">noop_status</option>
+        <option value="probe">probe</option>
+        <option value="health">health</option>
+        <option value="capabilities">capabilities</option>
+      </select>
+
+      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('ready')">Preview Contract Ready</button>
+      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('prior_target_retry')">Preview Prior Target Retry</button>
+      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterNextNoopTargetInterfaceResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
