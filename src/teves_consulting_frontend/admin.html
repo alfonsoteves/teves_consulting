@@ -1319,6 +1319,112 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Fresh Candidate Status</strong></summary>
+
+      <p>Preview-only status-candidate review for z7unv. It does not approve transport, expose a live call, submit prompts, or reopen the closed w36hm path.</p>
+
+      <input
+        id="nativeLlmFreshCandidateStatusPrincipal"
+        value="z7unv-7iaaa-aaaal-qb6aq-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmFreshCandidateStatusNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmFreshCandidateStatusMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="status">status</option>
+        <option value="version">version</option>
+        <option value="metadata">metadata</option>
+        <option value="v1_chat">v1_chat</option>
+      </select>
+
+      <select
+        id="nativeLlmFreshCandidateStatusSourceType"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="verified_candid_interface_for_exact_canister">Verified Candid interface</option>
+        <option value="bounded_operator_supplied_interface_evidence">Bounded operator evidence</option>
+        <option value="owner_documentation_for_exact_canister">Owner documentation</option>
+      </select>
+
+      <input
+        id="nativeLlmFreshCandidateStatusSourceReference"
+        value="Verified Candid declaration tied to exact z7unv deployment."
+        placeholder="Bounded source reference"
+        style="width: 54%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmFreshCandidateStatusQueryClass"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="query">query</option>
+        <option value="update">update</option>
+        <option value="unknown">unknown</option>
+      </select>
+
+      <input
+        id="nativeLlmFreshCandidateStatusArguments"
+        value="()"
+        placeholder="Expected arguments"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmFreshCandidateStatusReturnType"
+        value="text"
+        placeholder="Expected return type"
+        style="width: 180px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmFreshCandidateStatusResponseShape"
+        value="bounded_status_text"
+        placeholder="Expected response shape"
+        style="width: 220px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmFreshCandidateStatusTimeout"
+        type="number"
+        value="1500"
+        min="100"
+        max="10000"
+        style="width: 100px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmFreshCandidateStatusResponseBytes"
+        type="number"
+        value="2048"
+        min="1"
+        max="65536"
+        style="width: 100px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('ready')">Preview Status Ready</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('closed_path_block')">Preview Closed Path Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('prior_mismatch')">Preview Prior Intake Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('method_mismatch')">Preview Method Mismatch</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('weak_source')">Preview Weak Source</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatus('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterFreshCandidateStatusResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Status Transport</strong></summary>
 
       <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>
