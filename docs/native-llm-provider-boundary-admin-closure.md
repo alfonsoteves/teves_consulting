@@ -5,6 +5,13 @@
 The `w36hm-eqaaa-aaaal-qr76a-cai` native LLM canister provider-boundary search
 is closed as inconclusive-safe.
 
+This closure applies only to the `w36hm...` canister principal and this
+Admin evidence path. It is not a general rejection of native LLM-canister
+support, and it does not prove that the deployed canister is incapable of
+inference. It records that this interface-discovery and transport-validation
+path did not establish a verified callable interface under the approved
+bounded controls.
+
 This document records the deployed Admin UI closure in `teves_consulting`.
 It is an operator-facing guardrail note only. It does not approve another live
 canister call, prompt submission, grounded packet submission, answer
