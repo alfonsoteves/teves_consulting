@@ -33,6 +33,13 @@ only this message:
 - Missing, expired, malformed, or replayed credentials fail closed.
 - The session mechanism does not change public Aion answers, continuity,
   memory ownership, provider routing, or automatic fallback.
+- The closed native LLM provider-boundary Admin controls keep live metadata,
+  health, and status transport disabled for the current `w36hm...` path unless
+  a future native decision explicitly reopens transport.
+
+The deployed native LLM provider-boundary Admin closure is documented in:
+
+- `docs/native-llm-provider-boundary-admin-closure.md`
 
 ## Release Checks
 
