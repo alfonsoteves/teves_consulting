@@ -4736,6 +4736,284 @@ window.runNativeLlmCanisterMethodSourceEvidence = async function runNativeLlmCan
   }
 };
 
+function buildNativeLlmCanisterStatusTransportRequest(mode = "disabled") {
+  const principalInput = document.getElementById("nativeLlmStatusTransportPrincipal");
+  const networkSelect = document.getElementById("nativeLlmStatusTransportNetwork");
+  const methodSelect = document.getElementById("nativeLlmStatusTransportMethod");
+  const timeoutInput = document.getElementById("nativeLlmStatusTransportTimeout");
+  const responseBytesInput = document.getElementById("nativeLlmStatusTransportResponseBytes");
+  const targetCanisterPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "w36hm-eqaaa-aaaal-qr76a-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const selectedMethod = methodSelect ? methodSelect.value : "status";
+  const methodName = mode === "answer_method_block"
+    ? "v1_chat"
+    : mode === "version_method_block"
+      ? "version"
+      : selectedMethod;
+  const timeoutMs = Number(timeoutInput ? timeoutInput.value : 1500);
+  const maxResponseBytes = Number(responseBytesInput ? responseBytesInput.value : 2048);
+  const approvals = {
+    operatorApprovedStatusTransport: true,
+    operatorApprovedPriorEvidence: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedTimeout: true,
+    operatorApprovedResponseBudget: true,
+    operatorApprovedNoCycles: true,
+    operatorApprovedEmptyPayload: true,
+    operatorApprovedResponseShape: true,
+    priorMethodSourceEvidenceAcknowledged: true,
+    methodMayStillBeUnavailableAcknowledged: true,
+    rollbackAcknowledged: true,
+    noPromptAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    responseMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-status-transport-request-v1",
+    decisionVersion: "aion-native-llm-canister-status-transport-decision-v1",
+    priorEvidenceVersion: "aion-native-llm-canister-method-source-evidence-v1",
+    priorContractVersion: "aion-native-llm-canister-method-source-evidence-contract-v1",
+    priorDecisionVersion: "aion-native-llm-canister-method-source-evidence-decision-v1",
+    priorEvidenceCategory: mode === "prior_evidence_mismatch"
+      ? "deployment_correspondence_unverified"
+      : "method_source_evidence_ready",
+    priorEvidenceTargetCanisterPrincipal: "w36hm-eqaaa-aaaal-qr76a-cai",
+    priorEvidenceCandidateMethodName: "status",
+    priorEvidenceSourceType: "live_candid_or_verified_deployed_declaration",
+    priorEvidenceQueryOrUpdate: "query",
+    priorEvidenceExpectedArguments: "()",
+    priorEvidenceExpectedReturnType: "text",
+    priorEvidenceDeployedCanisterCorrespondence: "exact_deployed_canister",
+    priorEvidenceNoCallMade: true,
+    priorEvidenceCallAttempted: false,
+    priorEvidenceRealCanisterCall: false,
+    priorEvidencePromptSubmitted: false,
+    priorEvidenceGroundedPacketSubmitted: false,
+    priorEvidenceAnswerGenerated: false,
+    transportId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}:status_transport`,
+    candidateId: "w36hm-eqaaa-aaaal-qr76a-cai:ic:bounded_noop_call:status:method_source_status_transport",
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    candidatePath: "select_method_source_status_probe",
+    timeoutMs,
+    maxResponseBytes,
+    cyclePolicy: "no_attached_cycles",
+    payloadKind: "empty_noop_probe",
+    expectedResponseShape: "bounded_status_text",
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 status transport: ${mode}.`,
+    realCanisterCallsEnabled: mode === "approved",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterStatusTransport = async function runNativeLlmCanisterStatusTransport(mode = "disabled") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterStatusTransportResults");
+  container.innerHTML = "<p>Checking status transport...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterStatusTransportRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-status-transport`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const responseShapeSummary = data.responseShapeSummary || {};
+    const knownFailure = data.error === "native_llm_canister_status_transport_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.transportVersion || "Native LLM status transport")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Prior evidence version", data.priorEvidenceVersion],
+          ["Prior contract version", data.priorContractVersion],
+          ["Transport ID", data.transportId],
+          ["Candidate ID", data.candidateId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName],
+          ["Candidate path", data.candidatePath]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Transport Status</h3>
+        ${renderComparisonPairs([
+          ["Target matches decision", renderBoolean(Boolean(data.targetMatchesDecision))],
+          ["Method matches decision", renderBoolean(Boolean(data.methodMatchesDecision))],
+          ["Prior evidence matches decision", renderBoolean(Boolean(data.priorEvidenceMatchesDecision))],
+          ["Answer generation method blocked", renderBoolean(Boolean(data.answerGenerationMethodBlocked))],
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Prompt submitted", renderBoolean(Boolean(data.promptSubmitted))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Transport status", data.transportStatus],
+          ["Interface status", data.interfaceStatus],
+          ["Response shape status", data.responseShapeStatus],
+          ["Latency ms", data.latencyMs],
+          ["Cycle use estimate", data.cycleUseEstimate],
+          ["Response bytes", data.responseBytes],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Prior Method-Source Evidence</h3>
+        ${renderComparisonPairs([
+          ["Prior evidence category", data.priorEvidenceCategory],
+          ["Prior evidence target", data.priorEvidenceTargetCanisterPrincipal],
+          ["Prior evidence method", data.priorEvidenceCandidateMethodName],
+          ["Prior evidence source type", data.priorEvidenceSourceType],
+          ["Prior query or update", data.priorEvidenceQueryOrUpdate],
+          ["Prior expected arguments", data.priorEvidenceExpectedArguments],
+          ["Prior expected return type", data.priorEvidenceExpectedReturnType],
+          ["Prior deployed correspondence", data.priorEvidenceDeployedCanisterCorrespondence],
+          ["Prior no call made", renderBoolean(Boolean(data.priorEvidenceNoCallMade))],
+          ["Prior call attempted", renderBoolean(Boolean(data.priorEvidenceCallAttempted))],
+          ["Prior real canister call", renderBoolean(Boolean(data.priorEvidenceRealCanisterCall))],
+          ["Prior prompt submitted", renderBoolean(Boolean(data.priorEvidencePromptSubmitted))],
+          ["Prior grounded packet submitted", renderBoolean(Boolean(data.priorEvidenceGroundedPacketSubmitted))],
+          ["Prior answer generated", renderBoolean(Boolean(data.priorEvidenceAnswerGenerated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Interface Parameters</h3>
+        ${renderComparisonPairs([
+          ["Timeout ms", data.timeoutMs],
+          ["Max response bytes", data.maxResponseBytes],
+          ["Cycle policy", data.cyclePolicy],
+          ["Payload kind", data.payloadKind],
+          ["Expected response shape", data.expectedResponseShape],
+          ["Blocked answer-generation methods", renderListValue(data.blockedAnswerGenerationMethods)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Response Shape Summary</h3>
+        ${renderComparisonPairs([
+          ["Response type", responseShapeSummary.responseType],
+          ["Response bytes", responseShapeSummary.responseBytes],
+          ["Empty", renderBoolean(Boolean(responseShapeSummary.empty))],
+          ["Parse succeeded", renderBoolean(Boolean(responseShapeSummary.parseSucceeded))],
+          ["Top-level fields", renderListValue(responseShapeSummary.topLevelFields)],
+          ["Text length", responseShapeSummary.textLength],
+          ["Truncated", renderBoolean(Boolean(responseShapeSummary.truncated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Prior evidence version", request.priorEvidenceVersion],
+          ["Prior contract version", request.priorContractVersion],
+          ["Prior decision version", request.priorDecisionVersion],
+          ["Transport ID", request.transportId],
+          ["Candidate ID", request.candidateId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Candidate path", request.candidatePath],
+          ["Payload kind", request.payloadKind],
+          ["Expected response shape", request.expectedResponseShape],
+          ["Timeout ms", request.timeoutMs],
+          ["Max response bytes", request.maxResponseBytes],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM status transport failed:", err);
+    container.innerHTML = "<p>Native LLM status transport failed.</p>";
+  }
+};
+
 function buildNativeLlmCanisterCompatibleNoopInterfaceRequest(mode = "ready") {
   const principalInput = document.getElementById("nativeLlmCompatibleNoopPrincipal");
   const networkSelect = document.getElementById("nativeLlmCompatibleNoopNetwork");
