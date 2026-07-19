@@ -1425,6 +1425,66 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Fresh Candidate Status Transport</strong></summary>
+
+      <p>Admin-only bounded status transport for the fresh z7unv candidate. It keeps the closed w36hm path blocked and does not submit prompts, grounded packets, answers, fallback, provider switches, memory access, continuity changes, or public routing changes.</p>
+
+      <input
+        id="nativeLlmFreshCandidateStatusTransportPrincipal"
+        value="z7unv-7iaaa-aaaal-qb6aq-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmFreshCandidateStatusTransportNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmFreshCandidateStatusTransportMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="status">status</option>
+        <option value="version">version</option>
+        <option value="metadata">metadata</option>
+        <option value="health">health</option>
+        <option value="v1_chat">v1_chat</option>
+      </select>
+
+      <input
+        id="nativeLlmFreshCandidateStatusTransportTimeout"
+        type="number"
+        value="1500"
+        min="250"
+        max="10000"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmFreshCandidateStatusTransportResponseBytes"
+        type="number"
+        value="2048"
+        min="128"
+        max="32768"
+        style="width: 140px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('disabled')">Preview Disabled Transport</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('prior_status_mismatch')">Preview Prior Status Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('closed_path_block')">Preview Closed Path Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('version_method_block')">Preview Version Method Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('approved')">Run Status Transport</button>
+
+      <div id="nativeLlmCanisterFreshCandidateStatusTransportResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Status Transport</strong></summary>
 
       <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>

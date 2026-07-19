@@ -5333,6 +5333,294 @@ window.runNativeLlmCanisterFreshCandidateStatus = async function runNativeLlmCan
   }
 };
 
+function buildNativeLlmCanisterFreshCandidateStatusTransportRequest(mode = "disabled") {
+  const principalInput = document.getElementById("nativeLlmFreshCandidateStatusTransportPrincipal");
+  const networkSelect = document.getElementById("nativeLlmFreshCandidateStatusTransportNetwork");
+  const methodSelect = document.getElementById("nativeLlmFreshCandidateStatusTransportMethod");
+  const timeoutInput = document.getElementById("nativeLlmFreshCandidateStatusTransportTimeout");
+  const responseBytesInput = document.getElementById("nativeLlmFreshCandidateStatusTransportResponseBytes");
+  const selectedPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "z7unv-7iaaa-aaaal-qb6aq-cai";
+  const targetCanisterPrincipal = mode === "closed_path_block"
+    ? "w36hm-eqaaa-aaaal-qr76a-cai"
+    : selectedPrincipal;
+  const network = networkSelect ? networkSelect.value : "ic";
+  const selectedMethod = methodSelect ? methodSelect.value : "status";
+  const methodName = mode === "answer_method_block"
+    ? "v1_chat"
+    : mode === "version_method_block"
+      ? "version"
+      : selectedMethod;
+  const timeoutMs = Number(timeoutInput ? timeoutInput.value : 1500);
+  const maxResponseBytes = Number(responseBytesInput ? responseBytesInput.value : 2048);
+  const approvals = {
+    operatorApprovedFreshCandidateStatusTransport: true,
+    operatorApprovedPriorStatusEvidence: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedTimeout: true,
+    operatorApprovedResponseBudget: true,
+    operatorApprovedNoCycles: true,
+    operatorApprovedEmptyPayload: true,
+    operatorApprovedResponseShape: true,
+    priorFreshCandidateStatusAcknowledged: true,
+    methodMayStillBeUnavailableAcknowledged: true,
+    rollbackAcknowledged: true,
+    noPromptAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    responseMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-fresh-candidate-status-transport-request-v1",
+    decisionVersion: "aion-native-llm-canister-fresh-candidate-status-transport-decision-v1",
+    priorStatusEvidenceVersion: "aion-native-llm-canister-fresh-candidate-status-live-evidence-v1",
+    priorStatusContractVersion: "aion-native-llm-canister-fresh-candidate-status-contract-v1",
+    priorStatusDecisionVersion: "aion-native-llm-canister-fresh-candidate-status-decision-v1",
+    priorStatusCategory: mode === "prior_status_mismatch"
+      ? "approval_missing"
+      : "fresh_candidate_status_ready",
+    priorStatusTargetCanisterPrincipal: "z7unv-7iaaa-aaaal-qb6aq-cai",
+    priorStatusCandidateMethodName: "status",
+    priorStatusSourceType: "verified_candid_interface_for_exact_canister",
+    priorStatusQueryOrUpdate: "query",
+    priorStatusExpectedArguments: "()",
+    priorStatusExpectedReturnType: "text",
+    priorStatusExpectedResponseShape: "bounded_status_text",
+    priorStatusPayloadKind: "empty_noop_probe",
+    priorStatusCyclePolicy: "no_attached_cycles",
+    priorStatusTimeoutMs: 1500,
+    priorStatusMaxResponseBytes: 2048,
+    priorStatusNoCallMade: true,
+    priorStatusCallAttempted: false,
+    priorStatusRealCanisterCall: false,
+    priorStatusPromptSubmitted: false,
+    priorStatusGroundedPacketSubmitted: false,
+    priorStatusAnswerGenerated: false,
+    transportId: "z7unv-7iaaa-aaaal-qb6aq-cai:ic:bounded_noop_call:status:fresh_candidate_status_transport",
+    candidateId: "z7unv-7iaaa-aaaal-qb6aq-cai:ic:fresh_candidate:status:fresh_candidate_status",
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    candidatePath: "select_fresh_candidate_status_transport",
+    timeoutMs,
+    maxResponseBytes,
+    cyclePolicy: "no_attached_cycles",
+    payloadKind: "empty_noop_probe",
+    expectedResponseShape: "bounded_status_text",
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 fresh-candidate status transport: ${mode}.`,
+    realCanisterCallsEnabled: mode === "approved",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterFreshCandidateStatusTransport = async function runNativeLlmCanisterFreshCandidateStatusTransport(mode = "disabled") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterFreshCandidateStatusTransportResults");
+  container.innerHTML = "<p>Checking fresh-candidate status transport...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterFreshCandidateStatusTransportRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-fresh-candidate-status-transport`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const responseShapeSummary = data.responseShapeSummary || {};
+    const knownFailure = data.error === "native_llm_canister_fresh_candidate_status_transport_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.transportVersion || "Native LLM fresh-candidate status transport")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Prior status evidence version", data.priorStatusEvidenceVersion],
+          ["Prior status contract version", data.priorStatusContractVersion],
+          ["Transport ID", data.transportId],
+          ["Candidate ID", data.candidateId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName],
+          ["Candidate path", data.candidatePath]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Transport Status</h3>
+        ${renderComparisonPairs([
+          ["Target matches decision", renderBoolean(Boolean(data.targetMatchesDecision))],
+          ["Target is closed provider-boundary path", renderBoolean(Boolean(data.targetIsClosedProviderBoundaryPath))],
+          ["Method matches decision", renderBoolean(Boolean(data.methodMatchesDecision))],
+          ["Prior status matches decision", renderBoolean(Boolean(data.priorStatusMatchesDecision))],
+          ["Answer generation method blocked", renderBoolean(Boolean(data.answerGenerationMethodBlocked))],
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Prompt submitted", renderBoolean(Boolean(data.promptSubmitted))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Transport status", data.transportStatus],
+          ["Interface status", data.interfaceStatus],
+          ["Response shape status", data.responseShapeStatus],
+          ["Latency ms", data.latencyMs],
+          ["Cycle use estimate", data.cycleUseEstimate],
+          ["Response bytes", data.responseBytes],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Prior Status Evidence</h3>
+        ${renderComparisonPairs([
+          ["Prior status category", data.priorStatusCategory],
+          ["Prior status target", data.priorStatusTargetCanisterPrincipal],
+          ["Prior status method", data.priorStatusCandidateMethodName],
+          ["Prior status source type", data.priorStatusSourceType],
+          ["Prior query or update", data.priorStatusQueryOrUpdate],
+          ["Prior expected arguments", data.priorStatusExpectedArguments],
+          ["Prior expected return type", data.priorStatusExpectedReturnType],
+          ["Prior expected response shape", data.priorStatusExpectedResponseShape],
+          ["Prior payload kind", data.priorStatusPayloadKind],
+          ["Prior cycle policy", data.priorStatusCyclePolicy],
+          ["Prior timeout ms", data.priorStatusTimeoutMs],
+          ["Prior max response bytes", data.priorStatusMaxResponseBytes],
+          ["Prior no call made", renderBoolean(Boolean(data.priorStatusNoCallMade))],
+          ["Prior call attempted", renderBoolean(Boolean(data.priorStatusCallAttempted))],
+          ["Prior real canister call", renderBoolean(Boolean(data.priorStatusRealCanisterCall))],
+          ["Prior prompt submitted", renderBoolean(Boolean(data.priorStatusPromptSubmitted))],
+          ["Prior grounded packet submitted", renderBoolean(Boolean(data.priorStatusGroundedPacketSubmitted))],
+          ["Prior answer generated", renderBoolean(Boolean(data.priorStatusAnswerGenerated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Interface Parameters</h3>
+        ${renderComparisonPairs([
+          ["Timeout ms", data.timeoutMs],
+          ["Max response bytes", data.maxResponseBytes],
+          ["Cycle policy", data.cyclePolicy],
+          ["Payload kind", data.payloadKind],
+          ["Expected response shape", data.expectedResponseShape],
+          ["Blocked answer-generation methods", renderListValue(data.blockedAnswerGenerationMethods)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Response Shape Summary</h3>
+        ${renderComparisonPairs([
+          ["Response type", responseShapeSummary.responseType],
+          ["Response bytes", responseShapeSummary.responseBytes],
+          ["Empty", renderBoolean(Boolean(responseShapeSummary.empty))],
+          ["Parse succeeded", renderBoolean(Boolean(responseShapeSummary.parseSucceeded))],
+          ["Top-level fields", renderListValue(responseShapeSummary.topLevelFields)],
+          ["Text length", responseShapeSummary.textLength],
+          ["Truncated", renderBoolean(Boolean(responseShapeSummary.truncated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Prior status category", request.priorStatusCategory],
+          ["Transport ID", request.transportId],
+          ["Candidate ID", request.candidateId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Candidate path", request.candidatePath],
+          ["Payload kind", request.payloadKind],
+          ["Expected response shape", request.expectedResponseShape],
+          ["Timeout ms", request.timeoutMs],
+          ["Max response bytes", request.maxResponseBytes],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM fresh-candidate status transport failed:", err);
+    container.innerHTML = "<p>Native LLM fresh-candidate status transport failed.</p>";
+  }
+};
+
 function buildNativeLlmCanisterStatusTransportRequest(mode = "disabled") {
   const principalInput = document.getElementById("nativeLlmStatusTransportPrincipal");
   const networkSelect = document.getElementById("nativeLlmStatusTransportNetwork");
