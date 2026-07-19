@@ -1125,6 +1125,86 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Method-Source Evidence</strong></summary>
+
+      <p>Record one bounded non-calling source note for a candidate method before any status or version transport decision is considered.</p>
+
+      <input
+        id="nativeLlmMethodSourcePrincipal"
+        value="w36hm-eqaaa-aaaal-qr76a-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmMethodSourceNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmMethodSourceMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="status">status</option>
+        <option value="version">version</option>
+        <option value="v1_chat">v1_chat</option>
+        <option value="metadata">metadata</option>
+      </select>
+
+      <select
+        id="nativeLlmMethodSourceType"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="live_candid_or_verified_deployed_declaration">Verified deployed declaration</option>
+        <option value="deployment_artifact_for_exact_canister">Deployment artifact</option>
+        <option value="source_repo_tied_to_deployed_wasm">Source tied to wasm</option>
+        <option value="official_canister_documentation">Official documentation</option>
+        <option value="operator_observation_or_inferred_method_name">Operator observation</option>
+      </select>
+
+      <input
+        id="nativeLlmMethodSourceReference"
+        value="Verified deployed declaration for w36hm status query."
+        placeholder="Bounded source reference"
+        style="width: 54%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmMethodSourceQueryClass"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="query">query</option>
+        <option value="update">update</option>
+        <option value="unknown">unknown</option>
+      </select>
+
+      <input
+        id="nativeLlmMethodSourceArguments"
+        value="()"
+        placeholder="Expected arguments"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmMethodSourceReturnType"
+        value="text"
+        placeholder="Expected return type"
+        style="width: 180px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterMethodSourceEvidence('ready')">Preview Evidence Ready</button>
+      <button onclick="runNativeLlmCanisterMethodSourceEvidence('operator_observation')">Preview Observation Block</button>
+      <button onclick="runNativeLlmCanisterMethodSourceEvidence('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterMethodSourceEvidence('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterMethodSourceEvidence('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterMethodSourceEvidenceResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
