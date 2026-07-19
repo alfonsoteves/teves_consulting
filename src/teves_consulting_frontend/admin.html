@@ -746,6 +746,61 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Bounded No-Op Transport Preview</strong></summary>
+
+      <p>Preview the Admin-only bounded no-op canister transport path with approved target, method, timeout, response budget, and fail-closed safety boundaries.</p>
+
+      <input
+        id="nativeLlmBoundedNoopTransportPrincipal"
+        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmBoundedNoopTransportNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmBoundedNoopTransportMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="capabilities">capabilities</option>
+        <option value="health">health</option>
+        <option value="metadata">metadata</option>
+        <option value="probe">probe</option>
+      </select>
+
+      <input
+        id="nativeLlmBoundedNoopTransportTimeout"
+        type="number"
+        value="1500"
+        min="250"
+        max="10000"
+        style="width: 120px; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmBoundedNoopTransportResponseBytes"
+        type="number"
+        value="2048"
+        min="128"
+        max="32768"
+        style="width: 140px; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('disabled')">Preview Disabled Transport</button>
+      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('approved')">Run Approved No-Op Transport</button>
+
+      <div id="nativeLlmCanisterBoundedNoopTransportResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>

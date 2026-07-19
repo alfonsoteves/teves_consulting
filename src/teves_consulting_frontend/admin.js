@@ -2796,6 +2796,200 @@ window.runNativeLlmCanisterBoundedNoopGate = async function runNativeLlmCanister
   }
 };
 
+function buildNativeLlmCanisterBoundedNoopTransportRequest(mode = "disabled") {
+  const principalInput = document.getElementById("nativeLlmBoundedNoopTransportPrincipal");
+  const networkSelect = document.getElementById("nativeLlmBoundedNoopTransportNetwork");
+  const methodSelect = document.getElementById("nativeLlmBoundedNoopTransportMethod");
+  const timeoutInput = document.getElementById("nativeLlmBoundedNoopTransportTimeout");
+  const responseBytesInput = document.getElementById("nativeLlmBoundedNoopTransportResponseBytes");
+  const targetCanisterPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "ryjl3-tyaaa-aaaaa-aaaba-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const methodName = methodSelect ? methodSelect.value : "capabilities";
+  const timeoutMs = timeoutInput ? Number(timeoutInput.value || 1500) : 1500;
+  const maxResponseBytes = responseBytesInput ? Number(responseBytesInput.value || 2048) : 2048;
+  const approvals = {
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedTimeout: true,
+    operatorApprovedResponseBudget: true,
+    operatorApprovedNoCycles: true,
+    operatorApprovedNoopPayload: true,
+    rollbackAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    interfaceMismatchMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-bounded-noop-transport-request-v1",
+    probeId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}`,
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    timeoutMs,
+    maxResponseBytes,
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 bounded no-op transport preview: ${mode}.`,
+    realCanisterCallsEnabled: mode === "approved",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterBoundedNoopTransportPreview = async function runNativeLlmCanisterBoundedNoopTransportPreview(mode = "disabled") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterBoundedNoopTransportResults");
+  container.innerHTML = "<p>Checking bounded no-op transport...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterBoundedNoopTransportRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-bounded-noop-transport-preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const responseShapeSummary = data.responseShapeSummary || {};
+    const knownFailure = data.error === "native_llm_canister_bounded_noop_transport_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.transportVersion || "Native LLM bounded no-op transport")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Probe ID", data.probeId],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName],
+          ["Timeout ms", data.timeoutMs],
+          ["Max response bytes", data.maxResponseBytes],
+          ["Cycle policy", data.cyclePolicy]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Transport Status</h3>
+        ${renderComparisonPairs([
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Transport status", data.transportStatus],
+          ["Interface status", data.interfaceStatus],
+          ["Response shape status", data.responseShapeStatus],
+          ["Latency ms", data.latencyMs],
+          ["Cycle use estimate", data.cycleUseEstimate],
+          ["Response bytes", data.responseBytes],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Response Shape Summary</h3>
+        ${renderComparisonPairs([
+          ["Response type", responseShapeSummary.responseType],
+          ["Response bytes", responseShapeSummary.responseBytes],
+          ["Empty", renderBoolean(Boolean(responseShapeSummary.empty))],
+          ["Parse succeeded", renderBoolean(Boolean(responseShapeSummary.parseSucceeded))],
+          ["Top-level fields", renderListValue(responseShapeSummary.topLevelFields)],
+          ["Truncated", renderBoolean(Boolean(responseShapeSummary.truncated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Probe ID", request.probeId],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Timeout ms", request.timeoutMs],
+          ["Max response bytes", request.maxResponseBytes],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM bounded no-op transport preview failed:", err);
+    container.innerHTML = "<p>Native LLM bounded no-op transport preview failed.</p>";
+  }
+};
+
 window.runNativeRetrievalPacketValidationPreview = async function runNativeRetrievalPacketValidationPreview() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
