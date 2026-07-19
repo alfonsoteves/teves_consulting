@@ -4,6 +4,9 @@ import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfin
 
 const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
 const LLM_CANISTER_ID = "w36hm-eqaaa-aaaal-qr76a-cai";
+const LLM_BOUNDARY_SEARCH_CLOSED = true;
+const LLM_BOUNDARY_SEARCH_CLOSURE_MESSAGE =
+  "Native LLM provider-boundary validation for w36hm is closed as inconclusive-safe. A new native decision is required before another live transport attempt.";
 const LLM_CANDIDATE_MODEL = "llama3.1:8b";
 const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
@@ -75,6 +78,20 @@ const AION_MODEL_PROVIDER_REGISTRY = [
     notes: "Current v1_chat evidence lead: 7/7 full contract at a 4202ms comparative Aion-fit average.",
   },
 ];
+
+function renderNativeLlmBoundaryClosureNotice(container, transportName) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="memory-card">
+      <h3>${escapeHtml(transportName)} Closed</h3>
+      <p>${escapeHtml(LLM_BOUNDARY_SEARCH_CLOSURE_MESSAGE)}</p>
+      <p>Preview-only guard checks remain available. Live metadata, health, and status transport runs are no longer approved on this path.</p>
+    </div>
+  `;
+}
 const AION_PROVIDER_SCORECARD_REFERENCE = [
   {
     criterion: "Identity fit",
@@ -3545,6 +3562,11 @@ window.runNativeLlmCanisterNextNoopMetadataTransport = async function runNativeL
   }
 
   const container = document.getElementById("nativeLlmCanisterNextNoopMetadataTransportResults");
+  if (LLM_BOUNDARY_SEARCH_CLOSED && mode === "approved") {
+    renderNativeLlmBoundaryClosureNotice(container, "Native LLM metadata transport");
+    return;
+  }
+
   container.innerHTML = "<p>Checking next no-op metadata transport...</p>";
 
   try {
@@ -4036,6 +4058,11 @@ window.runNativeLlmCanisterAlternateNoopHealthTransport = async function runNati
   }
 
   const container = document.getElementById("nativeLlmCanisterAlternateNoopHealthTransportResults");
+  if (LLM_BOUNDARY_SEARCH_CLOSED && mode === "approved") {
+    renderNativeLlmBoundaryClosureNotice(container, "Native LLM health transport");
+    return;
+  }
+
   container.innerHTML = "<p>Checking alternate no-op health transport...</p>";
 
   try {
@@ -4833,6 +4860,11 @@ window.runNativeLlmCanisterStatusTransport = async function runNativeLlmCanister
   }
 
   const container = document.getElementById("nativeLlmCanisterStatusTransportResults");
+  if (LLM_BOUNDARY_SEARCH_CLOSED && mode === "approved") {
+    renderNativeLlmBoundaryClosureNotice(container, "Native LLM status transport");
+    return;
+  }
+
   container.innerHTML = "<p>Checking status transport...</p>";
 
   try {

@@ -852,7 +852,7 @@
     <details open>
       <summary><strong>Native LLM Next No-Op Target Interface Contract</strong></summary>
 
-      <p>Preview the Admin-only next no-op target/interface contract for the w36hm metadata candidate, without making a canister call, sending a grounded packet, generating an answer, or changing public routing.</p>
+      <p>The w36hm provider-boundary search is closed as inconclusive-safe. These controls remain for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
 
       <input
         id="nativeLlmNextNoopTargetPrincipal"
@@ -894,7 +894,7 @@
     <details open>
       <summary><strong>Native LLM Next No-Op Metadata Transport</strong></summary>
 
-      <p>Run the Admin-only bounded metadata transport for the w36hm candidate with empty payload, no cycles, response budget, and fail-closed safety boundaries.</p>
+      <p>Closed: the approved metadata transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live metadata transport is disabled until a new native decision exists.</p>
 
       <input
         id="nativeLlmNextNoopMetadataTransportPrincipal"
@@ -946,7 +946,7 @@
       <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('prior_target_retry')">Preview Prior Target Retry</button>
       <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('answer_method_block')">Preview Answer Method Block</button>
       <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('approved')">Run Metadata Transport</button>
+      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Metadata Transport Closed</button>
 
       <div id="nativeLlmCanisterNextNoopMetadataTransportResults"></div>
     </details>
@@ -954,7 +954,7 @@
     <details open>
       <summary><strong>Native LLM Alternate No-Op Health Interface Contract</strong></summary>
 
-      <p>Preview the Admin-only alternate health interface contract for the w36hm candidate, after metadata failed closed, without making a canister call, sending a prompt or grounded packet, generating an answer, or changing public routing.</p>
+      <p>The w36hm provider-boundary search is closed as inconclusive-safe. This interface contract remains for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
 
       <input
         id="nativeLlmAlternateNoopHealthPrincipal"
@@ -1014,7 +1014,7 @@
     <details open>
       <summary><strong>Native LLM Alternate No-Op Health Transport</strong></summary>
 
-      <p>Run the Admin-only bounded health transport for the w36hm candidate with empty payload, no cycles, response budget, and fail-closed safety boundaries.</p>
+      <p>Closed: the approved health transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live health transport is disabled until a new native decision exists.</p>
 
       <input
         id="nativeLlmAlternateNoopHealthTransportPrincipal"
@@ -1066,7 +1066,7 @@
       <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('metadata_revision')">Preview Metadata Revision Block</button>
       <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('answer_method_block')">Preview Answer Method Block</button>
       <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('approved')">Run Health Transport</button>
+      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Health Transport Closed</button>
 
       <div id="nativeLlmCanisterAlternateNoopHealthTransportResults"></div>
     </details>
@@ -1074,7 +1074,7 @@
     <details open>
       <summary><strong>Native LLM Exposed Interface Diagnostic</strong></summary>
 
-      <p>Record bounded Admin-only interface evidence after repeated metadata and health interface mismatches, without raw interface capture, canister calls, prompts, grounded packets, or public routing changes.</p>
+      <p>Recorded bounded Admin-only interface evidence after repeated interface mismatches. The w36hm boundary search is now closed; this section remains for audit/preview evidence only.</p>
 
       <input
         id="nativeLlmExposedInterfaceDiagnosticPrincipal"
@@ -1127,7 +1127,7 @@
     <details open>
       <summary><strong>Native LLM Method-Source Evidence</strong></summary>
 
-      <p>Record one bounded non-calling source note for a candidate method before any status or version transport decision is considered.</p>
+      <p>Recorded the bounded non-calling status source note used before the final status transport. The w36hm boundary search is now closed; new method-source evidence needs a separate native decision.</p>
 
       <input
         id="nativeLlmMethodSourcePrincipal"
@@ -1207,7 +1207,7 @@
     <details open>
       <summary><strong>Native LLM Status Transport</strong></summary>
 
-      <p>Run the Admin-only bounded status transport for the w36hm candidate with empty payload, no cycles, response budget, and fail-closed safety boundaries.</p>
+      <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>
 
       <input
         id="nativeLlmStatusTransportPrincipal"
@@ -1259,7 +1259,7 @@
       <button onclick="runNativeLlmCanisterStatusTransport('version_method_block')">Preview Version Method Block</button>
       <button onclick="runNativeLlmCanisterStatusTransport('answer_method_block')">Preview Answer Method Block</button>
       <button onclick="runNativeLlmCanisterStatusTransport('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterStatusTransport('approved')">Run Status Transport</button>
+      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Status Transport Closed</button>
 
       <div id="nativeLlmCanisterStatusTransportResults"></div>
     </details>
