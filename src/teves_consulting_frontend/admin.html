@@ -801,6 +801,44 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
+
+      <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
+
+      <input
+        id="nativeLlmCompatibleNoopPrincipal"
+        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmCompatibleNoopNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmCompatibleNoopMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="noop_status">noop_status</option>
+        <option value="probe">probe</option>
+        <option value="metadata">metadata</option>
+        <option value="health">health</option>
+        <option value="capabilities">capabilities</option>
+      </select>
+
+      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('ready')">Preview Compatible Contract</button>
+      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('blocked_capabilities')">Preview Blocked Capabilities</button>
+      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('missing_approval')">Preview Missing Approval</button>
+
+      <div id="nativeLlmCanisterCompatibleNoopInterfaceResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
