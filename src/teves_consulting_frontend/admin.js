@@ -3250,6 +3250,7 @@ function buildNativeLlmCanisterNextNoopTargetInterfaceRequest(mode = "ready") {
     : "w36hm-eqaaa-aaaal-qr76a-cai";
   const network = networkSelect ? networkSelect.value : "ic";
   const selectedMethod = methodSelect ? methodSelect.value : "metadata";
+  const approvedCandidateId = "w36hm-eqaaa-aaaal-qr76a-cai:ic:bounded_noop_call:metadata:next_noop_target_interface";
   const targetCanisterPrincipal = mode === "prior_target_retry"
     ? "be2us-64aaa-aaaaa-qaabq-cai"
     : selectedPrincipal;
@@ -3518,7 +3519,7 @@ function buildNativeLlmCanisterNextNoopMetadataTransportRequest(mode = "disabled
     priorContractVersion: "aion-native-llm-canister-next-noop-target-interface-contract-v1",
     priorDecisionVersion: "aion-native-llm-canister-next-noop-target-interface-decision-v1",
     transportId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}:next_noop_metadata_transport`,
-    candidateId: `${targetCanisterPrincipal || "unconfigured"}:${network}:bounded_noop_call:${methodName}:next_noop_target_interface`,
+    candidateId: approvedCandidateId,
     candidateProvider: "llm_canister_admin_eval",
     targetCanisterPrincipal,
     network,
