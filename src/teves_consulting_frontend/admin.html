@@ -1072,6 +1072,59 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Exposed Interface Diagnostic</strong></summary>
+
+      <p>Record bounded Admin-only interface evidence after repeated metadata and health interface mismatches, without raw interface capture, canister calls, prompts, grounded packets, or public routing changes.</p>
+
+      <input
+        id="nativeLlmExposedInterfaceDiagnosticPrincipal"
+        value="w36hm-eqaaa-aaaal-qr76a-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmExposedInterfaceDiagnosticNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmExposedInterfaceDiagnosticPath"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="operator_supplied_candid_summary">Operator Candid summary</option>
+        <option value="bounded_method_name_observation">Bounded method names</option>
+        <option value="no_safe_noop_method_known">No safe no-op known</option>
+        <option value="stop_boundary_search_inconclusive_safe">Stop inconclusive-safe</option>
+      </select>
+
+      <input
+        id="nativeLlmExposedInterfaceDiagnosticMethods"
+        value="status, version"
+        placeholder="Bounded method names"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <input
+        id="nativeLlmExposedInterfaceDiagnosticSummary"
+        value="Bounded operator-supplied interface summary; no raw service dump captured."
+        placeholder="Bounded interface summary"
+        style="width: 64%; padding: 8px; margin-top: 10px;"
+      />
+
+      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('ready')">Preview Diagnostic Ready</button>
+      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('raw_capture')">Preview Raw Capture Block</button>
+      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterExposedInterfaceDiagnosticResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
