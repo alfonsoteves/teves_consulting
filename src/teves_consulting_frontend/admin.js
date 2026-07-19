@@ -3250,7 +3250,6 @@ function buildNativeLlmCanisterNextNoopTargetInterfaceRequest(mode = "ready") {
     : "w36hm-eqaaa-aaaal-qr76a-cai";
   const network = networkSelect ? networkSelect.value : "ic";
   const selectedMethod = methodSelect ? methodSelect.value : "metadata";
-  const approvedCandidateId = "w36hm-eqaaa-aaaal-qr76a-cai:ic:bounded_noop_call:metadata:next_noop_target_interface";
   const targetCanisterPrincipal = mode === "prior_target_retry"
     ? "be2us-64aaa-aaaaa-qaabq-cai"
     : selectedPrincipal;
@@ -3477,6 +3476,7 @@ function buildNativeLlmCanisterNextNoopMetadataTransportRequest(mode = "disabled
     : "w36hm-eqaaa-aaaal-qr76a-cai";
   const network = networkSelect ? networkSelect.value : "ic";
   const selectedMethod = methodSelect ? methodSelect.value : "metadata";
+  const approvedCandidateId = "w36hm-eqaaa-aaaal-qr76a-cai:ic:bounded_noop_call:metadata:next_noop_target_interface";
   const targetCanisterPrincipal = mode === "prior_target_retry"
     ? "be2us-64aaa-aaaaa-qaabq-cai"
     : selectedPrincipal;
