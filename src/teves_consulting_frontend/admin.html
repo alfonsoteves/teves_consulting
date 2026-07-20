@@ -632,6 +632,12 @@
 
       <p>Run the Phase 8.2 Admin-only mock evaluation contract against the same native grounded packet, without calling a real canister, switching providers, or changing public routing.</p>
 
+      <div class="memory-card">
+        <h3>Milestone 8.2 Fresh Candidate</h3>
+        <p class="meta">Jump directly to the current z7unv diagnostic surface.</p>
+        <button onclick="document.getElementById('nativeLlmFreshCandidateStatusTransportDiagnosticPanel').scrollIntoView({ behavior: 'smooth', block: 'start' })">Open Status Transport Diagnostic</button>
+      </div>
+
       <select
         id="nativeLlmCanisterEvaluationCase"
         style="padding: 8px; margin-top: 10px;"
@@ -1484,10 +1490,12 @@
       <div id="nativeLlmCanisterFreshCandidateStatusTransportResults"></div>
     </details>
 
-    <details open>
+    <details id="nativeLlmFreshCandidateStatusTransportDiagnosticPanel" open>
       <summary><strong>Native LLM Fresh Candidate Status Transport Diagnostic</strong></summary>
 
       <p>Non-calling diagnostic for the fresh z7unv status transport unexpected error. It records only bounded sanitized metadata and does not run another status call, method probe, prompt, grounded packet, answer, fallback, provider switch, memory access, continuity change, public routing change, or production cutover.</p>
+
+      <p class="meta">Current option: use this panel after the fresh-candidate status transport returned `unexpected_transport_error`.</p>
 
       <input
         id="nativeLlmFreshCandidateStatusTransportDiagnosticPrincipal"
