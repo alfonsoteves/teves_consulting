@@ -2,15 +2,15 @@
 
 ## Status
 
-The `w36hm-eqaaa-aaaal-qr76a-cai` native LLM canister provider-boundary search
-is closed as inconclusive-safe.
+Milestone 8.2 native LLM canister provider-boundary validation is closed as
+inconclusive-safe for the completed Admin evidence paths.
 
-This closure applies only to the `w36hm...` canister principal and this
-Admin evidence path. It is not a general rejection of native LLM-canister
-support, and it does not prove that the deployed canister is incapable of
-inference. It records that this interface-discovery and transport-validation
-path did not establish a verified callable interface under the approved
-bounded controls.
+This closure applies only to the completed `w36hm...` provider-boundary path
+and the fresh-candidate `z7unv...` plus `status` path. It is not a general
+rejection of native LLM-canister support, and it does not prove that either
+deployed canister is incapable of inference. It records that these
+interface-discovery and transport-validation paths did not establish a
+verified callable interface under the approved bounded controls.
 
 This document records the deployed Admin UI closure in `teves_consulting`.
 It is an operator-facing guardrail note only. It does not approve another live
@@ -28,12 +28,19 @@ public route changes, or production cutover.
 - `aion_intelligence` commit `79a01d6`: native operational closure summary.
 - `aionic_agent` commit `6d068fc`: backend evidence closure.
 - `teves_consulting` commit `e6f834a`: deployed Admin UI closure.
+- `aion_intelligence` commit `96ac687`: Milestone 8.2 final native closure.
+- `aionic_agent` commit `d3c25db`: backend Milestone 8.2 final closure
+  anchor.
+- `teves_consulting` commit `1baa64e`: deployed Admin visibility for the
+  fresh-candidate status transport diagnostic.
 
 ## Deployed Admin State
 
 The deployed Admin UI now:
 
 - marks the `w36hm...` provider-boundary search as closed/inconclusive-safe;
+- records the `z7unv...` plus `status` fresh-candidate transport diagnostic
+  as closed/inconclusive-safe after native review;
 - disables the live metadata transport button;
 - disables the live health transport button;
 - disables the live status transport button;
@@ -61,6 +68,11 @@ The preview controls remain available only to review guard behavior such as
 disabled transport, missing approval, answer-method block, prior-evidence
 mismatch, and related fail-closed cases.
 
+The fresh-candidate `z7unv...` plus `status` path is also closed. Its approved
+Admin-only status transport failed closed as `unexpected_transport_error`
+before response-shape parsing, and the follow-up diagnostic recommended no
+same-target retry, no in-slice target selection, and stopping the current path.
+
 ## Public Boundary State
 
 The Admin closure preserves:
@@ -85,7 +97,8 @@ Public answers remain on the existing OpenAI-backed route.
 ## Reopen Conditions
 
 No operator should treat the closed Admin UI controls as approval to continue
-the current `w36hm...` boundary search.
+the current `w36hm...` boundary search or the `z7unv...` plus `status`
+fresh-candidate path.
 
 Reopening live transport requires a new native decision with:
 
@@ -103,8 +116,8 @@ Reopening live transport requires a new native decision with:
 - no memory read or write;
 - no continuity mutation.
 
-Until that native decision exists, the Admin UI must remain closed for live
-metadata, health, and status transport on the current `w36hm...` path.
+Until that native decision exists, the Admin UI must not be used to retry the
+closed `w36hm...` or `z7unv...` evidence paths.
 
 ## Release Check
 
