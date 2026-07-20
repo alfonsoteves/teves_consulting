@@ -1485,6 +1485,68 @@
     </details>
 
     <details open>
+      <summary><strong>Native LLM Fresh Candidate Status Transport Diagnostic</strong></summary>
+
+      <p>Non-calling diagnostic for the fresh z7unv status transport unexpected error. It records only bounded sanitized metadata and does not run another status call, method probe, prompt, grounded packet, answer, fallback, provider switch, memory access, continuity change, public routing change, or production cutover.</p>
+
+      <input
+        id="nativeLlmFreshCandidateStatusTransportDiagnosticPrincipal"
+        value="z7unv-7iaaa-aaaal-qb6aq-cai"
+        placeholder="Target canister principal"
+        style="width: 44%; padding: 8px; margin-top: 10px;"
+      />
+
+      <select
+        id="nativeLlmFreshCandidateStatusTransportDiagnosticNetwork"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="ic">IC</option>
+        <option value="local">Local</option>
+      </select>
+
+      <select
+        id="nativeLlmFreshCandidateStatusTransportDiagnosticMethod"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="status">status</option>
+        <option value="version">version</option>
+        <option value="metadata">metadata</option>
+        <option value="health">health</option>
+        <option value="v1_chat">v1_chat</option>
+      </select>
+
+      <select
+        id="nativeLlmFreshCandidateStatusTransportDiagnosticSource"
+        style="padding: 8px; margin-top: 10px;"
+      >
+        <option value="icp_client">icp_client</option>
+        <option value="agent">agent</option>
+        <option value="candid">candid</option>
+        <option value="canister">canister</option>
+        <option value="network">network</option>
+        <option value="unknown">unknown</option>
+      </select>
+
+      <textarea
+        id="nativeLlmFreshCandidateStatusTransportDiagnosticSummary"
+        rows="3"
+        style="width: 100%; padding: 8px; margin-top: 10px;"
+      >Approved status transport reached z7unv and returned an unexpected transport error before response-shape parsing.</textarea>
+
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('ready')">Preview Diagnostic Ready</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('prior_transport_mismatch')">Preview Prior Transport Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('method_mismatch')">Preview Method Mismatch</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('answer_method_block')">Preview Answer Method Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('source_mismatch')">Preview Source Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('raw_error_block')">Preview Raw Error Block</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_summary')">Preview Missing Summary</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_approval')">Preview Missing Approval</button>
+      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('real_call_block')">Preview Real Call Block</button>
+
+      <div id="nativeLlmCanisterFreshCandidateStatusTransportDiagnosticResults"></div>
+    </details>
+
+    <details open>
       <summary><strong>Native LLM Status Transport</strong></summary>
 
       <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>

@@ -5621,6 +5621,290 @@ window.runNativeLlmCanisterFreshCandidateStatusTransport = async function runNat
   }
 };
 
+function buildNativeLlmCanisterFreshCandidateStatusTransportDiagnosticRequest(mode = "ready") {
+  const principalInput = document.getElementById("nativeLlmFreshCandidateStatusTransportDiagnosticPrincipal");
+  const networkSelect = document.getElementById("nativeLlmFreshCandidateStatusTransportDiagnosticNetwork");
+  const methodSelect = document.getElementById("nativeLlmFreshCandidateStatusTransportDiagnosticMethod");
+  const sourceSelect = document.getElementById("nativeLlmFreshCandidateStatusTransportDiagnosticSource");
+  const summaryInput = document.getElementById("nativeLlmFreshCandidateStatusTransportDiagnosticSummary");
+  const selectedPrincipal = principalInput
+    ? principalInput.value.trim()
+    : "z7unv-7iaaa-aaaal-qb6aq-cai";
+  const network = networkSelect ? networkSelect.value : "ic";
+  const selectedMethod = methodSelect ? methodSelect.value : "status";
+  const methodName = mode === "answer_method_block"
+    ? "v1_chat"
+    : mode === "method_mismatch"
+      ? "version"
+      : selectedMethod;
+  const transportErrorSource = mode === "source_mismatch"
+    ? "replica_stack_trace"
+    : sourceSelect
+      ? sourceSelect.value
+      : "icp_client";
+  const summary = summaryInput
+    ? summaryInput.value.trim()
+    : "Approved status transport reached z7unv and returned an unexpected transport error before response-shape parsing.";
+  const approvals = {
+    operatorApprovedFreshCandidateStatusTransportDiagnostic: true,
+    operatorApprovedPriorTransportEvidence: true,
+    operatorApprovedTarget: true,
+    operatorApprovedNetwork: true,
+    operatorApprovedMethod: true,
+    operatorApprovedNoCall: true,
+    operatorApprovedBoundedDiagnostics: true,
+    priorUnexpectedTransportErrorAcknowledged: true,
+    rawErrorCaptureNotAllowedAcknowledged: true,
+    methodMayStillBeUnavailableAcknowledged: true,
+    rollbackAcknowledged: true,
+    noPromptAcknowledged: true,
+    noGroundedPacketAcknowledged: true,
+    noAnswerGenerationAcknowledged: true,
+    noPublicRoutingAcknowledged: true,
+    noProviderSwitchAcknowledged: true,
+    noFallbackAcknowledged: true,
+    noMemoryReadAcknowledged: true,
+    noMemoryWriteAcknowledged: true,
+    noContinuityMutationAcknowledged: true,
+    diagnosticsMayFailClosedAcknowledged: true
+  };
+
+  if (mode === "missing_approval") {
+    approvals.noFallbackAcknowledged = false;
+  }
+
+  return {
+    requestVersion: "aion-native-llm-canister-fresh-candidate-status-transport-diagnostic-request-v1",
+    decisionVersion: "aion-native-llm-canister-fresh-candidate-status-transport-diagnostic-decision-v1",
+    diagnosticVersion: "aion-native-llm-canister-fresh-candidate-status-transport-diagnostic-v1",
+    diagnosticId: "z7unv-7iaaa-aaaal-qb6aq-cai:ic:fresh_candidate_status_transport_diagnostic:status",
+    diagnosticScope: "fresh_candidate_status_transport_unexpected_error",
+    candidateProvider: "llm_canister_admin_eval",
+    targetCanisterPrincipal: selectedPrincipal,
+    network,
+    probeMode: "bounded_noop_call",
+    methodName,
+    priorTransportDecisionVersion: "aion-native-llm-canister-fresh-candidate-status-transport-decision-v1",
+    priorTransportResultVersion: "aion-native-llm-canister-fresh-candidate-status-transport-result-v1",
+    priorTransportCategory: mode === "prior_transport_mismatch"
+      ? "interface_mismatch"
+      : "unexpected_transport_error",
+    priorTransportTargetCanisterPrincipal: "z7unv-7iaaa-aaaal-qb6aq-cai",
+    priorTransportMethodName: "status",
+    priorTransportProbeMode: "bounded_noop_call",
+    priorTransportPayloadKind: "empty_noop_probe",
+    priorTransportCyclePolicy: "no_attached_cycles",
+    priorTransportTimeoutMs: 1500,
+    priorTransportMaxResponseBytes: 2048,
+    priorTransportResponseShapeStatus: "not_checked",
+    priorTransportCallAttempted: true,
+    priorTransportRealCanisterCall: true,
+    priorTransportPromptSubmitted: false,
+    priorTransportGroundedPacketSubmitted: false,
+    priorTransportAnswerGenerated: false,
+    transportErrorFamily: "unexpected_transport_error",
+    transportErrorSource,
+    rawErrorCaptured: mode === "raw_error_block",
+    rawErrorRedacted: mode === "raw_error_block",
+    sanitizedErrorSummary: mode === "missing_summary" ? "" : summary,
+    failureBeforeResponseShape: true,
+    retrySameTargetRecommended: false,
+    selectNewTargetRecommended: false,
+    stopFreshCandidatePathRecommended: true,
+    operatorDiagnosticNotes: `Admin 8.2 fresh-candidate status transport diagnostic: ${mode}.`,
+    operatorIdentifier: "admin-preview-operator",
+    operatorNotes: `Admin 8.2 fresh-candidate status transport diagnostic: ${mode}.`,
+    realCanisterCallsEnabled: mode === "real_call_block",
+    approvals
+  };
+}
+
+window.runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic = async function runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic(mode = "ready") {
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  const container = document.getElementById("nativeLlmCanisterFreshCandidateStatusTransportDiagnosticResults");
+  container.innerHTML = "<p>Checking fresh-candidate status transport diagnostic...</p>";
+
+  try {
+    const request = buildNativeLlmCanisterFreshCandidateStatusTransportDiagnosticRequest(mode);
+    const res = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/native-llm-canister-fresh-candidate-status-transport-diagnostic`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+    const data = await res.json();
+    const boundaryEvidence = data.boundaryEvidence || {};
+    const knownFailure = data.error === "native_llm_canister_fresh_candidate_status_transport_diagnostic_failed";
+
+    if (data.error && !knownFailure) {
+      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>${escapeHtml(data.diagnosticResultVersion || "Native LLM fresh-candidate status transport diagnostic")}</h3>
+        ${renderComparisonPairs([
+          ["Valid", renderBoolean(Boolean(data.valid))],
+          ["Error", data.error],
+          ["Category", data.category],
+          ["Detail", data.detail],
+          ["Decision version", data.decisionVersion],
+          ["Diagnostic version", data.diagnosticVersion],
+          ["Diagnostic ID", data.diagnosticId],
+          ["Diagnostic scope", data.diagnosticScope],
+          ["Candidate provider", data.candidateProvider],
+          ["Target canister principal", data.targetCanisterPrincipal],
+          ["Network", data.network],
+          ["Probe mode", data.probeMode],
+          ["Method name", data.methodName]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Diagnostic Status</h3>
+        ${renderComparisonPairs([
+          ["Target matches decision", renderBoolean(Boolean(data.targetMatchesDecision))],
+          ["Method matches decision", renderBoolean(Boolean(data.methodMatchesDecision))],
+          ["Diagnostic scope matches decision", renderBoolean(Boolean(data.diagnosticScopeMatchesDecision))],
+          ["Transport error family matches decision", renderBoolean(Boolean(data.transportErrorFamilyMatchesDecision))],
+          ["Transport error source allowed", renderBoolean(Boolean(data.transportErrorSourceAllowed))],
+          ["Prior transport matches decision", renderBoolean(Boolean(data.priorTransportMatchesDecision))],
+          ["Raw error capture allowed", renderBoolean(Boolean(data.rawErrorCaptureAllowed))],
+          ["Raw error captured", renderBoolean(Boolean(data.rawErrorCaptured))],
+          ["Raw error redacted", renderBoolean(Boolean(data.rawErrorRedacted))],
+          ["Sanitized error summary provided", renderBoolean(Boolean(data.sanitizedErrorSummaryProvided))],
+          ["Failure before response shape", renderBoolean(Boolean(data.failureBeforeResponseShape))],
+          ["Retry same target recommended", renderBoolean(Boolean(data.retrySameTargetRecommended))],
+          ["Select new target recommended", renderBoolean(Boolean(data.selectNewTargetRecommended))],
+          ["Stop fresh candidate path recommended", renderBoolean(Boolean(data.stopFreshCandidatePathRecommended))],
+          ["Can proceed to diagnostic evidence", renderBoolean(Boolean(data.canProceedToDiagnosticEvidence))],
+          ["Can proceed to retry decision", renderBoolean(Boolean(data.canProceedToRetryDecision))],
+          ["Can proceed to stop decision", renderBoolean(Boolean(data.canProceedToStopDecision))],
+          ["Next approval", data.nextApproval],
+          ["Operator notes provided", renderBoolean(Boolean(data.operatorNotesProvided))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Prior Transport Evidence</h3>
+        ${renderComparisonPairs([
+          ["Prior transport decision version", data.priorTransportDecisionVersion],
+          ["Prior transport result version", data.priorTransportResultVersion],
+          ["Prior transport category", data.priorTransportCategory],
+          ["Prior target", data.priorTransportTargetCanisterPrincipal],
+          ["Prior method", data.priorTransportMethodName],
+          ["Prior probe mode", data.priorTransportProbeMode],
+          ["Prior payload kind", data.priorTransportPayloadKind],
+          ["Prior cycle policy", data.priorTransportCyclePolicy],
+          ["Prior timeout ms", data.priorTransportTimeoutMs],
+          ["Prior max response bytes", data.priorTransportMaxResponseBytes],
+          ["Prior response shape status", data.priorTransportResponseShapeStatus],
+          ["Prior call attempted", renderBoolean(Boolean(data.priorTransportCallAttempted))],
+          ["Prior real canister call", renderBoolean(Boolean(data.priorTransportRealCanisterCall))],
+          ["Prior prompt submitted", renderBoolean(Boolean(data.priorTransportPromptSubmitted))],
+          ["Prior grounded packet submitted", renderBoolean(Boolean(data.priorTransportGroundedPacketSubmitted))],
+          ["Prior answer generated", renderBoolean(Boolean(data.priorTransportAnswerGenerated))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Bounded Diagnostic Metadata</h3>
+        ${renderComparisonPairs([
+          ["Transport error family", data.transportErrorFamily],
+          ["Transport error source", data.transportErrorSource],
+          ["Sanitized error summary", data.sanitizedErrorSummary],
+          ["Diagnostic bytes", data.diagnosticBytes],
+          ["Max diagnostic bytes", data.maxDiagnosticBytes],
+          ["Max sanitized summary bytes", data.maxSanitizedErrorSummaryBytes],
+          ["Blocked answer-generation methods", renderListValue(data.blockedAnswerGenerationMethods)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Call Boundary</h3>
+        ${renderComparisonPairs([
+          ["Real canister calls enabled", renderBoolean(Boolean(data.realCanisterCallsEnabled))],
+          ["Call attempted", renderBoolean(Boolean(data.callAttempted))],
+          ["Real canister call", renderBoolean(Boolean(data.realCanisterCall))],
+          ["Prompt submitted", renderBoolean(Boolean(data.promptSubmitted))],
+          ["Grounded packet submitted", renderBoolean(Boolean(data.groundedPacketSubmitted))],
+          ["Answer generated", renderBoolean(Boolean(data.answerGenerated))],
+          ["Production cutover", renderBoolean(Boolean(data.productionCutover))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Approvals</h3>
+        ${renderComparisonPairs([
+          ["Required approvals", renderListValue(data.requiredApprovals)],
+          ["Missing approvals", renderListValue(data.missingApprovals)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Boundary Evidence</h3>
+        ${renderComparisonPairs([
+          ["Public answer route changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerRouteChanged))],
+          ["Public answer provider changed", renderBoolean(Boolean(boundaryEvidence.publicAnswerProviderChanged))],
+          ["Public traffic uses native retrieval", renderBoolean(Boolean(boundaryEvidence.publicTrafficUsesNativeRetrieval))],
+          ["Native packet accepted for public traffic", renderBoolean(Boolean(boundaryEvidence.nativePacketAcceptedForPublicTraffic))],
+          ["Automatic fallback enabled", renderBoolean(Boolean(boundaryEvidence.automaticFallbackEnabled))],
+          ["Fallback to Python retrieval", renderBoolean(Boolean(boundaryEvidence.fallbackToPythonRetrieval))],
+          ["Grounded packet submitted", renderBoolean(Boolean(boundaryEvidence.groundedPacketSubmitted))],
+          ["Provider switch applied", renderBoolean(Boolean(boundaryEvidence.providerSwitchApplied))],
+          ["Memory read", renderBoolean(Boolean(boundaryEvidence.memoryRead))],
+          ["Memory write", renderBoolean(Boolean(boundaryEvidence.memoryWrite))],
+          ["Continuity changed", renderBoolean(Boolean(boundaryEvidence.continuityChanged))],
+          ["Answer generated", renderBoolean(Boolean(boundaryEvidence.answerGenerated))],
+          ["Real canister call", renderBoolean(Boolean(boundaryEvidence.realCanisterCall))]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Failure Taxonomy</h3>
+        ${renderComparisonPairs([
+          ["Failure categories", renderListValue(data.failureCategories)]
+        ])}
+      </div>
+
+      <div class="memory-card">
+        <h3>Submitted Request</h3>
+        ${renderComparisonPairs([
+          ["Request version", request.requestVersion],
+          ["Decision version", request.decisionVersion],
+          ["Diagnostic version", request.diagnosticVersion],
+          ["Diagnostic ID", request.diagnosticId],
+          ["Diagnostic scope", request.diagnosticScope],
+          ["Candidate provider", request.candidateProvider],
+          ["Target canister principal", request.targetCanisterPrincipal],
+          ["Network", request.network],
+          ["Probe mode", request.probeMode],
+          ["Method name", request.methodName],
+          ["Prior transport category", request.priorTransportCategory],
+          ["Transport error family", request.transportErrorFamily],
+          ["Transport error source", request.transportErrorSource],
+          ["Raw error captured", renderBoolean(Boolean(request.rawErrorCaptured))],
+          ["Real canister calls enabled", renderBoolean(Boolean(request.realCanisterCallsEnabled))],
+          ["Operator notes provided", renderBoolean(Boolean(request.operatorNotes))]
+        ])}
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Native LLM fresh-candidate status transport diagnostic failed:", err);
+    container.innerHTML = "<p>Native LLM fresh-candidate status transport diagnostic failed.</p>";
+  }
+};
+
 function buildNativeLlmCanisterStatusTransportRequest(mode = "disabled") {
   const principalInput = document.getElementById("nativeLlmStatusTransportPrincipal");
   const networkSelect = document.getElementById("nativeLlmStatusTransportNetwork");
