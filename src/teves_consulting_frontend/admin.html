@@ -642,7 +642,7 @@
   <header class="admin-header">
     <div>
       <h1>Teves Consulting Admin</h1>
-      <p class="section-note">A focused operator view of Aion's continuity, evidence, and provider boundaries.</p>
+      <p class="section-note">A focused operator workspace for Aion health, memory, providers, and validation.</p>
     </div>
     <button id="authButton" onclick="handleAuth()">Sign In</button>
   </header>
@@ -655,30 +655,30 @@
       <div class="admin-workspace-nav-header">
         <div>
           <p class="admin-workspace-kicker">Operator workspace</p>
-          <p class="admin-workspace-title">Start with the dashboard, then open deeper tools only when needed.</p>
+          <p class="admin-workspace-title">Start with the dashboard, then open deeper tools when needed.</p>
         </div>
         <div id="adminWorkspaceViewStatus" class="admin-workspace-status" role="status" aria-live="polite">Overview</div>
       </div>
       <div class="admin-view-tabs" role="tablist" aria-label="Admin workspace sections">
         <button type="button" class="admin-view-tab is-active" data-admin-view-target="overview" role="tab" aria-selected="true">Overview</button>
-        <button type="button" class="admin-view-tab" data-admin-view-target="records" role="tab" aria-selected="false">Records</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="records" role="tab" aria-selected="false">Memory</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="continuity" role="tab" aria-selected="false">Continuity</button>
-        <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Intelligence</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Reports</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
       </div>
       <!-- Admin view controls start -->
       <div class="admin-view-controls" aria-label="Current view controls">
-        <button type="button" class="admin-view-control" data-admin-view-details="close">Close View</button>
-        <button type="button" class="admin-view-control" data-admin-view-details="open">Open View</button>
+        <button type="button" class="admin-view-control" data-admin-view-details="close">Collapse View</button>
+        <button type="button" class="admin-view-control" data-admin-view-details="open">Expand View</button>
       </div>
       <!-- Admin view controls end -->
     </nav>
     <!-- Admin evergreen navigation end -->
 
     <section id="aionHealth" class="admin-section" data-admin-view="overview">
-      <h2>Aion Health</h2>
-      <p class="section-note">Live operator-scoped facts. Native continuity is active; the approved OpenAI answer route remains unchanged.</p>
+      <h2>Aion Dashboard</h2>
+      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
       <div class="dashboard-grid">
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
@@ -692,11 +692,11 @@
       <!-- Admin overview action cards start -->
       <div class="admin-overview-actions">
         <h3>Common Actions</h3>
-        <p class="section-note">Jump from the clean dashboard into the tools most likely to be used during review.</p>
+        <p class="section-note">Open frequent review tools from the dashboard.</p>
         <div class="admin-action-grid">
           <button type="button" class="admin-action-card" data-admin-jump-view="records" data-admin-jump-target="memoryAndFeedback">
-            <span class="admin-action-title">Review Records</span>
-            <span class="admin-action-copy">Open memories, milestones, and saved feedback.</span>
+            <span class="admin-action-title">Review Memory</span>
+            <span class="admin-action-copy">Open memories, milestones, and feedback.</span>
             <span class="admin-action-open">Open</span>
           </button>
           <button type="button" class="admin-action-card" data-admin-jump-view="continuity" data-admin-jump-target="continuityInspector">
@@ -705,8 +705,8 @@
             <span class="admin-action-open">Open</span>
           </button>
           <button type="button" class="admin-action-card" data-admin-jump-view="intelligence" data-admin-jump-target="operatorInsights">
-            <span class="admin-action-title">Build Operator Report</span>
-            <span class="admin-action-copy">Open memory health and operator insight reports.</span>
+            <span class="admin-action-title">Open Reports</span>
+            <span class="admin-action-copy">Review memory health and consolidated operator reports.</span>
             <span class="admin-action-open">Open</span>
           </button>
           <button type="button" class="admin-action-card" data-admin-jump-view="providers" data-admin-jump-target="providers">
@@ -725,8 +725,8 @@
     </section>
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
-      <h2>Memory And Feedback</h2>
-      <p class="section-note">Review saved continuity memories and feedback.</p>
+      <h2>Memory & Feedback</h2>
+      <p class="section-note">Review saved continuity memories, milestones, and feedback.</p>
 
     <details open>
       <summary><strong>Memory Overview</strong></summary>
@@ -763,11 +763,11 @@
     </section>
 
     <section id="continuityInspector" class="admin-section" data-admin-view="continuity">
-      <h2>Continuity Inspector</h2>
-      <p class="section-note">Inspect the caller-scoped native continuity used by signed-in Aion requests. Legacy retrieval tools remain reference diagnostics.</p>
+      <h2>Continuity Tools</h2>
+      <p class="section-note">Inspect native continuity, retrieval, packet validation, and bounded evidence tools.</p>
 
     <details class="primary-operator-tool" open>
-      <summary><strong>Current Native Continuity Preview</strong></summary>
+      <summary><strong>Current Continuity Preview</strong></summary>
 
       <p>See the intent, ranked memories, relationship expansion, and bounded context packet used before the existing OpenAI answer request.</p>
 
@@ -783,7 +783,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Grounded Public Retrieval Preview</strong></summary>
+      <summary><strong>Grounded Public Retrieval Preview</strong></summary>
 
       <p>Inspect the bounded public retrieval packet without generating an answer or returning chunk text.</p>
 
@@ -799,7 +799,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval State</strong></summary>
+      <summary><strong>Retrieval State</strong></summary>
 
       <p>Inspect the current native retrieval scope, corpus identity, evidence anchors, and route safety without adding cutover controls.</p>
 
@@ -809,7 +809,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Feature-Flag State</strong></summary>
+      <summary><strong>Retrieval Feature-Flag State</strong></summary>
 
       <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
 
@@ -819,7 +819,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Feature-Flag Transition Contract</strong></summary>
+      <summary><strong>Retrieval Feature-Flag Transition Contract</strong></summary>
 
       <p>Inspect the selected internal-test transition and rollback contract without adding a setter, accepting native packets, or changing public routing.</p>
 
@@ -829,7 +829,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Operator Transition Preview</strong></summary>
+      <summary><strong>Retrieval Operator Transition Preview</strong></summary>
 
       <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
 
@@ -840,7 +840,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Internal-Test Mode Storage</strong></summary>
+      <summary><strong>Retrieval Internal-Test Mode Storage</strong></summary>
 
       <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
 
@@ -851,7 +851,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Limited Public Window</strong></summary>
+      <summary><strong>Retrieval Limited Public Window</strong></summary>
 
       <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
 
@@ -864,7 +864,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Limited-Window Answer</strong></summary>
+      <summary><strong>Retrieval Limited-Window Answer</strong></summary>
 
       <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
 
@@ -882,7 +882,7 @@
     </details>
 
     <details class="primary-operator-tool">
-      <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
+      <summary><strong>Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
 
@@ -892,7 +892,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Internal-Test Answer</strong></summary>
+      <summary><strong>Retrieval Internal-Test Answer</strong></summary>
 
       <p>Send the controlled sample packet to the Admin internal-test answer endpoint after packet validation, without changing public routing or accepting native packets for public traffic.</p>
 
@@ -902,7 +902,7 @@
     </details>
 
     <details class="primary-operator-tool">
-      <summary><strong>Native Retrieval Handoff Internal-Test Answer</strong></summary>
+      <summary><strong>Handoff Internal-Test Answer</strong></summary>
 
       <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
 
@@ -1994,7 +1994,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
+      <summary><strong>Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
 
@@ -2018,7 +2018,7 @@
     </details>
 
     <details class="advanced-operator-tool">
-      <summary><strong>Native Retrieval Approved-Case Comparison</strong></summary>
+      <summary><strong>Approved-Case Comparison</strong></summary>
 
       <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
 
@@ -2091,8 +2091,8 @@
     </section>
 
     <section id="memoryHealth" class="admin-section operator-workspace" data-admin-view="intelligence">
-      <h2>Memory Health</h2>
-      <p class="section-note">Start with the operator dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
+      <h2>Memory Reports</h2>
+      <p class="section-note">Start with the memory dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
 
     <details class="advanced-operator-tool">
       <summary><strong>Memory Health Preview</strong></summary>
@@ -2151,8 +2151,8 @@
     </section>
 
     <section id="operatorInsights" class="admin-section operator-workspace" data-admin-view="intelligence">
-      <h2>Operator Insights</h2>
-      <p class="section-note">Start with the consolidated operator report. Its component analyses remain available for deeper review and may move to the future Operator workspace.</p>
+      <h2>Operator Reports</h2>
+      <p class="section-note">Start with the consolidated operator report. Supporting analyses remain available for deeper review.</p>
 
     <details class="advanced-operator-tool">
       <summary><strong>Knowledge Synthesis</strong></summary>
@@ -2203,10 +2203,10 @@
 
     <section id="providers" class="admin-section" data-admin-view="providers">
       <h2>Providers</h2>
-      <p class="section-note">Review the active baseline and evaluate Admin-only candidates without changing public answers.</p>
+      <p class="section-note">Review provider status, candidate policy, and Admin-only test tools without changing public answers.</p>
 
     <details open>
-      <summary><strong>Provider Status And Registry</strong></summary>
+      <summary><strong>Provider Status & Registry</strong></summary>
 
       <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
 
@@ -2341,8 +2341,8 @@
 
 
     <section id="systemValidation" class="admin-section" data-admin-view="validation">
-      <h2>System Validation</h2>
-      <p class="section-note">Run answer-quality, security, transport, and deployment checks after a reviewed change.</p>
+      <h2>Validation</h2>
+      <p class="section-note">Run answer-quality, access, transport, and deployment checks after a reviewed change.</p>
 
     <details>
       <summary><strong>Golden Tests</strong></summary>
@@ -2380,9 +2380,9 @@
     (() => {
       const labels = {
         overview: "Overview",
-        records: "Records",
+        records: "Memory",
         continuity: "Continuity",
-        intelligence: "Intelligence",
+        intelligence: "Reports",
         providers: "Providers",
         validation: "Validation"
       };
