@@ -979,6 +979,48 @@
       color: #cbd5e1;
     }
 
+    .admin-cycle-freshness-label {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .metric-value .admin-cycle-freshness-label {
+      display: flex;
+    }
+
+    .admin-cycle-freshness-label.fresh {
+      border: 1px solid rgba(22, 101, 52, 0.65);
+      background: rgba(22, 101, 52, 0.2);
+      color: #bbf7d0;
+    }
+
+    .admin-cycle-freshness-label.aging {
+      border: 1px solid rgba(161, 98, 7, 0.7);
+      background: rgba(161, 98, 7, 0.2);
+      color: #fde68a;
+    }
+
+    .admin-cycle-freshness-label.stale {
+      border: 1px solid rgba(185, 28, 28, 0.72);
+      background: rgba(185, 28, 28, 0.22);
+      color: #fecaca;
+    }
+
+    .admin-cycle-freshness-label.pending {
+      border: 1px solid #334155;
+      background: #111827;
+      color: #cbd5e1;
+    }
+
     .admin-cycle-snapshots {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1158,6 +1200,7 @@
         <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
         <div class="metric-card"><div class="metric-label">Backend cycles</div><div id="healthBackendCycles" class="metric-value">Add snapshot</div></div>
         <div class="metric-card"><div class="metric-label">Project runway</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Snapshot age</div><div id="healthCycleSnapshotAge" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
         <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
         <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
@@ -1198,10 +1241,12 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <div id="frontendCycleSnapshotSummary" class="admin-cycle-snapshot">
             <span><strong>Frontend:</strong> Add a snapshot</span>
             <span><strong>Runway:</strong> Pending</span>
+            <span><strong>Snapshot:</strong> Pending</span>
           </div>
           <div id="backendCycleSnapshotSummary" class="admin-cycle-snapshot">
             <span><strong>Backend:</strong> Add a snapshot</span>
             <span><strong>Runway:</strong> Pending</span>
+            <span><strong>Snapshot:</strong> Pending</span>
           </div>
         </div>
       </details>

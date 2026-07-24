@@ -1209,6 +1209,30 @@ function cycleRunwayStatus(days) {
   return { label: "Healthy", className: "healthy" };
 }
 
+function cycleSnapshotAgeHours(snapshot) {
+  if (!snapshot || !snapshot.capturedAt) return null;
+  const capturedTime = new Date(snapshot.capturedAt).getTime();
+  if (!Number.isFinite(capturedTime)) return null;
+  const hours = (Date.now() - capturedTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function cycleFreshnessStatus(hours) {
+  if (!Number.isFinite(hours)) return { label: "Pending", className: "pending" };
+  if (hours <= 24) return { label: "Fresh", className: "fresh" };
+  if (hours <= 168) return { label: "Aging", className: "aging" };
+  return { label: "Stale", className: "stale" };
+}
+
+function formatSnapshotAge(snapshot) {
+  const hours = cycleSnapshotAgeHours(snapshot);
+  if (!Number.isFinite(hours)) return "Pending";
+  if (hours < 1) return "Less than 1 hour";
+  if (hours < 24) return `${Math.floor(hours)} hours`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
 function loadCycleSnapshot() {
   try {
     const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
@@ -1230,6 +1254,7 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
     return `
       <span><strong>${escapeHtml(label)}:</strong> Add a snapshot</span>
       <span><strong>Runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
+      <span><strong>Snapshot:</strong> Pending <span class="admin-cycle-freshness-label pending">Pending</span></span>
     `;
   }
 
@@ -1237,6 +1262,8 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
   const runwayDays = cycleRunwayDays(snapshot);
   const runwayStatus = cycleRunwayStatus(runwayDays);
+  const snapshotAge = cycleSnapshotAgeHours(snapshot);
+  const freshnessStatus = cycleFreshnessStatus(snapshotAge);
   const capturedLabel = snapshot.capturedAt
     ? new Date(snapshot.capturedAt).toLocaleString()
     : "Unknown";
@@ -1247,6 +1274,7 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
     <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
     <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
     <span><strong>Runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
+    <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
     <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
   `;
 }
@@ -1267,6 +1295,16 @@ function shortestCycleRunway(snapshots) {
     .sort((a, b) => a.days - b.days)[0] || null;
 }
 
+function oldestCycleSnapshot(snapshots) {
+  return ["frontend", "backend"]
+    .map((key) => {
+      const hours = cycleSnapshotAgeHours(snapshots[key]);
+      return hours === null ? null : { key, hours };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.hours - a.hours)[0] || null;
+}
+
 function setCycleInputValue(kind, snapshot) {
   const inputElement = document.getElementById(`${kind}CycleStatusInput`);
   if (!inputElement || inputElement.value.trim() || !snapshot) return;
@@ -1279,6 +1317,7 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   const frontendSummary = document.getElementById("frontendCycleSnapshotSummary");
   const backendSummary = document.getElementById("backendCycleSnapshotSummary");
   const shortest = shortestCycleRunway(snapshots);
+  const oldest = oldestCycleSnapshot(snapshots);
 
   if (!frontend) {
     setAdminHealthMetric("healthFrontendCycles", "Add snapshot");
@@ -1310,6 +1349,27 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
     const runwayElement = document.getElementById("healthCycleRunway");
     if (runwayElement) {
       runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
+    }
+  }
+
+  const snapshotAgeElement = document.getElementById("healthCycleSnapshotAge");
+  if (!oldest) {
+    if (snapshotAgeElement) {
+      snapshotAgeElement.innerHTML = `Pending<span class="admin-cycle-freshness-label pending">Pending</span>`;
+    }
+  } else {
+    const label = ADMIN_CYCLE_LABELS[oldest.key] || oldest.key;
+    const freshnessStatus = cycleFreshnessStatus(oldest.hours);
+    const days = Math.floor(oldest.hours / 24);
+    const ageLabel = oldest.hours < 1
+      ? "Less than 1 hour"
+      : oldest.hours < 24
+        ? `${Math.floor(oldest.hours)} hours`
+        : days === 1
+          ? "1 day"
+          : `${days} days`;
+    if (snapshotAgeElement) {
+      snapshotAgeElement.innerHTML = `${escapeHtml(ageLabel)} · ${escapeHtml(label)}<span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span>`;
     }
   }
 
