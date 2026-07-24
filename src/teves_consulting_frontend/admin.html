@@ -563,6 +563,67 @@
     }
     /* Admin overview actions end */
 
+    /* Admin diagnostic declutter start */
+    .admin-view-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .admin-view-control {
+      min-height: 36px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #111827;
+      color: #cbd5e1;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .admin-view-control:hover,
+    .admin-view-control:focus {
+      border-color: #60a5fa;
+      color: #f8fafc;
+    }
+
+    #continuityInspector details {
+      transition: border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+    }
+
+    #continuityInspector details:not([open]) {
+      background: #11161d;
+    }
+
+    #continuityInspector .primary-operator-tool {
+      border-color: #4b6f9f;
+      background: #151d28;
+    }
+
+    #continuityInspector .advanced-operator-tool {
+      border-color: #2f3d4e;
+    }
+
+    #continuityInspector .archived-phase-tool {
+      border-color: #263241;
+      opacity: 0.88;
+    }
+
+    #continuityInspector .archived-phase-tool[open] {
+      opacity: 1;
+    }
+
+    @media (max-width: 820px) {
+      .admin-view-controls {
+        justify-content: stretch;
+      }
+
+      .admin-view-control {
+        flex: 1 1 140px;
+      }
+    }
+    /* Admin diagnostic declutter end */
+
     @media (max-width: 640px) {
       .admin-shell {
         padding: 24px 16px 48px;
@@ -606,6 +667,12 @@
         <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
       </div>
+      <!-- Admin view controls start -->
+      <div class="admin-view-controls" aria-label="Current view controls">
+        <button type="button" class="admin-view-control" data-admin-view-details="close">Close View</button>
+        <button type="button" class="admin-view-control" data-admin-view-details="open">Open View</button>
+      </div>
+      <!-- Admin view controls end -->
     </nav>
     <!-- Admin evergreen navigation end -->
 
@@ -699,7 +766,7 @@
       <h2>Continuity Inspector</h2>
       <p class="section-note">Inspect the caller-scoped native continuity used by signed-in Aion requests. Legacy retrieval tools remain reference diagnostics.</p>
 
-    <details open>
+    <details class="primary-operator-tool" open>
       <summary><strong>Current Native Continuity Preview</strong></summary>
 
       <p>See the intent, ranked memories, relationship expansion, and bounded context packet used before the existing OpenAI answer request.</p>
@@ -715,7 +782,7 @@
       <div id="continuityInspectorResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Grounded Public Retrieval Preview</strong></summary>
 
       <p>Inspect the bounded public retrieval packet without generating an answer or returning chunk text.</p>
@@ -731,7 +798,7 @@
       <div id="publicRetrievalPreviewResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval State</strong></summary>
 
       <p>Inspect the current native retrieval scope, corpus identity, evidence anchors, and route safety without adding cutover controls.</p>
@@ -741,7 +808,7 @@
       <div id="nativeRetrievalStateResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Feature-Flag State</strong></summary>
 
       <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
@@ -751,7 +818,7 @@
       <div id="nativeRetrievalFeatureFlagStateResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Feature-Flag Transition Contract</strong></summary>
 
       <p>Inspect the selected internal-test transition and rollback contract without adding a setter, accepting native packets, or changing public routing.</p>
@@ -761,7 +828,7 @@
       <div id="nativeRetrievalFeatureFlagTransitionContractResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Operator Transition Preview</strong></summary>
 
       <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
@@ -772,7 +839,7 @@
       <div id="nativeRetrievalOperatorTransitionPreviewResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Internal-Test Mode Storage</strong></summary>
 
       <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
@@ -783,7 +850,7 @@
       <div id="nativeRetrievalInternalTestModeStorageResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Limited Public Window</strong></summary>
 
       <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
@@ -796,7 +863,7 @@
       <div id="nativeRetrievalLimitedWindowResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Limited-Window Answer</strong></summary>
 
       <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
@@ -814,7 +881,7 @@
       <div id="nativeRetrievalLimitedWindowAnswerResults"></div>
     </details>
 
-    <details open>
+    <details class="primary-operator-tool">
       <summary><strong>Native Retrieval Packet Validation Preview</strong></summary>
 
       <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
@@ -824,7 +891,7 @@
       <div id="nativeRetrievalPacketValidationResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Internal-Test Answer</strong></summary>
 
       <p>Send the controlled sample packet to the Admin internal-test answer endpoint after packet validation, without changing public routing or accepting native packets for public traffic.</p>
@@ -834,7 +901,7 @@
       <div id="nativeRetrievalInternalTestAnswerResults"></div>
     </details>
 
-    <details open>
+    <details class="primary-operator-tool">
       <summary><strong>Native Retrieval Handoff Internal-Test Answer</strong></summary>
 
       <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
@@ -853,7 +920,7 @@
       <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native LLM Canister Evaluation Stub</strong></summary>
 
       <p>Run the Phase 8.2 Admin-only mock evaluation contract against the same native grounded packet, without calling a real canister, switching providers, or changing public routing.</p>
@@ -886,7 +953,7 @@
       <div id="nativeLlmCanisterEvaluationResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native LLM Canister Capability Probe</strong></summary>
 
       <p>Inspect the Phase 8.2 Admin-only canister capability probe contract without sending a grounded packet, generating an answer, or making a real canister call.</p>
@@ -923,7 +990,7 @@
       <div id="nativeLlmCanisterCapabilityProbeResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Bounded No-Op Call Gate</strong></summary>
 
       <p>Validate the explicit target, method, timeout, response budget, and operator approvals required before any bounded no-op canister call implementation.</p>
@@ -977,7 +1044,7 @@
       <div id="nativeLlmCanisterBoundedNoopGateResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Bounded No-Op Transport Preview</strong></summary>
 
       <p>Preview the Admin-only resolved bounded no-op canister transport path with approved target, noop_status method, timeout, response budget, and fail-closed safety boundaries.</p>
@@ -1035,7 +1102,7 @@
       <div id="nativeLlmCanisterBoundedNoopTransportResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Resolved Transport Diagnostics</strong></summary>
 
       <p>Preview the Admin-only diagnostics contract for the resolved no-op transport unexpected error, without making another canister call, sending a grounded packet, or changing public routing.</p>
@@ -1081,7 +1148,7 @@
       <div id="nativeLlmCanisterResolvedTransportDiagnosticsResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Next No-Op Target Interface Contract</strong></summary>
 
       <p>The w36hm provider-boundary search is closed as inconclusive-safe. These controls remain for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
@@ -1123,7 +1190,7 @@
       <div id="nativeLlmCanisterNextNoopTargetInterfaceResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Next No-Op Metadata Transport</strong></summary>
 
       <p>Closed: the approved metadata transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live metadata transport is disabled until a new native decision exists.</p>
@@ -1183,7 +1250,7 @@
       <div id="nativeLlmCanisterNextNoopMetadataTransportResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Alternate No-Op Health Interface Contract</strong></summary>
 
       <p>The w36hm provider-boundary search is closed as inconclusive-safe. This interface contract remains for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
@@ -1243,7 +1310,7 @@
       <div id="nativeLlmCanisterAlternateNoopHealthInterfaceResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Alternate No-Op Health Transport</strong></summary>
 
       <p>Closed: the approved health transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live health transport is disabled until a new native decision exists.</p>
@@ -1303,7 +1370,7 @@
       <div id="nativeLlmCanisterAlternateNoopHealthTransportResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Exposed Interface Diagnostic</strong></summary>
 
       <p>Recorded bounded Admin-only interface evidence after repeated interface mismatches. The w36hm boundary search is now closed; this section remains for audit/preview evidence only.</p>
@@ -1356,7 +1423,7 @@
       <div id="nativeLlmCanisterExposedInterfaceDiagnosticResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Method-Source Evidence</strong></summary>
 
       <p>Recorded the bounded non-calling status source note used before the final status transport. The w36hm boundary search is now closed; new method-source evidence needs a separate native decision.</p>
@@ -1436,7 +1503,7 @@
       <div id="nativeLlmCanisterMethodSourceEvidenceResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Fresh Candidate Intake</strong></summary>
 
       <p>Preview-only intake for a future candidate package. It does not select a target, approve transport, call a canister, or reopen the closed w36hm path.</p>
@@ -1550,7 +1617,7 @@
       <div id="nativeLlmCanisterFreshCandidateIntakeResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Fresh Candidate Status</strong></summary>
 
       <p>Preview-only status-candidate review for z7unv. It does not approve transport, expose a live call, submit prompts, or reopen the closed w36hm path.</p>
@@ -1656,7 +1723,7 @@
       <div id="nativeLlmCanisterFreshCandidateStatusResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Fresh Candidate Status Transport</strong></summary>
 
       <p>Admin-only bounded status transport for the fresh z7unv candidate. It keeps the closed w36hm path blocked and does not submit prompts, grounded packets, answers, fallback, provider switches, memory access, continuity changes, or public routing changes.</p>
@@ -1716,7 +1783,7 @@
       <div id="nativeLlmCanisterFreshCandidateStatusTransportResults"></div>
     </details>
 
-    <details id="nativeLlmFreshCandidateStatusTransportDiagnosticPanel" open>
+    <details class="archived-phase-tool" id="nativeLlmFreshCandidateStatusTransportDiagnosticPanel">
       <summary><strong>Native LLM Fresh Candidate Status Transport Diagnostic</strong></summary>
 
       <p>Non-calling diagnostic for the fresh z7unv status transport unexpected error. It records only bounded sanitized metadata and does not run another status call, method probe, prompt, grounded packet, answer, fallback, provider switch, memory access, continuity change, public routing change, or production cutover.</p>
@@ -1780,7 +1847,7 @@
       <div id="nativeLlmCanisterFreshCandidateStatusTransportDiagnosticResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Status Transport</strong></summary>
 
       <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>
@@ -1840,7 +1907,7 @@
       <div id="nativeLlmCanisterStatusTransportResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
 
       <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
@@ -1878,7 +1945,7 @@
       <div id="nativeLlmCanisterCompatibleNoopInterfaceResults"></div>
     </details>
 
-    <details open>
+    <details class="archived-phase-tool">
       <summary><strong>Native LLM Provider Boundary Resolution Contract</strong></summary>
 
       <p>Preview the Admin-only provider-boundary resolution decision after compatible no-op transport evidence, without making a canister call, sending a grounded packet, or changing public routing.</p>
@@ -1926,7 +1993,7 @@
       <div id="nativeLlmCanisterProviderBoundaryResolutionResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Approved-Case Internal-Test Answer</strong></summary>
 
       <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
@@ -1950,7 +2017,7 @@
       <div id="nativeRetrievalApprovedCaseInternalTestAnswerResults"></div>
     </details>
 
-    <details open>
+    <details class="advanced-operator-tool">
       <summary><strong>Native Retrieval Approved-Case Comparison</strong></summary>
 
       <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
@@ -2402,6 +2469,32 @@
     })();
   </script>
   <!-- Admin overview action wiring end -->
+
+  <!-- Admin diagnostic declutter start -->
+  <script>
+    (() => {
+      function currentAdminView() {
+        const active = document.querySelector("[data-admin-view-target].is-active");
+        return active ? active.dataset.adminViewTarget : "overview";
+      }
+
+      function setCurrentViewDetails(open) {
+        const view = currentAdminView();
+        document.querySelectorAll(`[data-admin-view="${view}"] details`).forEach((details) => {
+          details.open = open;
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-admin-view-details]").forEach((button) => {
+          button.addEventListener("click", () => {
+            setCurrentViewDetails(button.dataset.adminViewDetails === "open");
+          });
+        });
+      });
+    })();
+  </script>
+  <!-- Admin diagnostic declutter end -->
 
   <script type="module" src="./admin.js"></script>
 </body>
