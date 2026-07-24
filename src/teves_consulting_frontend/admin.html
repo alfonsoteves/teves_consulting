@@ -390,6 +390,104 @@
       border-color: #365f8d;
     }
 
+    /* Admin evergreen shell cleanup start */
+    .admin-workspace-nav {
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+      display: grid;
+      gap: 14px;
+      margin: 0 0 18px;
+      padding: 16px;
+      border: 1px solid #263241;
+      border-radius: 10px;
+      background: rgba(17, 19, 21, 0.94);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+    }
+
+    .admin-workspace-nav-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .admin-workspace-kicker {
+      margin: 0;
+      color: #93c5fd;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .admin-workspace-title {
+      margin: 3px 0 0;
+      color: #f8fafc;
+      font-size: 1.02rem;
+      font-weight: 700;
+    }
+
+    .admin-workspace-status {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    .admin-view-tabs {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .admin-view-tab {
+      min-height: 44px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #151a20;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .admin-view-tab:hover,
+    .admin-view-tab:focus {
+      border-color: #60a5fa;
+      color: #f8fafc;
+    }
+
+    .admin-view-tab.is-active {
+      border-color: #60a5fa;
+      background: #1e3a5f;
+      color: #f8fafc;
+      box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.28);
+    }
+
+    [data-admin-view][hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 820px) {
+      .admin-workspace-nav {
+        position: static;
+      }
+
+      .admin-workspace-nav-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .admin-workspace-status {
+        text-align: left;
+      }
+
+      .admin-view-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    /* Admin evergreen shell cleanup end */
+
     @media (max-width: 640px) {
       .admin-shell {
         padding: 24px 16px 48px;
@@ -416,7 +514,27 @@
   <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
   <div id="adminContent" style="display:none;">
 
-    <section id="aionHealth" class="admin-section">
+    <!-- Admin evergreen navigation start -->
+    <nav class="admin-workspace-nav" aria-label="Admin workspace views">
+      <div class="admin-workspace-nav-header">
+        <div>
+          <p class="admin-workspace-kicker">Operator workspace</p>
+          <p class="admin-workspace-title">Start with the dashboard, then open deeper tools only when needed.</p>
+        </div>
+        <div id="adminWorkspaceViewStatus" class="admin-workspace-status" role="status" aria-live="polite">Overview</div>
+      </div>
+      <div class="admin-view-tabs" role="tablist" aria-label="Admin workspace sections">
+        <button type="button" class="admin-view-tab is-active" data-admin-view-target="overview" role="tab" aria-selected="true">Overview</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="records" role="tab" aria-selected="false">Records</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="continuity" role="tab" aria-selected="false">Continuity</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Intelligence</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
+      </div>
+    </nav>
+    <!-- Admin evergreen navigation end -->
+
+    <section id="aionHealth" class="admin-section" data-admin-view="overview">
       <h2>Aion Health</h2>
       <p class="section-note">Live operator-scoped facts. Native continuity is active; the approved OpenAI answer route remains unchanged.</p>
       <div class="dashboard-grid">
@@ -431,7 +549,7 @@
       </div>
     </section>
 
-    <section id="memoryAndFeedback" class="admin-section">
+    <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
       <h2>Memory And Feedback</h2>
       <p class="section-note">Review saved continuity memories and feedback.</p>
 
@@ -469,7 +587,7 @@
     </details>
     </section>
 
-    <section id="continuityInspector" class="admin-section">
+    <section id="continuityInspector" class="admin-section" data-admin-view="continuity">
       <h2>Continuity Inspector</h2>
       <p class="section-note">Inspect the caller-scoped native continuity used by signed-in Aion requests. Legacy retrieval tools remain reference diagnostics.</p>
 
@@ -1797,7 +1915,7 @@
     </details>
     </section>
 
-    <section id="memoryHealth" class="admin-section operator-workspace">
+    <section id="memoryHealth" class="admin-section operator-workspace" data-admin-view="intelligence">
       <h2>Memory Health</h2>
       <p class="section-note">Start with the operator dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
 
@@ -1857,7 +1975,7 @@
     </details>
     </section>
 
-    <section id="operatorInsights" class="admin-section operator-workspace">
+    <section id="operatorInsights" class="admin-section operator-workspace" data-admin-view="intelligence">
       <h2>Operator Insights</h2>
       <p class="section-note">Start with the consolidated operator report. Its component analyses remain available for deeper review and may move to the future Operator workspace.</p>
 
@@ -1908,7 +2026,7 @@
     </details>
     </section>
 
-    <section id="providers" class="admin-section">
+    <section id="providers" class="admin-section" data-admin-view="providers">
       <h2>Providers</h2>
       <p class="section-note">Review the active baseline and evaluate Admin-only candidates without changing public answers.</p>
 
@@ -2047,7 +2165,7 @@
     </section>
 
 
-    <section id="systemValidation" class="admin-section">
+    <section id="systemValidation" class="admin-section" data-admin-view="validation">
       <h2>System Validation</h2>
       <p class="section-note">Run answer-quality, security, transport, and deployment checks after a reviewed change.</p>
 
@@ -2081,6 +2199,74 @@
     </details>
     </section>
   </div>
+
+  <!-- Admin evergreen shell cleanup start -->
+  <script>
+    (() => {
+      const labels = {
+        overview: "Overview",
+        records: "Records",
+        continuity: "Continuity",
+        intelligence: "Intelligence",
+        providers: "Providers",
+        validation: "Validation"
+      };
+
+      const hashToView = {
+        aionHealth: "overview",
+        memoryAndFeedback: "records",
+        continuityInspector: "continuity",
+        memoryHealth: "intelligence",
+        operatorInsights: "intelligence",
+        providers: "providers",
+        systemValidation: "validation"
+      };
+
+      function setAdminView(view, options = {}) {
+        const selectedView = labels[view] ? view : "overview";
+        document.querySelectorAll("[data-admin-view]").forEach((section) => {
+          section.hidden = section.dataset.adminView !== selectedView;
+        });
+
+        document.querySelectorAll("[data-admin-view-target]").forEach((button) => {
+          const active = button.dataset.adminViewTarget === selectedView;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-selected", active ? "true" : "false");
+        });
+
+        const status = document.getElementById("adminWorkspaceViewStatus");
+        if (status) {
+          status.textContent = labels[selectedView];
+        }
+
+        try {
+          window.localStorage.setItem("tevesAdminView", selectedView);
+        } catch (_) {}
+
+        if (!options.skipScroll) {
+          const nav = document.querySelector(".admin-workspace-nav");
+          if (nav) {
+            nav.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-admin-view-target]").forEach((button) => {
+          button.addEventListener("click", () => setAdminView(button.dataset.adminViewTarget));
+        });
+
+        const hash = window.location.hash.replace("#", "");
+        let savedView = "";
+        try {
+          savedView = window.localStorage.getItem("tevesAdminView") || "";
+        } catch (_) {}
+
+        setAdminView(hashToView[hash] || savedView || "overview", { skipScroll: true });
+      });
+    })();
+  </script>
+  <!-- Admin evergreen shell cleanup end -->
 
   <script type="module" src="./admin.js"></script>
 </body>
