@@ -562,6 +562,10 @@
       }
     }
 
+    body.admin-shell {
+      --admin-aion-rail-offset: max(20px, calc((100vw - 1100px) / 2 + 20px));
+    }
+
     body.admin-signed-out.admin-shell {
       min-height: 100vh;
       max-width: none;
@@ -581,7 +585,7 @@
     body.admin-signed-out .admin-login-brand {
       position: fixed;
       top: 25px;
-      left: 20px;
+      left: var(--admin-aion-rail-offset);
       z-index: 40;
       display: inline-flex;
       align-items: center;
@@ -609,7 +613,7 @@
     body.admin-signed-in .admin-workspace-brand {
       position: fixed !important;
       top: 25px;
-      left: 20px;
+      left: var(--admin-aion-rail-offset);
       z-index: 40;
       display: inline-flex;
       align-items: center;
@@ -638,7 +642,7 @@
 
     body.admin-signed-out .admin-login-company {
       position: fixed;
-      left: 20px;
+      left: var(--admin-aion-rail-offset);
       bottom: 25px;
       z-index: 40;
       display: block;
@@ -649,7 +653,7 @@
 
     body.admin-signed-out .admin-login-about {
       position: fixed;
-      right: 20px;
+      right: var(--admin-aion-rail-offset);
       bottom: 25px;
       z-index: 40;
       display: inline-flex;
@@ -668,7 +672,7 @@
     body.admin-signed-out .admin-header {
       position: fixed;
       top: 25px;
-      right: 20px;
+      right: var(--admin-aion-rail-offset);
       z-index: 40;
       display: flex;
       align-items: center;
@@ -702,17 +706,17 @@
       min-height: 36px;
       margin: 0;
       padding: 8px 14px;
-      border: none;
+      border: none !important;
       border-radius: 8px;
-      background: #111827;
-      color: #ffffff;
+      background: #111827 !important;
+      color: #ffffff !important;
       font-size: 0.87rem;
       font-weight: 500;
     }
 
     body.admin-signed-out #authButton:is(:hover, :focus-visible) {
-      background: #1f2937;
-      color: #ffffff;
+      background: #111827 !important;
+      color: #ffffff !important;
       text-decoration: none;
     }
 
@@ -760,13 +764,14 @@
     body.admin-signed-in #authButton {
       position: fixed !important;
       top: 25px;
-      right: 20px;
+      right: var(--admin-aion-rail-offset);
       z-index: 40;
       margin: 0;
     }
 
     @media (max-width: 640px) {
       body.admin-signed-out.admin-shell {
+        --admin-aion-rail-offset: 20px;
         padding: 24px;
       }
 
