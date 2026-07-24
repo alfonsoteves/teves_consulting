@@ -1202,6 +1202,13 @@ function cyclePercent(snapshot) {
   return (snapshot.cycles / snapshot.reservedLimit) * 100;
 }
 
+function cycleRunwayStatus(days) {
+  if (!Number.isFinite(days)) return { label: "Pending", className: "pending" };
+  if (days < 30) return { label: "Top up soon", className: "top-up" };
+  if (days < 90) return { label: "Watch", className: "watch" };
+  return { label: "Healthy", className: "healthy" };
+}
+
 function loadCycleSnapshot() {
   try {
     const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
@@ -1222,12 +1229,14 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   if (!snapshot) {
     return `
       <span><strong>${escapeHtml(label)}:</strong> Add a snapshot</span>
-      <span><strong>Runway:</strong> Pending</span>
+      <span><strong>Runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
     `;
   }
 
   const percent = cyclePercent(snapshot);
   const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
+  const runwayDays = cycleRunwayDays(snapshot);
+  const runwayStatus = cycleRunwayStatus(runwayDays);
   const capturedLabel = snapshot.capturedAt
     ? new Date(snapshot.capturedAt).toLocaleString()
     : "Unknown";
@@ -1237,7 +1246,7 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
     <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
     <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
     <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
-    <span><strong>Runway:</strong> ${formatCycleRunway(snapshot)}</span>
+    <span><strong>Runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
     <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
   `;
 }
@@ -1288,13 +1297,20 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   }
 
   if (!shortest) {
-    setAdminHealthMetric("healthCycleRunway", "Pending");
+    const runwayElement = document.getElementById("healthCycleRunway");
+    if (runwayElement) {
+      runwayElement.innerHTML = `Pending<span class="admin-cycle-runway-label pending">Pending</span>`;
+    }
   } else {
     const label = ADMIN_CYCLE_LABELS[shortest.key] || shortest.key;
     const runway = shortest.days >= 365
       ? `${(shortest.days / 365).toFixed(1)} years`
       : `${Math.floor(shortest.days)} days`;
-    setAdminHealthMetric("healthCycleRunway", `${runway} · ${label}`);
+    const runwayStatus = cycleRunwayStatus(shortest.days);
+    const runwayElement = document.getElementById("healthCycleRunway");
+    if (runwayElement) {
+      runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
+    }
   }
 
   if (frontendSummary) {
