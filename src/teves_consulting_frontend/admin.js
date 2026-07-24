@@ -533,7 +533,11 @@ function updateAdminVisibility() {
 
   if (!adminContent || !access) return;
 
-  adminContent.style.display = isAuthenticated && isOperator ? "block" : "none";
+  const adminReady = isAuthenticated && isOperator;
+  document.body.classList.toggle("admin-signed-in", adminReady);
+  document.body.classList.toggle("admin-signed-out", !adminReady);
+
+  adminContent.style.display = adminReady ? "block" : "none";
   access.style.display = "block";
   access.className = "operator-access";
 
