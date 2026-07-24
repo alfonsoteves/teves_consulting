@@ -701,10 +701,7 @@
       line-height: 1.5;
     }
 
-    body.admin-signed-out #authButton {
-      position: static;
-      min-height: 36px;
-      margin: 0;
+    body.admin-shell #authButton {
       padding: 8px 14px;
       border: none !important;
       border-radius: 8px;
@@ -714,10 +711,16 @@
       font-weight: 500;
     }
 
-    body.admin-signed-out #authButton:is(:hover, :focus-visible) {
+    body.admin-shell #authButton:is(:hover, :focus-visible) {
       background: #111827 !important;
       color: #ffffff !important;
       text-decoration: none;
+    }
+
+    body.admin-signed-out #authButton {
+      position: static;
+      min-height: 36px;
+      margin: 0;
     }
 
     body.admin-signed-out .operator-access {
@@ -768,6 +771,107 @@
       z-index: 40;
       margin: 0;
     }
+
+    body.admin-signed-in .admin-workspace-nav {
+      margin-bottom: 38px;
+    }
+
+    body.admin-signed-in .admin-workspace-nav + .admin-section {
+      padding-top: 38px;
+    }
+
+    /* Admin dashboard polish start */
+    body.admin-signed-in #aionHealth {
+      padding-top: 24px;
+    }
+
+    .admin-dashboard-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin: 18px 0 18px;
+      padding: 18px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #151a20;
+    }
+
+    .admin-dashboard-kicker {
+      margin: 0 0 4px;
+      color: #93c5fd;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .admin-dashboard-headline {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 1.06rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .admin-dashboard-pill {
+      min-width: 142px;
+      padding: 8px 12px;
+      border: 1px solid #166534;
+      border-radius: 999px;
+      background: rgba(22, 101, 52, 0.16);
+      color: #bbf7d0;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    body.admin-signed-in #aionHealth .dashboard-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    body.admin-signed-in #aionHealth .metric-card {
+      min-height: 88px;
+      border-color: #263241;
+      background: #151a20;
+    }
+
+    body.admin-signed-in #aionHealth .metric-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    body.admin-signed-in #aionHealth .metric-value {
+      margin-top: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    @media (max-width: 900px) {
+      body.admin-signed-in #aionHealth .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .admin-dashboard-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-dashboard-pill {
+        width: fit-content;
+      }
+
+      body.admin-signed-in #aionHealth .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* Admin dashboard polish end */
 
     @media (max-width: 640px) {
       body.admin-signed-out.admin-shell {
@@ -868,6 +972,14 @@
     <section id="aionHealth" class="admin-section" data-admin-view="overview">
       <h2>Aion Dashboard</h2>
       <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
+
+      <div class="admin-dashboard-summary">
+        <div>
+          <p class="admin-dashboard-kicker">Current state</p>
+          <p class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
+        </div>
+        <div class="admin-dashboard-pill">Operator verified</div>
+      </div>
       <div class="dashboard-grid">
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
