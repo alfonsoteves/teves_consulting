@@ -937,6 +937,13 @@
       color: #f8fafc;
     }
 
+    .admin-cycle-snapshots {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
     .admin-cycle-status {
       min-height: 1.4em;
       margin: 10px 0 0;
@@ -946,6 +953,10 @@
 
     @media (max-width: 780px) {
       .admin-cycle-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-cycle-snapshots {
         grid-template-columns: 1fr;
       }
     }
@@ -1102,8 +1113,9 @@
       <div class="dashboard-grid">
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthCyclesRemaining" class="metric-value">Add snapshot</div></div>
-        <div class="metric-card"><div class="metric-label">Cycle runway</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
+        <div class="metric-card"><div class="metric-label">Backend cycles</div><div id="healthBackendCycles" class="metric-value">Add snapshot</div></div>
+        <div class="metric-card"><div class="metric-label">Project runway</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
         <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
         <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
@@ -1114,23 +1126,39 @@
 
       <details class="admin-cycle-panel" open>
         <summary><strong>Cycles runway</strong></summary>
-        <p class="meta">Paste the latest frontend canister status output to update the dashboard. This is an operator snapshot, not a public analytics feed.</p>
+        <p class="meta">Paste the latest frontend and backend canister status outputs to update the dashboard. These are operator snapshots, not a public analytics feed.</p>
         <div class="admin-cycle-grid">
           <div>
-            <textarea id="cycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste output containing lines like:
+            <label for="frontendCycleStatusInput"><strong>Frontend canister status</strong></label>
+            <textarea id="frontendCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste frontend output containing lines like:
 Cycles: 487_539_480_150
 Idle cycles burned per day: 3_007_903_040
 Reserved cycles limit: 5_000_000_000_000"></textarea>
             <div class="admin-cycle-actions">
-              <button type="button" onclick="saveCycleSnapshotFromInput()">Update runway</button>
-              <button type="button" onclick="clearCycleSnapshot()">Clear snapshot</button>
+              <button type="button" onclick="saveCycleSnapshotFromInput('frontend')">Update frontend</button>
+              <button type="button" onclick="clearCycleSnapshot('frontend')">Clear frontend</button>
             </div>
-            <p id="cycleSnapshotStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
           </div>
-          <div id="cycleSnapshotSummary" class="admin-cycle-snapshot">
-            <span><strong>Cycles:</strong> Add a snapshot</span>
-            <span><strong>Reserved limit:</strong> Pending</span>
-            <span><strong>Burn:</strong> Pending</span>
+          <div>
+            <label for="backendCycleStatusInput"><strong>Backend canister status</strong></label>
+            <textarea id="backendCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste backend output containing lines like:
+Cycles: 487_539_480_150
+Idle cycles burned per day: 3_007_903_040
+Reserved cycles limit: 5_000_000_000_000"></textarea>
+            <div class="admin-cycle-actions">
+              <button type="button" onclick="saveCycleSnapshotFromInput('backend')">Update backend</button>
+              <button type="button" onclick="clearCycleSnapshot('backend')">Clear backend</button>
+            </div>
+          </div>
+        </div>
+        <p id="cycleSnapshotStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
+        <div class="admin-cycle-snapshots">
+          <div id="frontendCycleSnapshotSummary" class="admin-cycle-snapshot">
+            <span><strong>Frontend:</strong> Add a snapshot</span>
+            <span><strong>Runway:</strong> Pending</span>
+          </div>
+          <div id="backendCycleSnapshotSummary" class="admin-cycle-snapshot">
+            <span><strong>Backend:</strong> Add a snapshot</span>
             <span><strong>Runway:</strong> Pending</span>
           </div>
         </div>
