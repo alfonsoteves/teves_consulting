@@ -488,6 +488,81 @@
     }
     /* Admin evergreen shell cleanup end */
 
+    /* Admin overview actions start */
+    .admin-overview-actions {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid #263241;
+    }
+
+    .admin-overview-actions h3 {
+      margin: 0 0 6px;
+      color: #f8fafc;
+      font-size: 1.02rem;
+    }
+
+    .admin-overview-actions .section-note {
+      margin-bottom: 14px;
+    }
+
+    .admin-action-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .admin-action-card {
+      display: grid;
+      min-height: 116px;
+      gap: 8px;
+      align-content: start;
+      padding: 14px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #151a20;
+      color: #cbd5e1;
+      text-align: left;
+    }
+
+    .admin-action-card:hover,
+    .admin-action-card:focus {
+      border-color: #60a5fa;
+      background: #182130;
+      color: #f8fafc;
+    }
+
+    .admin-action-title {
+      color: #f8fafc;
+      font-size: 0.96rem;
+      font-weight: 700;
+    }
+
+    .admin-action-copy {
+      color: #94a3b8;
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .admin-action-open {
+      color: #93c5fd;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 980px) {
+      .admin-action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .admin-action-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* Admin overview actions end */
+
     @media (max-width: 640px) {
       .admin-shell {
         padding: 24px 16px 48px;
@@ -547,6 +622,39 @@
         <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
         <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
       </div>
+      <!-- Admin overview action cards start -->
+      <div class="admin-overview-actions">
+        <h3>Common Actions</h3>
+        <p class="section-note">Jump from the clean dashboard into the tools most likely to be used during review.</p>
+        <div class="admin-action-grid">
+          <button type="button" class="admin-action-card" data-admin-jump-view="records" data-admin-jump-target="memoryAndFeedback">
+            <span class="admin-action-title">Review Records</span>
+            <span class="admin-action-copy">Open memories, milestones, and saved feedback.</span>
+            <span class="admin-action-open">Open</span>
+          </button>
+          <button type="button" class="admin-action-card" data-admin-jump-view="continuity" data-admin-jump-target="continuityInspector">
+            <span class="admin-action-title">Inspect Continuity</span>
+            <span class="admin-action-copy">Check retrieval, packets, and bounded evidence tools.</span>
+            <span class="admin-action-open">Open</span>
+          </button>
+          <button type="button" class="admin-action-card" data-admin-jump-view="intelligence" data-admin-jump-target="operatorInsights">
+            <span class="admin-action-title">Build Operator Report</span>
+            <span class="admin-action-copy">Open memory health and operator insight reports.</span>
+            <span class="admin-action-open">Open</span>
+          </button>
+          <button type="button" class="admin-action-card" data-admin-jump-view="providers" data-admin-jump-target="providers">
+            <span class="admin-action-title">Check Providers</span>
+            <span class="admin-action-copy">Review candidate policy and provider diagnostics.</span>
+            <span class="admin-action-open">Open</span>
+          </button>
+          <button type="button" class="admin-action-card" data-admin-jump-view="validation" data-admin-jump-target="systemValidation">
+            <span class="admin-action-title">Run Validation</span>
+            <span class="admin-action-copy">Open golden tests, access checks, and transport validation.</span>
+            <span class="admin-action-open">Open</span>
+          </button>
+        </div>
+      </div>
+      <!-- Admin overview action cards end -->
     </section>
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
@@ -2267,6 +2375,33 @@
     })();
   </script>
   <!-- Admin evergreen shell cleanup end -->
+
+  <!-- Admin overview action wiring start -->
+  <script>
+    (() => {
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-admin-jump-view]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const view = button.dataset.adminJumpView;
+            const targetId = button.dataset.adminJumpTarget;
+            const tab = document.querySelector(`[data-admin-view-target="${view}"]`);
+
+            if (tab) {
+              tab.click();
+            }
+
+            window.setTimeout(() => {
+              const target = document.getElementById(targetId);
+              if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }, 80);
+          });
+        });
+      });
+    })();
+  </script>
+  <!-- Admin overview action wiring end -->
 
   <script type="module" src="./admin.js"></script>
 </body>
