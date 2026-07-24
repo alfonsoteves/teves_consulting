@@ -602,14 +602,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
+      width: 34px;
+      height: 34px;
     }
 
-    .admin-login-mark img {
-      width: 24px;
-      height: 24px;
-      object-fit: contain;
+    .admin-login-mark svg {
+      width: 30px;
+      height: 30px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.35;
+      transform-box: fill-box;
+      transform-origin: center;
       animation: adminOperatorThinking 1.15s infinite ease-in-out;
     }
 
@@ -621,7 +625,7 @@
       display: block;
       margin: 0;
       color: #d4d4d4;
-      font-size: 0.92rem;
+      font-size: 0.86rem;
     }
 
     body.admin-signed-out .admin-login-about {
@@ -631,7 +635,7 @@
       z-index: 40;
       display: inline-flex;
       color: #d4d4d4;
-      font-size: 0.92rem;
+      font-size: 0.86rem;
       text-decoration: none;
     }
 
@@ -665,9 +669,9 @@
       z-index: 40;
       min-height: 38px;
       margin: 0;
-      padding: 8px 16px;
-      border: 1px solid #ffffff;
-      border-radius: 999px;
+      padding: 8px 0;
+      border: none;
+      border-radius: 0;
       background: transparent;
       color: #ffffff;
       font-size: 0.92rem;
@@ -676,8 +680,10 @@
 
     body.admin-signed-out #authButton:hover,
     body.admin-signed-out #authButton:focus {
-      background: #ffffff;
-      color: #000000;
+      background: transparent;
+      color: #ffffff;
+      text-decoration: underline;
+      text-underline-offset: 4px;
     }
 
     body.admin-signed-out .operator-access {
@@ -753,11 +759,22 @@
 <body class="admin-shell admin-signed-out">
   <!-- Aion Operator landing chrome start -->
   <div class="admin-login-brand" aria-hidden="true">
-    <span class="admin-login-mark"><img src="assets/images/t-logo-white.png" alt=""></span>
+    <span class="admin-login-mark">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="25"></circle>
+        <circle cx="32" cy="32" r="3.5"></circle>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24"></ellipse>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(30 32 32)"></ellipse>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(60 32 32)"></ellipse>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(90 32 32)"></ellipse>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(120 32 32)"></ellipse>
+        <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(150 32 32)"></ellipse>
+      </svg>
+    </span>
     <span>Aion Operator</span>
   </div>
-  <p class="admin-login-company">Teves Consulting LLC</p>
-  <a class="admin-login-about" href="/about.html">About</a>
+  <p class="admin-login-company">© 2026 Teves Consulting LLC. All rights reserved.</p>
+  <a class="admin-login-about" href="/about-aion.html">About Aion</a>
   <!-- Aion Operator landing chrome end -->
   <header class="admin-header">
     <div>
