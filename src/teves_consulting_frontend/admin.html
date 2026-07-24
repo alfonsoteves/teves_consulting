@@ -607,7 +607,7 @@
     }
 
     body.admin-signed-in .admin-workspace-brand {
-      position: fixed;
+      position: fixed !important;
       top: 25px;
       left: 20px;
       z-index: 40;
@@ -633,7 +633,7 @@
       stroke-width: 1.35;
       transform-box: fill-box;
       transform-origin: center;
-      animation: adminOperatorRotate 1.8s linear infinite;
+      animation: adminOperatorRotate 8s linear infinite;
     }
 
     body.admin-signed-out .admin-login-company {
@@ -702,17 +702,17 @@
       min-height: 36px;
       margin: 0;
       padding: 8px 14px;
-      border: 1px solid #ffffff;
+      border: none;
       border-radius: 8px;
-      background: #ffffff;
-      color: #000000;
+      background: #111827;
+      color: #ffffff;
       font-size: 0.87rem;
       font-weight: 500;
     }
 
     body.admin-signed-out #authButton:is(:hover, :focus-visible) {
-      background: #e5e5e5;
-      color: #000000;
+      background: #1f2937;
+      color: #ffffff;
       text-decoration: none;
     }
 
@@ -758,7 +758,7 @@
     }
 
     body.admin-signed-in #authButton {
-      position: fixed;
+      position: fixed !important;
       top: 25px;
       right: 20px;
       z-index: 40;
