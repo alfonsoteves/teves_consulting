@@ -1128,7 +1128,157 @@ window.loadGoldenTests = async function loadGoldenTests() {
     if (data && Array.isArray(data.results) && data.results.length > 0) {
       renderGoldenTests(data, { save: true });
     } else {
-      const savedGolden = loadSavedGoldenResults();
+      // Admin cycles visibility start
+const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
+
+function parseCycleNumber(value) {
+  if (!value) return null;
+  const normalized = String(value).replaceAll("_", "").replaceAll(",", "").trim().toLowerCase();
+  const match = normalized.match(/^(\d+(?:\.\d+)?)([tkmb])?$/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const suffix = match[2];
+  const multiplier = suffix === "t"
+    ? 1_000_000_000_000
+    : suffix === "b"
+      ? 1_000_000_000
+      : suffix === "m"
+        ? 1_000_000
+        : suffix === "k"
+          ? 1_000
+          : 1;
+  return Number.isFinite(amount) ? Math.round(amount * multiplier) : null;
+}
+
+function parseCycleStatusSnapshot(raw) {
+  const text = String(raw || "");
+  const cyclesMatch = text.match(/\bCycles:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const burnMatch = text.match(/Idle cycles burned per day:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const reservedMatch = text.match(/Reserved cycles limit:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const cycles = parseCycleNumber(cyclesMatch && cyclesMatch[1]);
+  const burnPerDay = parseCycleNumber(burnMatch && burnMatch[1]);
+  const reservedLimit = parseCycleNumber(reservedMatch && reservedMatch[1]);
+
+  if (!cycles) {
+    throw new Error("Could not find a Cycles line in the pasted status output.");
+  }
+
+  return {
+    cycles,
+    burnPerDay,
+    reservedLimit,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+function formatCycles(value) {
+  if (!Number.isFinite(value)) return "Pending";
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  return value.toLocaleString();
+}
+
+function formatCycleRunway(snapshot) {
+  if (!snapshot || !snapshot.burnPerDay) return "Burn unknown";
+  const days = snapshot.cycles / snapshot.burnPerDay;
+  if (!Number.isFinite(days)) return "Pending";
+  if (days >= 365) return `${(days / 365).toFixed(1)} years`;
+  return `${Math.floor(days)} days`;
+}
+
+function cyclePercent(snapshot) {
+  if (!snapshot || !snapshot.reservedLimit) return null;
+  return (snapshot.cycles / snapshot.reservedLimit) * 100;
+}
+
+function loadCycleSnapshot() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error("Could not load cycle snapshot:", err);
+    return null;
+  }
+}
+
+function renderCycleSnapshot(snapshot = loadCycleSnapshot()) {
+  const cyclesElement = document.getElementById("healthCyclesRemaining");
+  const runwayElement = document.getElementById("healthCycleRunway");
+  const summaryElement = document.getElementById("cycleSnapshotSummary");
+  const inputElement = document.getElementById("cycleStatusInput");
+
+  if (!snapshot) {
+    setAdminHealthMetric("healthCyclesRemaining", "Add snapshot");
+    setAdminHealthMetric("healthCycleRunway", "Pending");
+    if (summaryElement) {
+      summaryElement.innerHTML = `
+        <span><strong>Cycles:</strong> Add a snapshot</span>
+        <span><strong>Reserved limit:</strong> Pending</span>
+        <span><strong>Burn:</strong> Pending</span>
+        <span><strong>Runway:</strong> Pending</span>
+      `;
+    }
+    return;
+  }
+
+  const percent = cyclePercent(snapshot);
+  const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
+  const capturedLabel = snapshot.capturedAt
+    ? new Date(snapshot.capturedAt).toLocaleString()
+    : "Unknown";
+
+  if (cyclesElement) {
+    cyclesElement.textContent = `${formatCycles(snapshot.cycles)}${percentLabel}`;
+  }
+  if (runwayElement) {
+    runwayElement.textContent = formatCycleRunway(snapshot);
+  }
+  if (summaryElement) {
+    summaryElement.innerHTML = `
+      <span><strong>Cycles:</strong> ${formatCycles(snapshot.cycles)}${percentLabel}</span>
+      <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
+      <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
+      <span><strong>Runway:</strong> ${formatCycleRunway(snapshot)}</span>
+      <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
+    `;
+  }
+  if (inputElement && !inputElement.value.trim()) {
+    inputElement.value = `Cycles: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")}\nReserved cycles limit: ${snapshot.reservedLimit ? snapshot.reservedLimit.toLocaleString().replaceAll(",", "_") : ""}\nIdle cycles burned per day: ${snapshot.burnPerDay ? snapshot.burnPerDay.toLocaleString().replaceAll(",", "_") : ""}`;
+  }
+}
+
+window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput() {
+  const input = document.getElementById("cycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+
+  try {
+    const snapshot = parseCycleStatusSnapshot(input ? input.value : "");
+    localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    renderCycleSnapshot(snapshot);
+    if (status) {
+      status.textContent = "Cycle snapshot updated.";
+    }
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not parse cycle snapshot.";
+    }
+  }
+};
+
+window.clearCycleSnapshot = function clearCycleSnapshot() {
+  localStorage.removeItem(ADMIN_CYCLE_SNAPSHOT_KEY);
+  const input = document.getElementById("cycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+  if (input) input.value = "";
+  renderCycleSnapshot(null);
+  if (status) {
+    status.textContent = "Cycle snapshot cleared.";
+  }
+};
+// Admin cycles visibility end
+
+const savedGolden = loadSavedGoldenResults();
       if (savedGolden) {
         renderGoldenTests(savedGolden, { save: false });
       }
@@ -11179,4 +11329,5 @@ if (savedGolden) {
 }
 initializeCandidateHarnessContext();
 initializeCandidateModelList();
+renderCycleSnapshot();
 initAuth();
