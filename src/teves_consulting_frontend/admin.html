@@ -552,20 +552,13 @@
 
 
     /* Aion Operator landing start */
-    @keyframes adminOperatorThinking {
+    @keyframes adminOperatorRotate {
       0% {
-        opacity: 0.56;
-        transform: scale(0.96);
-      }
-
-      50% {
-        opacity: 1;
-        transform: scale(1.06);
+        transform: rotate(0deg);
       }
 
       100% {
-        opacity: 0.56;
-        transform: scale(0.96);
+        transform: rotate(360deg);
       }
     }
 
@@ -587,16 +580,12 @@
 
     body.admin-signed-out .admin-login-brand {
       position: fixed;
-      top: 28px;
-      left: 32px;
+      top: 25px;
+      left: 20px;
       z-index: 40;
       display: inline-flex;
       align-items: center;
-      gap: 12px;
       color: #ffffff;
-      font-size: 0.98rem;
-      font-weight: 700;
-      letter-spacing: 0;
     }
 
     .admin-login-mark {
@@ -619,8 +608,8 @@
 
     body.admin-signed-in .admin-workspace-brand {
       position: fixed;
-      top: 28px;
-      left: 32px;
+      top: 25px;
+      left: 20px;
       z-index: 40;
       display: inline-flex;
       align-items: center;
@@ -644,13 +633,13 @@
       stroke-width: 1.35;
       transform-box: fill-box;
       transform-origin: center;
-      animation: adminOperatorThinking 1.15s infinite ease-in-out;
+      animation: adminOperatorRotate 1.8s linear infinite;
     }
 
     body.admin-signed-out .admin-login-company {
       position: fixed;
-      left: 32px;
-      bottom: 28px;
+      left: 20px;
+      bottom: 25px;
       z-index: 40;
       display: block;
       margin: 0;
@@ -660,8 +649,8 @@
 
     body.admin-signed-out .admin-login-about {
       position: fixed;
-      right: 32px;
-      bottom: 28px;
+      right: 20px;
+      bottom: 25px;
       z-index: 40;
       display: inline-flex;
       color: #d4d4d4;
@@ -677,40 +666,53 @@
     }
 
     body.admin-signed-out .admin-header {
-      display: contents;
+      position: fixed;
+      top: 25px;
+      right: 20px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0;
+      border: none;
     }
 
     body.admin-signed-out .admin-header > div {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      margin: -1px;
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
       padding: 0;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
+      overflow: visible;
+      clip: auto;
+      white-space: normal;
       border: 0;
     }
 
-    body.admin-signed-out #authButton {
-      position: fixed;
-      top: 24px;
-      right: 32px;
-      z-index: 40;
-      min-height: 38px;
+    body.admin-signed-out .admin-header h1 {
       margin: 0;
-      padding: 8px 0;
-      border: none;
-      border-radius: 0;
-      background: transparent;
       color: #ffffff;
-      font-size: 0.92rem;
-      font-weight: 700;
+      font-size: 0.87rem;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    body.admin-signed-out #authButton {
+      position: static;
+      min-height: 36px;
+      margin: 0;
+      padding: 8px 14px;
+      border: 1px solid #ffffff;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #000000;
+      font-size: 0.87rem;
+      font-weight: 500;
     }
 
     body.admin-signed-out #authButton:is(:hover, :focus-visible) {
-      background: transparent;
-      color: #ffffff;
+      background: #e5e5e5;
+      color: #000000;
       text-decoration: none;
     }
 
@@ -744,7 +746,7 @@
     }
 
     body.admin-signed-in.admin-shell {
-      padding-top: 76px;
+      padding-top: 88px;
     }
 
     body.admin-signed-in .admin-header {
@@ -757,8 +759,8 @@
 
     body.admin-signed-in #authButton {
       position: fixed;
-      top: 24px;
-      right: 32px;
+      top: 25px;
+      right: 20px;
       z-index: 40;
       margin: 0;
     }
@@ -770,27 +772,32 @@
 
       body.admin-signed-out .admin-login-brand {
         top: 22px;
-        left: 22px;
+        left: 20px;
       }
 
       body.admin-signed-in .admin-workspace-brand {
         top: 22px;
-        left: 22px;
+        left: 20px;
       }
 
-      body.admin-signed-out #authButton,
       body.admin-signed-in #authButton {
         top: 18px;
-        right: 22px;
+        right: 20px;
+      }
+
+      body.admin-signed-out .admin-header {
+        top: 18px;
+        right: 20px;
+        gap: 12px;
       }
 
       body.admin-signed-out .admin-login-company {
-        left: 22px;
+        left: 20px;
         bottom: 22px;
       }
 
       body.admin-signed-out .admin-login-about {
-        right: 22px;
+        right: 20px;
         bottom: 22px;
       }
     }
@@ -825,7 +832,6 @@
         <ellipse cx="32" cy="32" rx="7.5" ry="24" transform="rotate(150 32 32)"></ellipse>
       </svg>
     </span>
-    <span>Aion Operator</span>
   </div>
   <div class="admin-workspace-brand" aria-hidden="true">
     <span class="admin-workspace-mark">
@@ -854,6 +860,21 @@
   <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
   <div id="adminContent" style="display:none;">
 
+    <section id="aionHealth" class="admin-section" data-admin-view="overview">
+      <h2>Aion Dashboard</h2>
+      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
+      <div class="dashboard-grid">
+        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
+        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
+        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
+        <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
+        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
+        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
+      </div>
+    </section>
+
     <!-- Admin evergreen navigation start -->
     <nav class="admin-workspace-nav" aria-label="Admin workspace views">
       <div class="admin-workspace-nav-header">
@@ -879,21 +900,6 @@
       <!-- Admin view controls end -->
     </nav>
     <!-- Admin evergreen navigation end -->
-
-    <section id="aionHealth" class="admin-section" data-admin-view="overview">
-      <h2>Aion Dashboard</h2>
-      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
-      <div class="dashboard-grid">
-        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
-        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
-        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
-        <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
-        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
-        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
-      </div>
-    </section>
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
       <h2>Memory & Feedback</h2>

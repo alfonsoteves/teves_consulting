@@ -530,6 +530,7 @@ function updateAuthUI() {
 function updateAdminVisibility() {
   const adminContent = document.getElementById("adminContent");
   const access = document.getElementById("operatorAccess");
+  const authButton = document.getElementById("authButton");
 
   if (!adminContent || !access) return;
 
@@ -540,6 +541,10 @@ function updateAdminVisibility() {
   adminContent.style.display = adminReady ? "block" : "none";
   access.style.display = "block";
   access.className = "operator-access";
+  if (authButton) {
+    authButton.removeAttribute("title");
+    authButton.removeAttribute("aria-label");
+  }
 
   if (!isAuthenticated) {
     access.textContent = "Sign in with Internet Identity to continue.";
@@ -564,10 +569,16 @@ function updateAdminVisibility() {
     return;
   }
 
-  access.classList.add("verified");
-  access.textContent = renderOperatorSessionExpiresAt
+  const operatorSessionMessage = renderOperatorSessionExpiresAt
     ? `Operator access verified. This Admin session expires at ${new Date(renderOperatorSessionExpiresAt * 1000).toLocaleTimeString()}.`
     : "Operator access verified.";
+  access.classList.add("verified");
+  access.style.display = "none";
+  access.textContent = "";
+  if (authButton) {
+    authButton.title = operatorSessionMessage;
+    authButton.setAttribute("aria-label", `Logout. ${operatorSessionMessage}`);
+  }
   setAdminHealthMetric("healthOperatorStatus", "Verified");
   setAdminHealthMetric(
     "healthSessionStatus",
