@@ -539,6 +539,30 @@
       opacity: 1;
     }
 
+    #continuityInspector .admin-continuity-group {
+      margin: 16px 0;
+      border-color: #263241;
+      background: #11161d;
+    }
+
+    #continuityInspector .admin-continuity-group > summary {
+      color: #f8fafc;
+      font-size: 0.96rem;
+    }
+
+    #continuityInspector .admin-continuity-group-note {
+      margin: 8px 0 14px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    #continuityInspector .admin-continuity-group .primary-operator-tool,
+    #continuityInspector .admin-continuity-group .advanced-operator-tool,
+    #continuityInspector .admin-continuity-group .archived-phase-tool {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
     @media (max-width: 820px) {
       .admin-view-controls {
         justify-content: stretch;
@@ -969,29 +993,6 @@
   <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
   <div id="adminContent" style="display:none;">
 
-    <section id="aionHealth" class="admin-section" data-admin-view="overview">
-      <h2>Aion Dashboard</h2>
-      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
-
-      <div class="admin-dashboard-summary">
-        <div>
-          <p class="admin-dashboard-kicker">Current state</p>
-          <p class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
-        </div>
-        <div class="admin-dashboard-pill">Operator verified</div>
-      </div>
-      <div class="dashboard-grid">
-        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
-        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
-        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
-        <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
-        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
-        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
-      </div>
-    </section>
-
     <!-- Admin evergreen navigation start -->
     <nav class="admin-workspace-nav" aria-label="Admin workspace views">
       <div class="admin-workspace-nav-header">
@@ -1017,6 +1018,29 @@
       <!-- Admin view controls end -->
     </nav>
     <!-- Admin evergreen navigation end -->
+
+    <section id="aionHealth" class="admin-section" data-admin-view="overview">
+      <h2>Aion Dashboard</h2>
+      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
+
+      <div class="admin-dashboard-summary">
+        <div>
+          <p class="admin-dashboard-kicker">Current state</p>
+          <p class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
+        </div>
+        <div class="admin-dashboard-pill">Operator verified</div>
+      </div>
+      <div class="dashboard-grid">
+        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
+        <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
+        <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
+        <div class="metric-card"><div class="metric-label">HTTPS outcalls</div><div class="metric-value">Verified</div></div>
+        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
+        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
+      </div>
+    </section>
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
       <h2>Memory & Feedback</h2>
@@ -1060,1328 +1084,1354 @@
       <h2>Continuity Tools</h2>
       <p class="section-note">Inspect native continuity, retrieval, packet validation, and bounded evidence tools.</p>
 
-    <details class="primary-operator-tool" open>
-      <summary><strong>Current Continuity Preview</strong></summary>
-
-      <p>See the intent, ranked memories, relationship expansion, and bounded context packet used before the existing OpenAI answer request.</p>
-
-      <input
-        id="continuityInspectorQuery"
-        placeholder="Ask about a saved continuity topic..."
-        style="width: 70%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runContinuityInspector()">Inspect Continuity</button>
-
-      <div id="continuityInspectorResults"></div>
+    <!-- Admin continuity group start: Current continuity -->
+    <details class="admin-continuity-group" open>
+      <summary><strong>Current continuity</strong></summary>
+      <p class="admin-continuity-group-note">The active signed-in continuity preview used by Aion.</p>
+      <details class="primary-operator-tool" open>
+            <summary><strong>Current Continuity Preview</strong></summary>
+      
+            <p>See the intent, ranked memories, relationship expansion, and bounded context packet used before the existing OpenAI answer request.</p>
+      
+            <input
+              id="continuityInspectorQuery"
+              placeholder="Ask about a saved continuity topic..."
+              style="width: 70%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runContinuityInspector()">Inspect Continuity</button>
+      
+            <div id="continuityInspectorResults"></div>
+          </details>
     </details>
+    <!-- Admin continuity group end: Current continuity -->
 
-    <details class="advanced-operator-tool">
-      <summary><strong>Grounded Public Retrieval Preview</strong></summary>
+    <!-- Admin continuity group start: Operational checks -->
+    <details class="admin-continuity-group">
+      <summary><strong>Operational checks</strong></summary>
+      <p class="admin-continuity-group-note">Validation and internal-test checks that are still useful during routine review.</p>
+      <details class="primary-operator-tool">
+            <summary><strong>Packet Validation Preview</strong></summary>
+      
+            <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
+      
+            <button onclick="runNativeRetrievalPacketValidationPreview()">Validate Sample Packet</button>
+      
+            <div id="nativeRetrievalPacketValidationResults"></div>
+          </details>
 
-      <p>Inspect the bounded public retrieval packet without generating an answer or returning chunk text.</p>
-
-      <input
-        id="publicRetrievalPreviewQuery"
-        placeholder="Enter public retrieval query..."
-        style="width: 70%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runPublicRetrievalPreview()">Preview Public Retrieval</button>
-
-      <div id="publicRetrievalPreviewResults"></div>
+      <details class="primary-operator-tool">
+            <summary><strong>Handoff Internal-Test Answer</strong></summary>
+      
+            <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
+      
+            <select
+              id="nativeRetrievalHandoffAnswerCase"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="water_outage">Water outage</option>
+              <option value="food_reserve">Food reserve</option>
+              <option value="spanish_water_storage">Spanish water storage</option>
+            </select>
+      
+            <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Generate Handoff Answer</button>
+      
+            <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
+          </details>
     </details>
+    <!-- Admin continuity group end: Operational checks -->
 
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval State</strong></summary>
+    <!-- Admin continuity group start: Advanced retrieval diagnostics -->
+    <details class="admin-continuity-group">
+      <summary><strong>Advanced retrieval diagnostics</strong></summary>
+      <p class="admin-continuity-group-note">Lower-frequency retrieval and context diagnostics for deeper investigation.</p>
+      <details class="advanced-operator-tool">
+            <summary><strong>Grounded Public Retrieval Preview</strong></summary>
+      
+            <p>Inspect the bounded public retrieval packet without generating an answer or returning chunk text.</p>
+      
+            <input
+              id="publicRetrievalPreviewQuery"
+              placeholder="Enter public retrieval query..."
+              style="width: 70%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runPublicRetrievalPreview()">Preview Public Retrieval</button>
+      
+            <div id="publicRetrievalPreviewResults"></div>
+          </details>
 
-      <p>Inspect the current native retrieval scope, corpus identity, evidence anchors, and route safety without adding cutover controls.</p>
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval State</strong></summary>
+      
+            <p>Inspect the current native retrieval scope, corpus identity, evidence anchors, and route safety without adding cutover controls.</p>
+      
+            <button onclick="runNativeRetrievalState()">Refresh Native Retrieval State</button>
+      
+            <div id="nativeRetrievalStateResults"></div>
+          </details>
 
-      <button onclick="runNativeRetrievalState()">Refresh Native Retrieval State</button>
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Feature-Flag State</strong></summary>
+      
+            <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
+      
+            <button onclick="runNativeRetrievalFeatureFlagState()">Refresh Feature-Flag State</button>
+      
+            <div id="nativeRetrievalFeatureFlagStateResults"></div>
+          </details>
 
-      <div id="nativeRetrievalStateResults"></div>
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Feature-Flag Transition Contract</strong></summary>
+      
+            <p>Inspect the selected internal-test transition and rollback contract without adding a setter, accepting native packets, or changing public routing.</p>
+      
+            <button onclick="runNativeRetrievalFeatureFlagTransitionContract()">Refresh Transition Contract</button>
+      
+            <div id="nativeRetrievalFeatureFlagTransitionContractResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Operator Transition Preview</strong></summary>
+      
+            <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
+      
+            <button onclick="runNativeRetrievalOperatorTransitionPreview(false)">Preview Missing Acknowledgement</button>
+            <button onclick="runNativeRetrievalOperatorTransitionPreview(true)">Preview Ready Transition</button>
+      
+            <div id="nativeRetrievalOperatorTransitionPreviewResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Internal-Test Mode Storage</strong></summary>
+      
+            <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
+      
+            <button onclick="runNativeRetrievalInternalTestModeApply()">Apply Internal-Test Mode</button>
+            <button onclick="runNativeRetrievalInternalTestModeRollback()">Rollback to Render Selection</button>
+      
+            <div id="nativeRetrievalInternalTestModeStorageResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Limited Public Window</strong></summary>
+      
+            <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
+      
+            <button onclick="runNativeRetrievalLimitedWindowPreview(false)">Preview Missing Acknowledgement</button>
+            <button onclick="runNativeRetrievalLimitedWindowPreview(true)">Preview Ready Window</button>
+            <button onclick="runNativeRetrievalLimitedWindowApply()">Apply Limited Window</button>
+            <button onclick="runNativeRetrievalLimitedWindowRollback()">Rollback to Render Selection</button>
+      
+            <div id="nativeRetrievalLimitedWindowResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Limited-Window Answer</strong></summary>
+      
+            <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
+      
+            <select
+              id="nativeRetrievalLimitedWindowAnswerCase"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="water_outage">Water outage</option>
+              <option value="spanish_water_storage">Spanish water storage</option>
+            </select>
+      
+            <button onclick="runNativeRetrievalLimitedWindowAnswer()">Generate Limited-Window Answer</button>
+      
+            <div id="nativeRetrievalLimitedWindowAnswerResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Retrieval Internal-Test Answer</strong></summary>
+      
+            <p>Send the controlled sample packet to the Admin internal-test answer endpoint after packet validation, without changing public routing or accepting native packets for public traffic.</p>
+      
+            <button onclick="runNativeRetrievalInternalTestAnswer()">Generate Internal-Test Answer</button>
+      
+            <div id="nativeRetrievalInternalTestAnswerResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Native LLM Canister Evaluation Stub</strong></summary>
+      
+            <p>Run the Phase 8.2 Admin-only mock evaluation contract against the same native grounded packet, without calling a real canister, switching providers, or changing public routing.</p>
+      
+            <div class="memory-card">
+              <h3>Milestone 8.2 Fresh Candidate</h3>
+              <p class="meta">Jump directly to the current z7unv diagnostic surface.</p>
+              <button onclick="document.getElementById('nativeLlmFreshCandidateStatusTransportDiagnosticPanel').scrollIntoView({ behavior: 'smooth', block: 'start' })">Open Status Transport Diagnostic</button>
+            </div>
+      
+            <select
+              id="nativeLlmCanisterEvaluationCase"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="water_outage">Water outage</option>
+              <option value="spanish_water_storage">Spanish water storage</option>
+              <option value="generic_sports">Generic sports</option>
+            </select>
+      
+            <select
+              id="nativeLlmCanisterEvaluationProvider"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="llm_canister_admin_eval">LLM canister admin eval</option>
+              <option value="openai_via_render">OpenAI via Render</option>
+            </select>
+      
+            <button onclick="runNativeLlmCanisterEvaluationStub()">Run Mock Evaluation</button>
+      
+            <div id="nativeLlmCanisterEvaluationResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Native LLM Canister Capability Probe</strong></summary>
+      
+            <p>Inspect the Phase 8.2 Admin-only canister capability probe contract without sending a grounded packet, generating an answer, or making a real canister call.</p>
+      
+            <input
+              id="nativeLlmCapabilityProbePrincipal"
+              value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmCapabilityProbeNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmCapabilityProbeMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="capabilities">capabilities</option>
+              <option value="health">health</option>
+              <option value="metadata">metadata</option>
+              <option value="probe">probe</option>
+            </select>
+      
+            <button onclick="runNativeLlmCanisterCapabilityProbe('metadata_only')">Run Metadata Probe</button>
+            <button onclick="runNativeLlmCanisterCapabilityProbe('interface_check')">Run Interface Check</button>
+            <button onclick="runNativeLlmCanisterCapabilityProbe('bounded_noop_call')">Preview Blocked No-Op Call</button>
+      
+            <div id="nativeLlmCanisterCapabilityProbeResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Approved-Case Internal-Test Answer</strong></summary>
+      
+            <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
+      
+            <select
+              id="nativeRetrievalApprovedCaseAnswerCase"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="water_outage">Water outage</option>
+              <option value="food_reserve">Food reserve</option>
+              <option value="power_outage">Power outage</option>
+              <option value="bread_selection">Bread selection</option>
+              <option value="spanish_water_storage">Spanish water storage</option>
+              <option value="generic_sports">Generic sports</option>
+              <option value="spanish_generic_sports">Spanish generic sports</option>
+              <option value="sports_hydration_detail">Sports hydration detail</option>
+            </select>
+      
+            <button onclick="runNativeRetrievalApprovedCaseInternalTestAnswer()">Generate Approved-Case Answer</button>
+      
+            <div id="nativeRetrievalApprovedCaseInternalTestAnswerResults"></div>
+          </details>
+
+      <details class="advanced-operator-tool">
+            <summary><strong>Approved-Case Comparison</strong></summary>
+      
+            <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
+      
+            <select
+              id="nativeRetrievalComparisonFixture"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="water_outage">Water outage</option>
+              <option value="food_reserve">Food reserve</option>
+              <option value="power_outage">Power outage</option>
+              <option value="bread_selection">Bread selection</option>
+              <option value="spanish_water_storage">Spanish water storage</option>
+              <option value="generic_sports">Generic sports</option>
+              <option value="spanish_generic_sports">Spanish generic sports</option>
+              <option value="sports_hydration_detail">Sports hydration detail</option>
+            </select>
+      
+            <button onclick="runNativeRetrievalFixtureComparison()">Preview Approved-Case Comparison</button>
+      
+            <div id="nativeRetrievalComparisonResults"></div>
+          </details>
+
+      <details class="legacy-reference-tool">
+            <summary><strong>Retrieval Preview</strong></summary>
+      
+            <p>Final post-filtered retrieval used by Aion.</p>
+      
+            <input
+              id="retrievalQuery"
+              placeholder="Enter retrieval query..."
+              style="width: 70%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runRetrievalDebug()">Test Retrieval</button>
+      
+            <div id="retrievalResults"></div>
+          </details>
+
+      <details class="legacy-reference-tool">
+            <summary><strong>Raw Retrieval Preview</strong></summary>
+      
+            <p>Inspect raw search results before filtering and boosting.</p>
+      
+            <input
+              id="retrievalRawQuery"
+              placeholder="Enter retrieval query..."
+              style="width: 70%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runRawRetrievalDebug()">
+              Test Raw Retrieval
+            </button>
+      
+            <div id="retrievalRawResults"></div>
+          </details>
+
+      <details class="legacy-reference-tool">
+            <summary><strong>Context Viewer</strong></summary>
+      
+            <p>Build and inspect the context Aion would send for a query.</p>
+      
+            <input
+              id="contextQuery"
+              placeholder="Enter context query..."
+              style="width: 70%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runContextDebug()">Build Context</button>
+      
+            <div id="contextResults"></div>
+          </details>
     </details>
+    <!-- Admin continuity group end: Advanced retrieval diagnostics -->
 
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Feature-Flag State</strong></summary>
+    <!-- Admin continuity group start: Archived phase diagnostics -->
+    <details class="admin-continuity-group">
+      <summary><strong>Archived phase diagnostics</strong></summary>
+      <p class="admin-continuity-group-note">Historical phase tools kept available for reference.</p>
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Bounded No-Op Call Gate</strong></summary>
+      
+            <p>Validate the explicit target, method, timeout, response budget, and operator approvals required before any bounded no-op canister call implementation.</p>
+      
+            <input
+              id="nativeLlmBoundedNoopGatePrincipal"
+              value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmBoundedNoopGateNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmBoundedNoopGateMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="capabilities">capabilities</option>
+              <option value="health">health</option>
+              <option value="metadata">metadata</option>
+              <option value="probe">probe</option>
+            </select>
+      
+            <input
+              id="nativeLlmBoundedNoopGateTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmBoundedNoopGateResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterBoundedNoopGate(false)">Preview Gate Ready</button>
+            <button onclick="runNativeLlmCanisterBoundedNoopGate(true)">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterBoundedNoopGateResults"></div>
+          </details>
 
-      <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Bounded No-Op Transport Preview</strong></summary>
+      
+            <p>Preview the Admin-only resolved bounded no-op canister transport path with approved target, noop_status method, timeout, response budget, and fail-closed safety boundaries.</p>
+      
+            <input
+              id="nativeLlmBoundedNoopTransportPrincipal"
+              value="be2us-64aaa-aaaaa-qaabq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmBoundedNoopTransportNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmBoundedNoopTransportMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="noop_status">noop_status</option>
+              <option value="capabilities">capabilities</option>
+              <option value="health">health</option>
+              <option value="metadata">metadata</option>
+              <option value="probe">probe</option>
+            </select>
+      
+            <input
+              id="nativeLlmBoundedNoopTransportTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmBoundedNoopTransportResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('disabled')">Preview Disabled Transport</button>
+            <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('previous_unresolved')">Preview Previous Target Unresolved</button>
+            <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('blocked_capabilities')">Preview Blocked Capabilities</button>
+            <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('approved')">Run Resolved No-Op Transport</button>
+      
+            <div id="nativeLlmCanisterBoundedNoopTransportResults"></div>
+          </details>
 
-      <button onclick="runNativeRetrievalFeatureFlagState()">Refresh Feature-Flag State</button>
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Resolved Transport Diagnostics</strong></summary>
+      
+            <p>Preview the Admin-only diagnostics contract for the resolved no-op transport unexpected error, without making another canister call, sending a grounded packet, or changing public routing.</p>
+      
+            <input
+              id="nativeLlmResolvedTransportDiagnosticsPrincipal"
+              value="be2us-64aaa-aaaaa-qaabq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmResolvedTransportDiagnosticsNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmResolvedTransportDiagnosticsMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="noop_status">noop_status</option>
+              <option value="capabilities">capabilities</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+              <option value="probe">probe</option>
+            </select>
+      
+            <input
+              id="nativeLlmResolvedTransportDiagnosticsSummary"
+              value="unexpected bounded no-op transport error"
+              placeholder="Sanitized error summary"
+              style="width: 56%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('ready')">Preview Diagnostics Ready</button>
+            <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('raw_error_unredacted')">Preview Redaction Failure</button>
+            <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterResolvedTransportDiagnosticsResults"></div>
+          </details>
 
-      <div id="nativeRetrievalFeatureFlagStateResults"></div>
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Next No-Op Target Interface Contract</strong></summary>
+      
+            <p>The w36hm provider-boundary search is closed as inconclusive-safe. These controls remain for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
+      
+            <input
+              id="nativeLlmNextNoopTargetPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmNextNoopTargetNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmNextNoopTargetMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="v0_chat">v0_chat</option>
+              <option value="noop_status">noop_status</option>
+              <option value="probe">probe</option>
+              <option value="health">health</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('ready')">Preview Contract Ready</button>
+            <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('prior_target_retry')">Preview Prior Target Retry</button>
+            <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterNextNoopTargetInterfaceResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Next No-Op Metadata Transport</strong></summary>
+      
+            <p>Closed: the approved metadata transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live metadata transport is disabled until a new native decision exists.</p>
+      
+            <input
+              id="nativeLlmNextNoopMetadataTransportPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmNextNoopMetadataTransportNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmNextNoopMetadataTransportMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="v0_chat">v0_chat</option>
+              <option value="noop_status">noop_status</option>
+              <option value="probe">probe</option>
+              <option value="health">health</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <input
+              id="nativeLlmNextNoopMetadataTransportTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmNextNoopMetadataTransportResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('disabled')">Preview Disabled Transport</button>
+            <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('prior_target_retry')">Preview Prior Target Retry</button>
+            <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('missing_approval')">Preview Missing Approval</button>
+            <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Metadata Transport Closed</button>
+      
+            <div id="nativeLlmCanisterNextNoopMetadataTransportResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Alternate No-Op Health Interface Contract</strong></summary>
+      
+            <p>The w36hm provider-boundary search is closed as inconclusive-safe. This interface contract remains for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
+      
+            <input
+              id="nativeLlmAlternateNoopHealthPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmAlternateNoopHealthNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmAlternateNoopHealthMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="health">health</option>
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="v0_chat">v0_chat</option>
+              <option value="noop_status">noop_status</option>
+              <option value="probe">probe</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <input
+              id="nativeLlmAlternateNoopHealthTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmAlternateNoopHealthResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('ready')">Preview Health Ready</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('metadata_revision')">Preview Metadata Revision Block</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterAlternateNoopHealthInterfaceResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Alternate No-Op Health Transport</strong></summary>
+      
+            <p>Closed: the approved health transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live health transport is disabled until a new native decision exists.</p>
+      
+            <input
+              id="nativeLlmAlternateNoopHealthTransportPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmAlternateNoopHealthTransportNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmAlternateNoopHealthTransportMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="health">health</option>
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="v0_chat">v0_chat</option>
+              <option value="noop_status">noop_status</option>
+              <option value="probe">probe</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <input
+              id="nativeLlmAlternateNoopHealthTransportTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmAlternateNoopHealthTransportResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('disabled')">Preview Disabled Transport</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('metadata_revision')">Preview Metadata Revision Block</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('missing_approval')">Preview Missing Approval</button>
+            <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Health Transport Closed</button>
+      
+            <div id="nativeLlmCanisterAlternateNoopHealthTransportResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Exposed Interface Diagnostic</strong></summary>
+      
+            <p>Recorded bounded Admin-only interface evidence after repeated interface mismatches. The w36hm boundary search is now closed; this section remains for audit/preview evidence only.</p>
+      
+            <input
+              id="nativeLlmExposedInterfaceDiagnosticPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmExposedInterfaceDiagnosticNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmExposedInterfaceDiagnosticPath"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="operator_supplied_candid_summary">Operator Candid summary</option>
+              <option value="bounded_method_name_observation">Bounded method names</option>
+              <option value="no_safe_noop_method_known">No safe no-op known</option>
+              <option value="stop_boundary_search_inconclusive_safe">Stop inconclusive-safe</option>
+            </select>
+      
+            <input
+              id="nativeLlmExposedInterfaceDiagnosticMethods"
+              value="status, version"
+              placeholder="Bounded method names"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmExposedInterfaceDiagnosticSummary"
+              value="Bounded operator-supplied interface summary; no raw service dump captured."
+              placeholder="Bounded interface summary"
+              style="width: 64%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('ready')">Preview Diagnostic Ready</button>
+            <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('raw_capture')">Preview Raw Capture Block</button>
+            <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterExposedInterfaceDiagnosticResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Method-Source Evidence</strong></summary>
+      
+            <p>Recorded the bounded non-calling status source note used before the final status transport. The w36hm boundary search is now closed; new method-source evidence needs a separate native decision.</p>
+      
+            <input
+              id="nativeLlmMethodSourcePrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmMethodSourceNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmMethodSourceMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="metadata">metadata</option>
+            </select>
+      
+            <select
+              id="nativeLlmMethodSourceType"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="live_candid_or_verified_deployed_declaration">Verified deployed declaration</option>
+              <option value="deployment_artifact_for_exact_canister">Deployment artifact</option>
+              <option value="source_repo_tied_to_deployed_wasm">Source tied to wasm</option>
+              <option value="official_canister_documentation">Official documentation</option>
+              <option value="operator_observation_or_inferred_method_name">Operator observation</option>
+            </select>
+      
+            <input
+              id="nativeLlmMethodSourceReference"
+              value="Verified deployed declaration for w36hm status query."
+              placeholder="Bounded source reference"
+              style="width: 54%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmMethodSourceQueryClass"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="query">query</option>
+              <option value="update">update</option>
+              <option value="unknown">unknown</option>
+            </select>
+      
+            <input
+              id="nativeLlmMethodSourceArguments"
+              value="()"
+              placeholder="Expected arguments"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmMethodSourceReturnType"
+              value="text"
+              placeholder="Expected return type"
+              style="width: 180px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterMethodSourceEvidence('ready')">Preview Evidence Ready</button>
+            <button onclick="runNativeLlmCanisterMethodSourceEvidence('operator_observation')">Preview Observation Block</button>
+            <button onclick="runNativeLlmCanisterMethodSourceEvidence('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterMethodSourceEvidence('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterMethodSourceEvidence('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterMethodSourceEvidenceResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Fresh Candidate Intake</strong></summary>
+      
+            <p>Preview-only intake for a future candidate package. It does not select a target, approve transport, call a canister, or reopen the closed w36hm path.</p>
+      
+            <input
+              id="nativeLlmFreshCandidatePrincipal"
+              value="z7unv-7iaaa-aaaal-qb6aq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateSourceType"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="verified_candid_interface_for_exact_canister">Verified Candid interface</option>
+              <option value="deployment_artifact_for_exact_canister">Deployment artifact</option>
+              <option value="source_repo_tied_to_deployed_wasm">Source tied to wasm</option>
+              <option value="owner_documentation_for_exact_canister">Owner documentation</option>
+              <option value="bounded_operator_supplied_interface_evidence">Bounded operator evidence</option>
+              <option value="different_target_principal_with_prior_non_calling_evidence">Different target evidence</option>
+            </select>
+      
+            <input
+              id="nativeLlmFreshCandidateSourceReference"
+              value="Verified Candid declaration tied to the exact deployed canister."
+              placeholder="Bounded source reference"
+              style="width: 54%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateQueryClass"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="query">query</option>
+              <option value="update">update</option>
+              <option value="unknown">unknown</option>
+            </select>
+      
+            <input
+              id="nativeLlmFreshCandidateArguments"
+              value="()"
+              placeholder="Expected arguments"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateReturnType"
+              value="text"
+              placeholder="Expected return type"
+              style="width: 180px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateResponseShape"
+              value="bounded_status_text_or_record"
+              placeholder="Expected response shape"
+              style="width: 240px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidatePayloadKind"
+              value="empty_noop_probe"
+              placeholder="Payload kind"
+              style="width: 180px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateTimeout"
+              type="number"
+              value="1500"
+              min="100"
+              max="10000"
+              style="width: 100px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateResponseBytes"
+              type="number"
+              value="2048"
+              min="1"
+              max="65536"
+              style="width: 100px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('ready')">Preview Intake Ready</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('closed_path_block')">Preview Closed Path Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('bounded_operator_evidence')">Preview Intake-Only Evidence</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateIntake('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterFreshCandidateIntakeResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Fresh Candidate Status</strong></summary>
+      
+            <p>Preview-only status-candidate review for z7unv. It does not approve transport, expose a live call, submit prompts, or reopen the closed w36hm path.</p>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusPrincipal"
+              value="z7unv-7iaaa-aaaal-qb6aq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateStatusNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateStatusMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="metadata">metadata</option>
+              <option value="v1_chat">v1_chat</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateStatusSourceType"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="verified_candid_interface_for_exact_canister">Verified Candid interface</option>
+              <option value="bounded_operator_supplied_interface_evidence">Bounded operator evidence</option>
+              <option value="owner_documentation_for_exact_canister">Owner documentation</option>
+            </select>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusSourceReference"
+              value="Verified Candid declaration tied to exact z7unv deployment."
+              placeholder="Bounded source reference"
+              style="width: 54%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateStatusQueryClass"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="query">query</option>
+              <option value="update">update</option>
+              <option value="unknown">unknown</option>
+            </select>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusArguments"
+              value="()"
+              placeholder="Expected arguments"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateStatusReturnType"
+              value="text"
+              placeholder="Expected return type"
+              style="width: 180px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateStatusResponseShape"
+              value="bounded_status_text"
+              placeholder="Expected response shape"
+              style="width: 220px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateStatusTimeout"
+              type="number"
+              value="1500"
+              min="100"
+              max="10000"
+              style="width: 100px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateStatusResponseBytes"
+              type="number"
+              value="2048"
+              min="1"
+              max="65536"
+              style="width: 100px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('ready')">Preview Status Ready</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('closed_path_block')">Preview Closed Path Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('prior_mismatch')">Preview Prior Intake Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('method_mismatch')">Preview Method Mismatch</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('weak_source')">Preview Weak Source</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatus('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterFreshCandidateStatusResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Fresh Candidate Status Transport</strong></summary>
+      
+            <p>Admin-only bounded status transport for the fresh z7unv candidate. It keeps the closed w36hm path blocked and does not submit prompts, grounded packets, answers, fallback, provider switches, memory access, continuity changes, or public routing changes.</p>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusTransportPrincipal"
+              value="z7unv-7iaaa-aaaal-qb6aq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateStatusTransportNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateStatusTransportMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+              <option value="v1_chat">v1_chat</option>
+            </select>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusTransportTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmFreshCandidateStatusTransportResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('disabled')">Preview Disabled Transport</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('prior_status_mismatch')">Preview Prior Status Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('closed_path_block')">Preview Closed Path Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('version_method_block')">Preview Version Method Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('approved')">Run Status Transport</button>
+      
+            <div id="nativeLlmCanisterFreshCandidateStatusTransportResults"></div>
+          </details>
+
+      <details class="archived-phase-tool" id="nativeLlmFreshCandidateStatusTransportDiagnosticPanel">
+            <summary><strong>Native LLM Fresh Candidate Status Transport Diagnostic</strong></summary>
+      
+            <p>Non-calling diagnostic for the fresh z7unv status transport unexpected error. It records only bounded sanitized metadata and does not run another status call, method probe, prompt, grounded packet, answer, fallback, provider switch, memory access, continuity change, public routing change, or production cutover.</p>
+      
+            <p class="meta">Current option: use this panel after the fresh-candidate status transport returned `unexpected_transport_error`.</p>
+      
+            <input
+              id="nativeLlmFreshCandidateStatusTransportDiagnosticPrincipal"
+              value="z7unv-7iaaa-aaaal-qb6aq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmFreshCandidateStatusTransportDiagnosticNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateStatusTransportDiagnosticMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+              <option value="v1_chat">v1_chat</option>
+            </select>
+      
+            <select
+              id="nativeLlmFreshCandidateStatusTransportDiagnosticSource"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="icp_client">icp_client</option>
+              <option value="agent">agent</option>
+              <option value="candid">candid</option>
+              <option value="canister">canister</option>
+              <option value="network">network</option>
+              <option value="unknown">unknown</option>
+            </select>
+      
+            <textarea
+              id="nativeLlmFreshCandidateStatusTransportDiagnosticSummary"
+              rows="3"
+              style="width: 100%; padding: 8px; margin-top: 10px;"
+            >Approved status transport reached z7unv and returned an unexpected transport error before response-shape parsing.</textarea>
+      
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('ready')">Preview Diagnostic Ready</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('prior_transport_mismatch')">Preview Prior Transport Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('method_mismatch')">Preview Method Mismatch</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('source_mismatch')">Preview Source Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('raw_error_block')">Preview Raw Error Block</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_summary')">Preview Missing Summary</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterFreshCandidateStatusTransportDiagnosticResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Status Transport</strong></summary>
+      
+            <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>
+      
+            <input
+              id="nativeLlmStatusTransportPrincipal"
+              value="w36hm-eqaaa-aaaal-qr76a-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmStatusTransportNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmStatusTransportMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="status">status</option>
+              <option value="version">version</option>
+              <option value="v1_chat">v1_chat</option>
+              <option value="v0_chat">v0_chat</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+            </select>
+      
+            <input
+              id="nativeLlmStatusTransportTimeout"
+              type="number"
+              value="1500"
+              min="250"
+              max="10000"
+              style="width: 120px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <input
+              id="nativeLlmStatusTransportResponseBytes"
+              type="number"
+              value="2048"
+              min="128"
+              max="32768"
+              style="width: 140px; padding: 8px; margin-top: 10px;"
+            />
+      
+            <button onclick="runNativeLlmCanisterStatusTransport('disabled')">Preview Disabled Transport</button>
+            <button onclick="runNativeLlmCanisterStatusTransport('prior_evidence_mismatch')">Preview Prior Evidence Mismatch</button>
+            <button onclick="runNativeLlmCanisterStatusTransport('version_method_block')">Preview Version Method Block</button>
+            <button onclick="runNativeLlmCanisterStatusTransport('answer_method_block')">Preview Answer Method Block</button>
+            <button onclick="runNativeLlmCanisterStatusTransport('missing_approval')">Preview Missing Approval</button>
+            <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Status Transport Closed</button>
+      
+            <div id="nativeLlmCanisterStatusTransportResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
+      
+            <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
+      
+            <input
+              id="nativeLlmCompatibleNoopPrincipal"
+              value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmCompatibleNoopNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmCompatibleNoopMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="noop_status">noop_status</option>
+              <option value="probe">probe</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('ready')">Preview Compatible Contract</button>
+            <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('blocked_capabilities')">Preview Blocked Capabilities</button>
+            <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('missing_approval')">Preview Missing Approval</button>
+      
+            <div id="nativeLlmCanisterCompatibleNoopInterfaceResults"></div>
+          </details>
+
+      <details class="archived-phase-tool">
+            <summary><strong>Native LLM Provider Boundary Resolution Contract</strong></summary>
+      
+            <p>Preview the Admin-only provider-boundary resolution decision after compatible no-op transport evidence, without making a canister call, sending a grounded packet, or changing public routing.</p>
+      
+            <input
+              id="nativeLlmProviderBoundaryPrincipal"
+              value="be2us-64aaa-aaaaa-qaabq-cai"
+              placeholder="Target canister principal"
+              style="width: 44%; padding: 8px; margin-top: 10px;"
+            />
+      
+            <select
+              id="nativeLlmProviderBoundaryNetwork"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="ic">IC</option>
+              <option value="local">Local</option>
+            </select>
+      
+            <select
+              id="nativeLlmProviderBoundaryResolutionPath"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="approve_target_exposes_noop_status">Approve noop_status target</option>
+              <option value="revise_contract_to_exposed_method">Revise to exposed method</option>
+            </select>
+      
+            <select
+              id="nativeLlmProviderBoundaryMethod"
+              style="padding: 8px; margin-top: 10px;"
+            >
+              <option value="noop_status">noop_status</option>
+              <option value="metadata">metadata</option>
+              <option value="health">health</option>
+              <option value="probe">probe</option>
+              <option value="capabilities">capabilities</option>
+            </select>
+      
+            <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('ready')">Preview Boundary Ready</button>
+            <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('current_unresolved')">Preview Current Target Unresolved</button>
+            <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('blocked_capabilities')">Preview Blocked Capabilities</button>
+            <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('missing_approval')">Preview Missing Approval</button>
+            <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('real_call_block')">Preview Real Call Block</button>
+      
+            <div id="nativeLlmCanisterProviderBoundaryResolutionResults"></div>
+          </details>
     </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Feature-Flag Transition Contract</strong></summary>
-
-      <p>Inspect the selected internal-test transition and rollback contract without adding a setter, accepting native packets, or changing public routing.</p>
-
-      <button onclick="runNativeRetrievalFeatureFlagTransitionContract()">Refresh Transition Contract</button>
-
-      <div id="nativeRetrievalFeatureFlagTransitionContractResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Operator Transition Preview</strong></summary>
-
-      <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
-
-      <button onclick="runNativeRetrievalOperatorTransitionPreview(false)">Preview Missing Acknowledgement</button>
-      <button onclick="runNativeRetrievalOperatorTransitionPreview(true)">Preview Ready Transition</button>
-
-      <div id="nativeRetrievalOperatorTransitionPreviewResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Internal-Test Mode Storage</strong></summary>
-
-      <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
-
-      <button onclick="runNativeRetrievalInternalTestModeApply()">Apply Internal-Test Mode</button>
-      <button onclick="runNativeRetrievalInternalTestModeRollback()">Rollback to Render Selection</button>
-
-      <div id="nativeRetrievalInternalTestModeStorageResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Limited Public Window</strong></summary>
-
-      <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
-
-      <button onclick="runNativeRetrievalLimitedWindowPreview(false)">Preview Missing Acknowledgement</button>
-      <button onclick="runNativeRetrievalLimitedWindowPreview(true)">Preview Ready Window</button>
-      <button onclick="runNativeRetrievalLimitedWindowApply()">Apply Limited Window</button>
-      <button onclick="runNativeRetrievalLimitedWindowRollback()">Rollback to Render Selection</button>
-
-      <div id="nativeRetrievalLimitedWindowResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Limited-Window Answer</strong></summary>
-
-      <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
-
-      <select
-        id="nativeRetrievalLimitedWindowAnswerCase"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="water_outage">Water outage</option>
-        <option value="spanish_water_storage">Spanish water storage</option>
-      </select>
-
-      <button onclick="runNativeRetrievalLimitedWindowAnswer()">Generate Limited-Window Answer</button>
-
-      <div id="nativeRetrievalLimitedWindowAnswerResults"></div>
-    </details>
-
-    <details class="primary-operator-tool">
-      <summary><strong>Packet Validation Preview</strong></summary>
-
-      <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
-
-      <button onclick="runNativeRetrievalPacketValidationPreview()">Validate Sample Packet</button>
-
-      <div id="nativeRetrievalPacketValidationResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Internal-Test Answer</strong></summary>
-
-      <p>Send the controlled sample packet to the Admin internal-test answer endpoint after packet validation, without changing public routing or accepting native packets for public traffic.</p>
-
-      <button onclick="runNativeRetrievalInternalTestAnswer()">Generate Internal-Test Answer</button>
-
-      <div id="nativeRetrievalInternalTestAnswerResults"></div>
-    </details>
-
-    <details class="primary-operator-tool">
-      <summary><strong>Handoff Internal-Test Answer</strong></summary>
-
-      <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
-
-      <select
-        id="nativeRetrievalHandoffAnswerCase"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="water_outage">Water outage</option>
-        <option value="food_reserve">Food reserve</option>
-        <option value="spanish_water_storage">Spanish water storage</option>
-      </select>
-
-      <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Generate Handoff Answer</button>
-
-      <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Native LLM Canister Evaluation Stub</strong></summary>
-
-      <p>Run the Phase 8.2 Admin-only mock evaluation contract against the same native grounded packet, without calling a real canister, switching providers, or changing public routing.</p>
-
-      <div class="memory-card">
-        <h3>Milestone 8.2 Fresh Candidate</h3>
-        <p class="meta">Jump directly to the current z7unv diagnostic surface.</p>
-        <button onclick="document.getElementById('nativeLlmFreshCandidateStatusTransportDiagnosticPanel').scrollIntoView({ behavior: 'smooth', block: 'start' })">Open Status Transport Diagnostic</button>
-      </div>
-
-      <select
-        id="nativeLlmCanisterEvaluationCase"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="water_outage">Water outage</option>
-        <option value="spanish_water_storage">Spanish water storage</option>
-        <option value="generic_sports">Generic sports</option>
-      </select>
-
-      <select
-        id="nativeLlmCanisterEvaluationProvider"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="llm_canister_admin_eval">LLM canister admin eval</option>
-        <option value="openai_via_render">OpenAI via Render</option>
-      </select>
-
-      <button onclick="runNativeLlmCanisterEvaluationStub()">Run Mock Evaluation</button>
-
-      <div id="nativeLlmCanisterEvaluationResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Native LLM Canister Capability Probe</strong></summary>
-
-      <p>Inspect the Phase 8.2 Admin-only canister capability probe contract without sending a grounded packet, generating an answer, or making a real canister call.</p>
-
-      <input
-        id="nativeLlmCapabilityProbePrincipal"
-        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmCapabilityProbeNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmCapabilityProbeMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="capabilities">capabilities</option>
-        <option value="health">health</option>
-        <option value="metadata">metadata</option>
-        <option value="probe">probe</option>
-      </select>
-
-      <button onclick="runNativeLlmCanisterCapabilityProbe('metadata_only')">Run Metadata Probe</button>
-      <button onclick="runNativeLlmCanisterCapabilityProbe('interface_check')">Run Interface Check</button>
-      <button onclick="runNativeLlmCanisterCapabilityProbe('bounded_noop_call')">Preview Blocked No-Op Call</button>
-
-      <div id="nativeLlmCanisterCapabilityProbeResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Bounded No-Op Call Gate</strong></summary>
-
-      <p>Validate the explicit target, method, timeout, response budget, and operator approvals required before any bounded no-op canister call implementation.</p>
-
-      <input
-        id="nativeLlmBoundedNoopGatePrincipal"
-        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmBoundedNoopGateNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmBoundedNoopGateMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="capabilities">capabilities</option>
-        <option value="health">health</option>
-        <option value="metadata">metadata</option>
-        <option value="probe">probe</option>
-      </select>
-
-      <input
-        id="nativeLlmBoundedNoopGateTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmBoundedNoopGateResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterBoundedNoopGate(false)">Preview Gate Ready</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopGate(true)">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterBoundedNoopGateResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Bounded No-Op Transport Preview</strong></summary>
-
-      <p>Preview the Admin-only resolved bounded no-op canister transport path with approved target, noop_status method, timeout, response budget, and fail-closed safety boundaries.</p>
-
-      <input
-        id="nativeLlmBoundedNoopTransportPrincipal"
-        value="be2us-64aaa-aaaaa-qaabq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmBoundedNoopTransportNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmBoundedNoopTransportMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="noop_status">noop_status</option>
-        <option value="capabilities">capabilities</option>
-        <option value="health">health</option>
-        <option value="metadata">metadata</option>
-        <option value="probe">probe</option>
-      </select>
-
-      <input
-        id="nativeLlmBoundedNoopTransportTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmBoundedNoopTransportResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('disabled')">Preview Disabled Transport</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('previous_unresolved')">Preview Previous Target Unresolved</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('blocked_capabilities')">Preview Blocked Capabilities</button>
-      <button onclick="runNativeLlmCanisterBoundedNoopTransportPreview('approved')">Run Resolved No-Op Transport</button>
-
-      <div id="nativeLlmCanisterBoundedNoopTransportResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Resolved Transport Diagnostics</strong></summary>
-
-      <p>Preview the Admin-only diagnostics contract for the resolved no-op transport unexpected error, without making another canister call, sending a grounded packet, or changing public routing.</p>
-
-      <input
-        id="nativeLlmResolvedTransportDiagnosticsPrincipal"
-        value="be2us-64aaa-aaaaa-qaabq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmResolvedTransportDiagnosticsNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmResolvedTransportDiagnosticsMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="noop_status">noop_status</option>
-        <option value="capabilities">capabilities</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-        <option value="probe">probe</option>
-      </select>
-
-      <input
-        id="nativeLlmResolvedTransportDiagnosticsSummary"
-        value="unexpected bounded no-op transport error"
-        placeholder="Sanitized error summary"
-        style="width: 56%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('ready')">Preview Diagnostics Ready</button>
-      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('raw_error_unredacted')">Preview Redaction Failure</button>
-      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterResolvedTransportDiagnostics('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterResolvedTransportDiagnosticsResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Next No-Op Target Interface Contract</strong></summary>
-
-      <p>The w36hm provider-boundary search is closed as inconclusive-safe. These controls remain for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
-
-      <input
-        id="nativeLlmNextNoopTargetPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmNextNoopTargetNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmNextNoopTargetMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="v0_chat">v0_chat</option>
-        <option value="noop_status">noop_status</option>
-        <option value="probe">probe</option>
-        <option value="health">health</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('ready')">Preview Contract Ready</button>
-      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('prior_target_retry')">Preview Prior Target Retry</button>
-      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterNextNoopTargetInterfaceContract('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterNextNoopTargetInterfaceResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Next No-Op Metadata Transport</strong></summary>
-
-      <p>Closed: the approved metadata transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live metadata transport is disabled until a new native decision exists.</p>
-
-      <input
-        id="nativeLlmNextNoopMetadataTransportPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmNextNoopMetadataTransportNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmNextNoopMetadataTransportMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="v0_chat">v0_chat</option>
-        <option value="noop_status">noop_status</option>
-        <option value="probe">probe</option>
-        <option value="health">health</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <input
-        id="nativeLlmNextNoopMetadataTransportTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmNextNoopMetadataTransportResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('disabled')">Preview Disabled Transport</button>
-      <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('prior_target_retry')">Preview Prior Target Retry</button>
-      <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterNextNoopMetadataTransport('missing_approval')">Preview Missing Approval</button>
-      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Metadata Transport Closed</button>
-
-      <div id="nativeLlmCanisterNextNoopMetadataTransportResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Alternate No-Op Health Interface Contract</strong></summary>
-
-      <p>The w36hm provider-boundary search is closed as inconclusive-safe. This interface contract remains for audit/preview evidence only; another live transport attempt requires a new native decision.</p>
-
-      <input
-        id="nativeLlmAlternateNoopHealthPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmAlternateNoopHealthNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmAlternateNoopHealthMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="health">health</option>
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="v0_chat">v0_chat</option>
-        <option value="noop_status">noop_status</option>
-        <option value="probe">probe</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <input
-        id="nativeLlmAlternateNoopHealthTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmAlternateNoopHealthResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('ready')">Preview Health Ready</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('metadata_revision')">Preview Metadata Revision Block</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthInterfaceContract('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterAlternateNoopHealthInterfaceResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Alternate No-Op Health Transport</strong></summary>
-
-      <p>Closed: the approved health transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live health transport is disabled until a new native decision exists.</p>
-
-      <input
-        id="nativeLlmAlternateNoopHealthTransportPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmAlternateNoopHealthTransportNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmAlternateNoopHealthTransportMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="health">health</option>
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="v0_chat">v0_chat</option>
-        <option value="noop_status">noop_status</option>
-        <option value="probe">probe</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <input
-        id="nativeLlmAlternateNoopHealthTransportTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmAlternateNoopHealthTransportResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('disabled')">Preview Disabled Transport</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('metadata_revision')">Preview Metadata Revision Block</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterAlternateNoopHealthTransport('missing_approval')">Preview Missing Approval</button>
-      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Health Transport Closed</button>
-
-      <div id="nativeLlmCanisterAlternateNoopHealthTransportResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Exposed Interface Diagnostic</strong></summary>
-
-      <p>Recorded bounded Admin-only interface evidence after repeated interface mismatches. The w36hm boundary search is now closed; this section remains for audit/preview evidence only.</p>
-
-      <input
-        id="nativeLlmExposedInterfaceDiagnosticPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmExposedInterfaceDiagnosticNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmExposedInterfaceDiagnosticPath"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="operator_supplied_candid_summary">Operator Candid summary</option>
-        <option value="bounded_method_name_observation">Bounded method names</option>
-        <option value="no_safe_noop_method_known">No safe no-op known</option>
-        <option value="stop_boundary_search_inconclusive_safe">Stop inconclusive-safe</option>
-      </select>
-
-      <input
-        id="nativeLlmExposedInterfaceDiagnosticMethods"
-        value="status, version"
-        placeholder="Bounded method names"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmExposedInterfaceDiagnosticSummary"
-        value="Bounded operator-supplied interface summary; no raw service dump captured."
-        placeholder="Bounded interface summary"
-        style="width: 64%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('ready')">Preview Diagnostic Ready</button>
-      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('raw_capture')">Preview Raw Capture Block</button>
-      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterExposedInterfaceDiagnostic('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterExposedInterfaceDiagnosticResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Method-Source Evidence</strong></summary>
-
-      <p>Recorded the bounded non-calling status source note used before the final status transport. The w36hm boundary search is now closed; new method-source evidence needs a separate native decision.</p>
-
-      <input
-        id="nativeLlmMethodSourcePrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmMethodSourceNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmMethodSourceMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="metadata">metadata</option>
-      </select>
-
-      <select
-        id="nativeLlmMethodSourceType"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="live_candid_or_verified_deployed_declaration">Verified deployed declaration</option>
-        <option value="deployment_artifact_for_exact_canister">Deployment artifact</option>
-        <option value="source_repo_tied_to_deployed_wasm">Source tied to wasm</option>
-        <option value="official_canister_documentation">Official documentation</option>
-        <option value="operator_observation_or_inferred_method_name">Operator observation</option>
-      </select>
-
-      <input
-        id="nativeLlmMethodSourceReference"
-        value="Verified deployed declaration for w36hm status query."
-        placeholder="Bounded source reference"
-        style="width: 54%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmMethodSourceQueryClass"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="query">query</option>
-        <option value="update">update</option>
-        <option value="unknown">unknown</option>
-      </select>
-
-      <input
-        id="nativeLlmMethodSourceArguments"
-        value="()"
-        placeholder="Expected arguments"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmMethodSourceReturnType"
-        value="text"
-        placeholder="Expected return type"
-        style="width: 180px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterMethodSourceEvidence('ready')">Preview Evidence Ready</button>
-      <button onclick="runNativeLlmCanisterMethodSourceEvidence('operator_observation')">Preview Observation Block</button>
-      <button onclick="runNativeLlmCanisterMethodSourceEvidence('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterMethodSourceEvidence('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterMethodSourceEvidence('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterMethodSourceEvidenceResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Fresh Candidate Intake</strong></summary>
-
-      <p>Preview-only intake for a future candidate package. It does not select a target, approve transport, call a canister, or reopen the closed w36hm path.</p>
-
-      <input
-        id="nativeLlmFreshCandidatePrincipal"
-        value="z7unv-7iaaa-aaaal-qb6aq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateSourceType"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="verified_candid_interface_for_exact_canister">Verified Candid interface</option>
-        <option value="deployment_artifact_for_exact_canister">Deployment artifact</option>
-        <option value="source_repo_tied_to_deployed_wasm">Source tied to wasm</option>
-        <option value="owner_documentation_for_exact_canister">Owner documentation</option>
-        <option value="bounded_operator_supplied_interface_evidence">Bounded operator evidence</option>
-        <option value="different_target_principal_with_prior_non_calling_evidence">Different target evidence</option>
-      </select>
-
-      <input
-        id="nativeLlmFreshCandidateSourceReference"
-        value="Verified Candid declaration tied to the exact deployed canister."
-        placeholder="Bounded source reference"
-        style="width: 54%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateQueryClass"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="query">query</option>
-        <option value="update">update</option>
-        <option value="unknown">unknown</option>
-      </select>
-
-      <input
-        id="nativeLlmFreshCandidateArguments"
-        value="()"
-        placeholder="Expected arguments"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateReturnType"
-        value="text"
-        placeholder="Expected return type"
-        style="width: 180px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateResponseShape"
-        value="bounded_status_text_or_record"
-        placeholder="Expected response shape"
-        style="width: 240px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidatePayloadKind"
-        value="empty_noop_probe"
-        placeholder="Payload kind"
-        style="width: 180px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateTimeout"
-        type="number"
-        value="1500"
-        min="100"
-        max="10000"
-        style="width: 100px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateResponseBytes"
-        type="number"
-        value="2048"
-        min="1"
-        max="65536"
-        style="width: 100px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('ready')">Preview Intake Ready</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('closed_path_block')">Preview Closed Path Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('bounded_operator_evidence')">Preview Intake-Only Evidence</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateIntake('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterFreshCandidateIntakeResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Fresh Candidate Status</strong></summary>
-
-      <p>Preview-only status-candidate review for z7unv. It does not approve transport, expose a live call, submit prompts, or reopen the closed w36hm path.</p>
-
-      <input
-        id="nativeLlmFreshCandidateStatusPrincipal"
-        value="z7unv-7iaaa-aaaal-qb6aq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateStatusNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateStatusMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="metadata">metadata</option>
-        <option value="v1_chat">v1_chat</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateStatusSourceType"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="verified_candid_interface_for_exact_canister">Verified Candid interface</option>
-        <option value="bounded_operator_supplied_interface_evidence">Bounded operator evidence</option>
-        <option value="owner_documentation_for_exact_canister">Owner documentation</option>
-      </select>
-
-      <input
-        id="nativeLlmFreshCandidateStatusSourceReference"
-        value="Verified Candid declaration tied to exact z7unv deployment."
-        placeholder="Bounded source reference"
-        style="width: 54%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateStatusQueryClass"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="query">query</option>
-        <option value="update">update</option>
-        <option value="unknown">unknown</option>
-      </select>
-
-      <input
-        id="nativeLlmFreshCandidateStatusArguments"
-        value="()"
-        placeholder="Expected arguments"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateStatusReturnType"
-        value="text"
-        placeholder="Expected return type"
-        style="width: 180px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateStatusResponseShape"
-        value="bounded_status_text"
-        placeholder="Expected response shape"
-        style="width: 220px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateStatusTimeout"
-        type="number"
-        value="1500"
-        min="100"
-        max="10000"
-        style="width: 100px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateStatusResponseBytes"
-        type="number"
-        value="2048"
-        min="1"
-        max="65536"
-        style="width: 100px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('ready')">Preview Status Ready</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('closed_path_block')">Preview Closed Path Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('prior_mismatch')">Preview Prior Intake Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('method_mismatch')">Preview Method Mismatch</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('weak_source')">Preview Weak Source</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatus('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterFreshCandidateStatusResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Fresh Candidate Status Transport</strong></summary>
-
-      <p>Admin-only bounded status transport for the fresh z7unv candidate. It keeps the closed w36hm path blocked and does not submit prompts, grounded packets, answers, fallback, provider switches, memory access, continuity changes, or public routing changes.</p>
-
-      <input
-        id="nativeLlmFreshCandidateStatusTransportPrincipal"
-        value="z7unv-7iaaa-aaaal-qb6aq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateStatusTransportNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateStatusTransportMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-        <option value="v1_chat">v1_chat</option>
-      </select>
-
-      <input
-        id="nativeLlmFreshCandidateStatusTransportTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmFreshCandidateStatusTransportResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('disabled')">Preview Disabled Transport</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('prior_status_mismatch')">Preview Prior Status Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('closed_path_block')">Preview Closed Path Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('version_method_block')">Preview Version Method Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransport('approved')">Run Status Transport</button>
-
-      <div id="nativeLlmCanisterFreshCandidateStatusTransportResults"></div>
-    </details>
-
-    <details class="archived-phase-tool" id="nativeLlmFreshCandidateStatusTransportDiagnosticPanel">
-      <summary><strong>Native LLM Fresh Candidate Status Transport Diagnostic</strong></summary>
-
-      <p>Non-calling diagnostic for the fresh z7unv status transport unexpected error. It records only bounded sanitized metadata and does not run another status call, method probe, prompt, grounded packet, answer, fallback, provider switch, memory access, continuity change, public routing change, or production cutover.</p>
-
-      <p class="meta">Current option: use this panel after the fresh-candidate status transport returned `unexpected_transport_error`.</p>
-
-      <input
-        id="nativeLlmFreshCandidateStatusTransportDiagnosticPrincipal"
-        value="z7unv-7iaaa-aaaal-qb6aq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmFreshCandidateStatusTransportDiagnosticNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateStatusTransportDiagnosticMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-        <option value="v1_chat">v1_chat</option>
-      </select>
-
-      <select
-        id="nativeLlmFreshCandidateStatusTransportDiagnosticSource"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="icp_client">icp_client</option>
-        <option value="agent">agent</option>
-        <option value="candid">candid</option>
-        <option value="canister">canister</option>
-        <option value="network">network</option>
-        <option value="unknown">unknown</option>
-      </select>
-
-      <textarea
-        id="nativeLlmFreshCandidateStatusTransportDiagnosticSummary"
-        rows="3"
-        style="width: 100%; padding: 8px; margin-top: 10px;"
-      >Approved status transport reached z7unv and returned an unexpected transport error before response-shape parsing.</textarea>
-
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('ready')">Preview Diagnostic Ready</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('prior_transport_mismatch')">Preview Prior Transport Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('method_mismatch')">Preview Method Mismatch</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('source_mismatch')">Preview Source Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('raw_error_block')">Preview Raw Error Block</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_summary')">Preview Missing Summary</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterFreshCandidateStatusTransportDiagnostic('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterFreshCandidateStatusTransportDiagnosticResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Status Transport</strong></summary>
-
-      <p>Closed: the approved status transport already reached w36hm and failed closed as an interface mismatch. Preview guards remain available; live status transport is disabled until a new native decision exists.</p>
-
-      <input
-        id="nativeLlmStatusTransportPrincipal"
-        value="w36hm-eqaaa-aaaal-qr76a-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmStatusTransportNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmStatusTransportMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="status">status</option>
-        <option value="version">version</option>
-        <option value="v1_chat">v1_chat</option>
-        <option value="v0_chat">v0_chat</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-      </select>
-
-      <input
-        id="nativeLlmStatusTransportTimeout"
-        type="number"
-        value="1500"
-        min="250"
-        max="10000"
-        style="width: 120px; padding: 8px; margin-top: 10px;"
-      />
-
-      <input
-        id="nativeLlmStatusTransportResponseBytes"
-        type="number"
-        value="2048"
-        min="128"
-        max="32768"
-        style="width: 140px; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runNativeLlmCanisterStatusTransport('disabled')">Preview Disabled Transport</button>
-      <button onclick="runNativeLlmCanisterStatusTransport('prior_evidence_mismatch')">Preview Prior Evidence Mismatch</button>
-      <button onclick="runNativeLlmCanisterStatusTransport('version_method_block')">Preview Version Method Block</button>
-      <button onclick="runNativeLlmCanisterStatusTransport('answer_method_block')">Preview Answer Method Block</button>
-      <button onclick="runNativeLlmCanisterStatusTransport('missing_approval')">Preview Missing Approval</button>
-      <button disabled title="Closed by native provider-boundary summary; a new native decision is required before another live transport.">Status Transport Closed</button>
-
-      <div id="nativeLlmCanisterStatusTransportResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Compatible No-Op Interface Contract</strong></summary>
-
-      <p>Validate the selected compatible no-op interface decision before another transport attempt, without making a canister call, sending a grounded packet, or changing public routing.</p>
-
-      <input
-        id="nativeLlmCompatibleNoopPrincipal"
-        value="ryjl3-tyaaa-aaaaa-aaaba-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmCompatibleNoopNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmCompatibleNoopMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="noop_status">noop_status</option>
-        <option value="probe">probe</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('ready')">Preview Compatible Contract</button>
-      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('blocked_capabilities')">Preview Blocked Capabilities</button>
-      <button onclick="runNativeLlmCanisterCompatibleNoopInterfaceContract('missing_approval')">Preview Missing Approval</button>
-
-      <div id="nativeLlmCanisterCompatibleNoopInterfaceResults"></div>
-    </details>
-
-    <details class="archived-phase-tool">
-      <summary><strong>Native LLM Provider Boundary Resolution Contract</strong></summary>
-
-      <p>Preview the Admin-only provider-boundary resolution decision after compatible no-op transport evidence, without making a canister call, sending a grounded packet, or changing public routing.</p>
-
-      <input
-        id="nativeLlmProviderBoundaryPrincipal"
-        value="be2us-64aaa-aaaaa-qaabq-cai"
-        placeholder="Target canister principal"
-        style="width: 44%; padding: 8px; margin-top: 10px;"
-      />
-
-      <select
-        id="nativeLlmProviderBoundaryNetwork"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-
-      <select
-        id="nativeLlmProviderBoundaryResolutionPath"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="approve_target_exposes_noop_status">Approve noop_status target</option>
-        <option value="revise_contract_to_exposed_method">Revise to exposed method</option>
-      </select>
-
-      <select
-        id="nativeLlmProviderBoundaryMethod"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="noop_status">noop_status</option>
-        <option value="metadata">metadata</option>
-        <option value="health">health</option>
-        <option value="probe">probe</option>
-        <option value="capabilities">capabilities</option>
-      </select>
-
-      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('ready')">Preview Boundary Ready</button>
-      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('current_unresolved')">Preview Current Target Unresolved</button>
-      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('blocked_capabilities')">Preview Blocked Capabilities</button>
-      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('missing_approval')">Preview Missing Approval</button>
-      <button onclick="runNativeLlmCanisterProviderBoundaryResolutionContract('real_call_block')">Preview Real Call Block</button>
-
-      <div id="nativeLlmCanisterProviderBoundaryResolutionResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Approved-Case Internal-Test Answer</strong></summary>
-
-      <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
-
-      <select
-        id="nativeRetrievalApprovedCaseAnswerCase"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="water_outage">Water outage</option>
-        <option value="food_reserve">Food reserve</option>
-        <option value="power_outage">Power outage</option>
-        <option value="bread_selection">Bread selection</option>
-        <option value="spanish_water_storage">Spanish water storage</option>
-        <option value="generic_sports">Generic sports</option>
-        <option value="spanish_generic_sports">Spanish generic sports</option>
-        <option value="sports_hydration_detail">Sports hydration detail</option>
-      </select>
-
-      <button onclick="runNativeRetrievalApprovedCaseInternalTestAnswer()">Generate Approved-Case Answer</button>
-
-      <div id="nativeRetrievalApprovedCaseInternalTestAnswerResults"></div>
-    </details>
-
-    <details class="advanced-operator-tool">
-      <summary><strong>Approved-Case Comparison</strong></summary>
-
-      <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
-
-      <select
-        id="nativeRetrievalComparisonFixture"
-        style="padding: 8px; margin-top: 10px;"
-      >
-        <option value="water_outage">Water outage</option>
-        <option value="food_reserve">Food reserve</option>
-        <option value="power_outage">Power outage</option>
-        <option value="bread_selection">Bread selection</option>
-        <option value="spanish_water_storage">Spanish water storage</option>
-        <option value="generic_sports">Generic sports</option>
-        <option value="spanish_generic_sports">Spanish generic sports</option>
-        <option value="sports_hydration_detail">Sports hydration detail</option>
-      </select>
-
-      <button onclick="runNativeRetrievalFixtureComparison()">Preview Approved-Case Comparison</button>
-
-      <div id="nativeRetrievalComparisonResults"></div>
-    </details>
-
-    <details class="legacy-reference-tool">
-      <summary><strong>Retrieval Preview</strong></summary>
-
-      <p>Final post-filtered retrieval used by Aion.</p>
-
-      <input
-        id="retrievalQuery"
-        placeholder="Enter retrieval query..."
-        style="width: 70%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runRetrievalDebug()">Test Retrieval</button>
-
-      <div id="retrievalResults"></div>
-    </details>
-    <details class="legacy-reference-tool">
-      <summary><strong>Raw Retrieval Preview</strong></summary>
-
-      <p>Inspect raw search results before filtering and boosting.</p>
-
-      <input
-        id="retrievalRawQuery"
-        placeholder="Enter retrieval query..."
-        style="width: 70%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runRawRetrievalDebug()">
-        Test Raw Retrieval
-      </button>
-
-      <div id="retrievalRawResults"></div>
-    </details>
-    <details class="legacy-reference-tool">
-      <summary><strong>Context Viewer</strong></summary>
-
-      <p>Build and inspect the context Aion would send for a query.</p>
-
-      <input
-        id="contextQuery"
-        placeholder="Enter context query..."
-        style="width: 70%; padding: 8px; margin-top: 10px;"
-      />
-
-      <button onclick="runContextDebug()">Build Context</button>
-
-      <div id="contextResults"></div>
-    </details>
+    <!-- Admin continuity group end: Archived phase diagnostics -->
     </section>
 
     <section id="memoryHealth" class="admin-section operator-workspace" data-admin-view="intelligence">
