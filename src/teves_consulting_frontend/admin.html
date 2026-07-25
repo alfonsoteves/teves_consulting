@@ -639,6 +639,7 @@
 
     .admin-login-brand,
     .admin-workspace-brand,
+    .admin-login-footer,
     .admin-login-company,
     .admin-login-about {
       display: none;
@@ -702,26 +703,44 @@
       animation: adminOperatorRotate 8s linear infinite;
     }
 
-    body.admin-signed-out .admin-login-company {
+    body.admin-signed-out .admin-login-footer {
       position: fixed;
-      left: var(--admin-aion-rail-offset);
+      right: 0;
+      left: 0;
       bottom: 25px;
       z-index: 40;
       display: block;
+      color: #d4d4d4;
+      font-size: 0.86rem;
+    }
+
+    body.admin-signed-out .admin-login-footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      width: 100%;
+      max-width: var(--admin-aion-rail-width);
+      margin: 0 auto;
+      padding: 0 var(--admin-aion-rail-pad);
+      box-sizing: border-box;
+    }
+
+    body.admin-signed-out .admin-login-company {
+      display: block;
+      min-width: 0;
       margin: 0;
       color: #d4d4d4;
       font-size: 0.86rem;
     }
 
     body.admin-signed-out .admin-login-about {
-      position: fixed;
-      right: var(--admin-aion-rail-offset);
-      bottom: 25px;
-      z-index: 40;
       display: inline-flex;
+      flex: 0 0 auto;
       color: #d4d4d4;
       font-size: 0.86rem;
       text-decoration: none;
+      white-space: nowrap;
     }
 
     body.admin-signed-out .admin-login-about:hover,
@@ -1180,14 +1199,31 @@
         white-space: nowrap;
       }
 
-      body.admin-signed-out .admin-login-company {
-        left: var(--admin-aion-rail-offset);
+      body.admin-signed-out .admin-login-footer {
         bottom: 22px;
       }
 
+      body.admin-signed-out .admin-login-footer-inner {
+        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 12px;
+        padding-right: var(--admin-aion-rail-pad);
+        padding-left: var(--admin-aion-rail-pad);
+      }
+
+      body.admin-signed-out .admin-login-company {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 0.82rem;
+        line-height: 1.35;
+      }
+
       body.admin-signed-out .admin-login-about {
-        right: var(--admin-aion-rail-offset);
-        bottom: 22px;
+        flex: 0 0 auto;
+        font-size: 0.82rem;
+        line-height: 1.35;
+        white-space: nowrap;
       }
 
       body.admin-signed-out .operator-access {
@@ -1245,8 +1281,12 @@
       </svg>
     </span>
   </div>
-  <p class="admin-login-company">© 2026 Teves Consulting LLC. All rights reserved.</p>
-  <a class="admin-login-about" href="/about-aion.html">About Aion</a>
+  <footer class="admin-login-footer">
+    <div class="admin-login-footer-inner">
+      <p class="admin-login-company">© 2026 Teves Consulting LLC. All rights reserved.</p>
+      <a class="admin-login-about" href="/about-aion.html">About Aion</a>
+    </div>
+  </footer>
   <!-- Aion Operator landing chrome end -->
   <header class="admin-header">
     <div>
