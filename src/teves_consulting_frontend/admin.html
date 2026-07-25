@@ -956,6 +956,92 @@
       text-align: center;
     }
 
+    .admin-dashboard-pill.is-clear {
+      border-color: #166534;
+      background: rgba(22, 101, 52, 0.16);
+      color: #bbf7d0;
+    }
+
+    .admin-dashboard-pill.is-watch {
+      border-color: #a16207;
+      background: rgba(161, 98, 7, 0.18);
+      color: #fde68a;
+    }
+
+    .admin-dashboard-pill.is-action {
+      border-color: #b91c1c;
+      background: rgba(185, 28, 28, 0.2);
+      color: #fecaca;
+    }
+
+    .admin-dashboard-pill.is-pending {
+      border-color: #334155;
+      background: #111827;
+      color: #cbd5e1;
+    }
+
+    .admin-dashboard-attention {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: -6px 0 18px;
+    }
+
+    .admin-dashboard-attention-item {
+      display: block;
+      min-height: 74px;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #11161d;
+      color: #cbd5e1;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+    }
+
+    .admin-dashboard-attention-item:hover,
+    .admin-dashboard-attention-item:focus-visible {
+      background: #151a20;
+      transform: translateY(-1px);
+    }
+
+    .admin-dashboard-attention-item strong {
+      display: block;
+      color: #f8fafc;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .admin-dashboard-attention-item span {
+      display: block;
+      margin-top: 6px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .admin-dashboard-attention-item.is-clear {
+      border-color: rgba(22, 101, 52, 0.55);
+    }
+
+    .admin-dashboard-attention-item.is-watch {
+      border-color: rgba(161, 98, 7, 0.65);
+    }
+
+    .admin-dashboard-attention-item.is-action {
+      border-color: rgba(185, 28, 28, 0.68);
+    }
+
+    .admin-dashboard-attention-item.is-pending {
+      border-color: #334155;
+    }
+
     body.admin-signed-in #aionHealth .dashboard-grid {
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
@@ -985,6 +1071,10 @@
     @media (max-width: 900px) {
       body.admin-signed-in #aionHealth .dashboard-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .admin-dashboard-attention {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -1025,6 +1115,12 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 10px;
+    }
+
+    .admin-review-actions {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #263241;
     }
 
     .admin-cycle-snapshot {
@@ -1073,7 +1169,19 @@
       color: #fde68a;
     }
 
+    .admin-cycle-runway-label.aging {
+      border: 1px solid rgba(161, 98, 7, 0.7);
+      background: rgba(161, 98, 7, 0.2);
+      color: #fde68a;
+    }
+
     .admin-cycle-runway-label.top-up {
+      border: 1px solid rgba(185, 28, 28, 0.72);
+      background: rgba(185, 28, 28, 0.22);
+      color: #fecaca;
+    }
+
+    .admin-cycle-runway-label.stale {
       border: 1px solid rgba(185, 28, 28, 0.72);
       background: rgba(185, 28, 28, 0.22);
       color: #fecaca;
@@ -1151,6 +1259,128 @@
       }
     }
     /* Admin cycles visibility end */
+
+    /* Admin section overviews start */
+    .admin-section-overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .admin-section-overview-card {
+      display: grid;
+      gap: 8px;
+      min-height: 132px;
+      padding: 14px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #11161d;
+      color: #cbd5e1;
+    }
+
+    .admin-section-overview-card strong {
+      color: #f8fafc;
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .admin-section-overview-card span {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .admin-section-overview-card button {
+      align-self: end;
+      width: max-content;
+      min-height: 34px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #151a20;
+      color: #e5e7eb;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .admin-section-overview-card button:hover,
+    .admin-section-overview-card button:focus {
+      border-color: #60a5fa;
+      color: #f8fafc;
+    }
+
+    .admin-section-tool-primary {
+      border-color: #4b6f9f;
+      background: #151d28;
+    }
+
+    .admin-section-tool-routine {
+      border-color: #3b526d;
+    }
+
+    .admin-section-tool-secondary {
+      border-color: #2f3d4e;
+    }
+
+    .admin-section-tool-archived {
+      border-color: #263241;
+      opacity: 0.88;
+    }
+
+    .admin-section-tool-archived[open] {
+      opacity: 1;
+    }
+
+    #memoryAndFeedback > details,
+    #memoryHealth > details,
+    #operatorInsights > details,
+    #providers > details,
+    #systemValidation > details {
+      margin: 14px 0;
+    }
+
+    #memoryAndFeedback > details > summary,
+    #memoryHealth > details > summary,
+    #operatorInsights > details > summary,
+    #providers > details > summary,
+    #systemValidation > details > summary {
+      color: #f8fafc;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    #memoryAndFeedback > details > p,
+    #memoryHealth > details > p,
+    #operatorInsights > details > p,
+    #providers > details > p,
+    #systemValidation > details > p {
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .admin-section-overview-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin: 14px 0;
+      }
+
+      .admin-section-overview-card {
+        min-height: 0;
+        padding: 12px;
+      }
+
+      .admin-section-overview-card span {
+        font-size: 0.88rem;
+      }
+
+      .admin-section-overview-card button {
+        width: 100%;
+        min-height: 42px;
+      }
+    }
+    /* Admin section overviews end */
 
     @media (max-width: 640px) {
       .admin-dashboard-summary {
@@ -1343,17 +1573,34 @@
       <div class="admin-dashboard-summary">
         <div>
           <p class="admin-dashboard-kicker">Current state</p>
-          <p class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
+          <p id="adminDashboardHeadline" class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
         </div>
-        <div class="admin-dashboard-pill">Operator verified</div>
+        <div id="adminDashboardPill" class="admin-dashboard-pill is-clear">Operator verified</div>
+      </div>
+      <div id="adminDashboardAttention" class="admin-dashboard-attention" aria-label="Dashboard attention">
+        <button type="button" id="adminAttentionSnapshots" class="admin-dashboard-attention-item is-pending" data-admin-view-jump="intelligence">
+          <strong>Snapshots</strong>
+          <span>Paste status</span>
+        </button>
+        <button type="button" id="adminAttentionDeploy" class="admin-dashboard-attention-item is-pending" data-admin-view-jump="intelligence">
+          <strong>Deploy</strong>
+          <span>Check frontend</span>
+        </button>
+        <button type="button" id="adminAttentionReview" class="admin-dashboard-attention-item is-pending" data-admin-view-jump="intelligence">
+          <strong>Review</strong>
+          <span>Not reviewed</span>
+        </button>
       </div>
       <div class="dashboard-grid">
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
+        <div class="metric-card"><div class="metric-label">Recommended action</div><div id="healthCycleAction" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Deploy readiness</div><div id="healthDeployReadiness" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
         <div class="metric-card"><div class="metric-label">Backend cycles</div><div id="healthBackendCycles" class="metric-value">Add snapshot</div></div>
-        <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Snapshot age</div><div id="healthCycleSnapshotAge" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Last reviewed</div><div id="healthDashboardReviewed" class="metric-value">Not reviewed</div></div>
         <div class="metric-card"><div class="metric-label">Public provider</div><div class="metric-value">OpenAI baseline</div></div>
         <div class="metric-card"><div class="metric-label">Continuity path</div><div class="metric-value">Native active</div></div>
         <div class="metric-card"><div class="metric-label">Native shadow</div><div class="metric-value">Cutover recorded</div></div>
@@ -1367,7 +1614,25 @@
       <h2>Memory & Feedback</h2>
       <p class="section-note">Review saved continuity memories, milestones, and feedback.</p>
 
-    <details open>
+      <div class="admin-section-overview-grid" aria-label="Memory review shortcuts">
+        <div class="admin-section-overview-card">
+          <strong>Memory overview</strong>
+          <span>Check totals, milestones, and the latest continuity records.</span>
+          <button type="button" data-admin-detail-jump="memoryOverviewPanel">Open overview</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Memory list</strong>
+          <span>Review saved memories when continuity behavior needs investigation.</span>
+          <button type="button" data-admin-detail-jump="memoryListPanel">Open memories</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Feedback</strong>
+          <span>Inspect saved feedback and export it when doing quality review.</span>
+          <button type="button" data-admin-detail-jump="feedbackDashboardPanel">Open feedback</button>
+        </div>
+      </div>
+
+    <details id="memoryOverviewPanel" class="admin-section-tool-primary" open>
       <summary><strong>Memory Overview</strong></summary>
 
       <div id="memoryOverview">
@@ -1379,7 +1644,7 @@
       </div>
     </details>
 
-    <details>
+    <details id="memoryListPanel" class="admin-section-tool-secondary">
       <summary><strong>Memory List</strong></summary>
 
       <button onclick="loadMemories()">Refresh Memories</button>
@@ -1387,7 +1652,7 @@
       <div id="memoryList"></div>
     </details>
 
-    <details>
+    <details id="feedbackDashboardPanel" class="admin-section-tool-secondary">
       <summary><strong>Feedback Dashboard</strong></summary>
 
       <p>Total Feedback: <span id="feedbackTotal">0</span></p>
@@ -2759,7 +3024,25 @@
       <h2>Memory Reports</h2>
       <p class="section-note">Start with the memory dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
 
-    <details class="advanced-operator-tool">
+      <div class="admin-section-overview-grid" aria-label="Memory report shortcuts">
+        <div class="admin-section-overview-card">
+          <strong>Memory dashboard</strong>
+          <span>Build the combined memory health, consolidation, and decision-evolution view.</span>
+          <button type="button" data-admin-detail-jump="memoryHealthDashboardPanel">Open dashboard</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Maintenance plan</strong>
+          <span>Generate the next operator action plan without changing memories.</span>
+          <button type="button" data-admin-detail-jump="memoryMaintenancePlanPanel">Open plan</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Deep diagnostics</strong>
+          <span>Keep graph, consolidation, evolution, and relationship checks available below.</span>
+          <button type="button" data-admin-detail-jump="memoryHealthPreviewPanel">Open diagnostics</button>
+        </div>
+      </div>
+
+    <details id="memoryHealthPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Memory Health Preview</strong></summary>
 
       <p>Inspect memory graph health without changing memories or live retrieval.</p>
@@ -2768,7 +3051,7 @@
 
       <div id="memoryHealthResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="memoryConsolidationPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Memory Consolidation Preview</strong></summary>
 
       <p>Inspect consolidation suggestions without changing memories or live retrieval.</p>
@@ -2777,7 +3060,7 @@
 
       <div id="memoryConsolidationResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="decisionEvolutionPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Decision Evolution Preview</strong></summary>
 
       <p>Inspect decision evolution without changing memories or live retrieval.</p>
@@ -2786,7 +3069,7 @@
 
       <div id="decisionEvolutionResults"></div>
     </details>
-    <details class="primary-operator-tool" open>
+    <details id="memoryHealthDashboardPanel" class="primary-operator-tool admin-section-tool-primary" open>
       <summary><strong>Memory Health Dashboard</strong></summary>
 
       <p>Review health, consolidation, and decision-evolution status in one operator view.</p>
@@ -2795,7 +3078,7 @@
 
       <div id="memoryHealthDashboardResults"></div>
     </details>
-    <details class="primary-operator-tool" open>
+    <details id="memoryMaintenancePlanPanel" class="primary-operator-tool admin-section-tool-primary" open>
       <summary><strong>Memory Maintenance Plan</strong></summary>
 
       <p>Build an operator action plan without changing memories or live retrieval.</p>
@@ -2804,7 +3087,7 @@
 
       <div id="memoryMaintenancePlanResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="relationshipConfidencePreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Relationship Confidence Preview</strong></summary>
 
       <p>Inspect computed relationship confidence without changing memories or live retrieval.</p>
@@ -2819,8 +3102,26 @@
       <h2>Operator Reports</h2>
       <p class="section-note">Start with the consolidated operator report. Supporting analyses remain available for deeper review.</p>
 
-      <details class="admin-cycle-panel" open>
-        <summary><strong>Cycles runway</strong></summary>
+      <div class="admin-section-overview-grid" aria-label="Operator report shortcuts">
+        <div class="admin-section-overview-card">
+          <strong>Cycles runway</strong>
+          <span>Update frontend and backend cycle snapshots before deployment decisions.</span>
+          <button type="button" data-admin-detail-jump="cycleRunwayPanel">Open cycles</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Operator report</strong>
+          <span>Build the consolidated report for a calm state-of-system review.</span>
+          <button type="button" data-admin-detail-jump="operatorInsightReportPanel">Open report</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Strategic review</strong>
+          <span>Use synthesis, assumptions, and reflective checks for deeper analysis.</span>
+          <button type="button" data-admin-detail-jump="strategicReasoningPanel">Open analysis</button>
+        </div>
+      </div>
+
+      <details id="cycleRunwayPanel" class="admin-cycle-panel admin-section-tool-primary" open>
+      <summary><strong>Cycles runway</strong></summary>
         <p class="meta">Paste the latest frontend and backend canister status outputs to update the dashboard. Idle runway is based on the reported daily burn; frontend deployments can consume additional burst cycles.</p>
         <div class="admin-cycle-grid">
           <div>
@@ -2859,9 +3160,13 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
             <span><strong>Snapshot:</strong> Pending</span>
           </div>
         </div>
+        <div class="admin-cycle-actions admin-review-actions">
+          <button type="button" onclick="markDashboardReviewed()">Mark dashboard reviewed</button>
+        </div>
+        <p id="dashboardReviewStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
       </details>
 
-    <details class="advanced-operator-tool">
+    <details id="knowledgeSynthesisPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Knowledge Synthesis</strong></summary>
 
       <p>Inspect grounded memory synthesis without changing memories or live retrieval.</p>
@@ -2870,7 +3175,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
       <div id="knowledgeSynthesisResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="strategicReasoningPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Strategic Reasoning Brief</strong></summary>
 
       <p>Build an operator reasoning brief without changing memories or live retrieval.</p>
@@ -2879,7 +3184,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
       <div id="strategicReasoningResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="assumptionReviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Assumption Review</strong></summary>
 
       <p>Inspect stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
@@ -2888,7 +3193,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
       <div id="assumptionEvolutionResults"></div>
     </details>
-    <details class="advanced-operator-tool">
+    <details id="reflectiveIntelligencePanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Reflective Intelligence</strong></summary>
 
       <p>Build a grounded reflection without changing memories or live retrieval.</p>
@@ -2897,7 +3202,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
       <div id="reflectiveIntelligenceResults"></div>
     </details>
-    <details class="primary-operator-tool" open>
+    <details id="operatorInsightReportPanel" class="primary-operator-tool admin-section-tool-primary" open>
       <summary><strong>Operator Insight Report</strong></summary>
 
       <p>Build an operator insight report without changing memories or live retrieval.</p>
@@ -2912,7 +3217,25 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <h2>Providers</h2>
       <p class="section-note">Review provider status, candidate policy, and Admin-only test tools without changing public answers.</p>
 
-    <details open>
+      <div class="admin-section-overview-grid" aria-label="Provider review shortcuts">
+        <div class="admin-section-overview-card">
+          <strong>Current baseline</strong>
+          <span>Verify the public OpenAI route and inspect the ICP candidate registry.</span>
+          <button type="button" data-admin-detail-jump="providerStatusPanel">Open status</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Candidate tests</strong>
+          <span>Run Admin-only candidate checks without changing public answers.</span>
+          <button type="button" data-admin-detail-jump="candidateTestConsolePanel">Open tests</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Archived evidence</strong>
+          <span>Keep older provider design and handoff artifacts available but out of the way.</span>
+          <button type="button" data-admin-detail-jump="archivedProviderEvidencePanel">Open archive</button>
+        </div>
+      </div>
+
+    <details id="providerStatusPanel" class="admin-section-tool-primary" open>
       <summary><strong>Provider Status & Registry</strong></summary>
 
       <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
@@ -2993,7 +3316,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         <div id="icpLlmCandidVerificationNotesResults"></div>
       </details>
     </details>
-    <details open>
+    <details id="candidateTestConsolePanel" class="admin-section-tool-secondary">
       <summary><strong>Candidate Test Console</strong></summary>
 
       <p>Run one-off or batch ICP candidate tests. Candidate output stays in Admin and cannot affect production answers.</p>
@@ -3019,7 +3342,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="manualCandidateCallResults"></div>
       <div id="candidateBatchTestResults"></div>
     </details>
-    <details>
+    <details id="archivedProviderEvidencePanel" class="admin-section-tool-archived">
       <summary><strong>Archived Provider Evidence</strong></summary>
 
       <p>Review provider design and prompt hardening artifacts without changing routing.</p>
@@ -3051,7 +3374,25 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <h2>Validation</h2>
       <p class="section-note">Run answer-quality, access, transport, and deployment checks after a reviewed change.</p>
 
-    <details>
+      <div class="admin-section-overview-grid" aria-label="Validation shortcuts">
+        <div class="admin-section-overview-card">
+          <strong>Routine quality</strong>
+          <span>Run golden tests after reviewed copy, routing, or continuity changes.</span>
+          <button type="button" data-admin-detail-jump="goldenTestsPanel">Open tests</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Access check</strong>
+          <span>Refresh operator authorization and protected Admin session evidence.</span>
+          <button type="button" data-admin-detail-jump="securityDiagnostics">Open access</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Transport proof</strong>
+          <span>Use the HTTPS probe as a deployment validation check, not routine browsing.</span>
+          <button type="button" data-admin-detail-jump="transportValidation">Open transport</button>
+        </div>
+      </div>
+
+    <details id="goldenTestsPanel" class="admin-section-tool-routine" open>
       <summary><strong>Golden Tests</strong></summary>
 
       <p id="goldenLastRun">Last run: Never</p>
@@ -3062,7 +3403,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="goldenResults"></div>
     </details>
 
-    <details id="securityDiagnostics">
+    <details id="securityDiagnostics" class="admin-section-tool-routine">
       <summary><strong>Security Diagnostics</strong></summary>
 
       <p>Review operator authorization and the short-lived protected Admin session.</p>
@@ -3071,7 +3412,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="operatorAuthorizationResults"></div>
     </details>
 
-    <details id="transportValidation">
+    <details id="transportValidation" class="admin-section-tool-secondary">
       <summary><strong>HTTPS Transport Validation</strong></summary>
 
       <p>Run the fixed operator-only non-replicated transport proof when validating a deployment. The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
@@ -3133,9 +3474,15 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         }
       }
 
+      window.setAdminWorkspaceView = setAdminView;
+
       document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll("[data-admin-view-target]").forEach((button) => {
           button.addEventListener("click", () => setAdminView(button.dataset.adminViewTarget));
+        });
+
+        document.querySelectorAll("[data-admin-view-jump]").forEach((button) => {
+          button.addEventListener("click", () => setAdminView(button.dataset.adminViewJump));
         });
 
         const hash = window.location.hash.replace("#", "");
@@ -3176,6 +3523,36 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
     })();
   </script>
   <!-- Admin diagnostic declutter end -->
+
+  <!-- Admin section overviews start -->
+  <script>
+    (() => {
+      function openAdminDetail(detailId) {
+        const detail = document.getElementById(detailId);
+        if (!detail) return;
+
+        const section = detail.closest("[data-admin-view]");
+        if (section && window.setAdminWorkspaceView) {
+          window.setAdminWorkspaceView(section.dataset.adminView, { skipScroll: true });
+        }
+
+        if (section) {
+          section.querySelectorAll(":scope > details").forEach((panel) => {
+            panel.open = panel === detail;
+          });
+        }
+        detail.open = true;
+        detail.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-admin-detail-jump]").forEach((button) => {
+          button.addEventListener("click", () => openAdminDetail(button.dataset.adminDetailJump));
+        });
+      });
+    })();
+  </script>
+  <!-- Admin section overviews end -->
 
   <script type="module" src="./admin.js"></script>
 </body>
