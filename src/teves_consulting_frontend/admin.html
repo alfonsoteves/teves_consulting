@@ -927,6 +927,12 @@
       background: #151a20;
     }
 
+    .admin-dashboard-summary-actions {
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
+
     .admin-dashboard-kicker {
       margin: 0 0 4px;
       color: #93c5fd;
@@ -978,6 +984,22 @@
       border-color: #334155;
       background: #111827;
       color: #cbd5e1;
+    }
+
+    .admin-dashboard-refresh {
+      min-height: 36px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .admin-dashboard-refresh:hover,
+    .admin-dashboard-refresh:focus {
+      border-color: #60a5fa;
+      color: #f8fafc;
     }
 
     .admin-dashboard-attention {
@@ -1391,6 +1413,14 @@
         width: fit-content;
       }
 
+      .admin-dashboard-summary-actions {
+        justify-items: start;
+      }
+
+      .admin-dashboard-refresh {
+        width: 100%;
+      }
+
       body.admin-signed-in #aionHealth .dashboard-grid {
         grid-template-columns: 1fr;
       }
@@ -1575,7 +1605,10 @@
           <p class="admin-dashboard-kicker">Current state</p>
           <p id="adminDashboardHeadline" class="admin-dashboard-headline">Aion is operating on the approved continuity and provider path.</p>
         </div>
-        <div id="adminDashboardPill" class="admin-dashboard-pill is-clear">Operator verified</div>
+        <div class="admin-dashboard-summary-actions">
+          <div id="adminDashboardPill" class="admin-dashboard-pill is-clear">Operator verified</div>
+          <button type="button" id="adminDashboardRefreshButton" class="admin-dashboard-refresh" onclick="refreshAdminDashboardData()">Refresh dashboard</button>
+        </div>
       </div>
       <div id="adminDashboardAttention" class="admin-dashboard-attention" aria-label="Dashboard attention">
         <button type="button" id="adminAttentionSnapshots" class="admin-dashboard-attention-item is-pending" data-admin-view-jump="intelligence">
@@ -1595,6 +1628,7 @@
         <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Recommended action</div><div id="healthCycleAction" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Data refresh</div><div id="healthDataRefresh" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Deploy readiness</div><div id="healthDeployReadiness" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>

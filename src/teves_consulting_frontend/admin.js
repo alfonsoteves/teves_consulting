@@ -874,6 +874,10 @@ window.handleAuth = async function handleAuth() {
         await loadMemories();
         await loadGoldenTests();
         await loadFeedback();
+        const refresh = { refreshedAt: new Date().toISOString() };
+        persistDashboardRefresh(refresh);
+        renderDashboardRefresh(refresh);
+        renderCycleSnapshot(loadCycleSnapshot());
       }
     },
   });
@@ -1128,637 +1132,7 @@ window.loadGoldenTests = async function loadGoldenTests() {
     if (data && Array.isArray(data.results) && data.results.length > 0) {
       renderGoldenTests(data, { save: true });
     } else {
-      // Admin cycles visibility start
-const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
-const ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
-const ADMIN_DASHBOARD_REVIEW_KEY = "aion_admin_dashboard_review_v1";
-const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-const ADMIN_CYCLE_LABELS = {
-  frontend: "Frontend",
-  backend: "Backend",
-};
-
-function parseCycleNumber(value) {
-  if (!value) return null;
-  const normalized = String(value).replaceAll("_", "").replaceAll(",", "").trim().toLowerCase();
-  const match = normalized.match(/^(\d+(?:\.\d+)?)([tkmb])?$/);
-  if (!match) return null;
-  const amount = Number(match[1]);
-  const suffix = match[2];
-  const multiplier = suffix === "t"
-    ? 1_000_000_000_000
-    : suffix === "b"
-      ? 1_000_000_000
-      : suffix === "m"
-        ? 1_000_000
-        : suffix === "k"
-          ? 1_000
-          : 1;
-  return Number.isFinite(amount) ? Math.round(amount * multiplier) : null;
-}
-
-function parseCycleStatusSnapshot(raw, canister = "frontend") {
-  const text = String(raw || "");
-  const cyclesMatch = text.match(/\bCycles:\s*([0-9_,.]+\s*[tkmb]?)/i);
-  const burnMatch = text.match(/Idle cycles burned per day:\s*([0-9_,.]+\s*[tkmb]?)/i);
-  const reservedMatch = text.match(/Reserved cycles limit:\s*([0-9_,.]+\s*[tkmb]?)/i);
-  const nameMatch = text.match(/Canister Name:\s*([^\n]+)/i);
-  const idMatch = text.match(/Canister Id:\s*([^\n]+)/i);
-  const cycles = parseCycleNumber(cyclesMatch && cyclesMatch[1]);
-  const burnPerDay = parseCycleNumber(burnMatch && burnMatch[1]);
-  const reservedLimit = parseCycleNumber(reservedMatch && reservedMatch[1]);
-
-  if (!cycles) {
-    throw new Error("Could not find a Cycles line in the pasted status output.");
-  }
-
-  return {
-    canister,
-    canisterName: nameMatch ? nameMatch[1].trim() : canister,
-    canisterId: idMatch ? idMatch[1].trim() : "",
-    cycles,
-    burnPerDay,
-    reservedLimit,
-    capturedAt: new Date().toISOString(),
-  };
-}
-
-function formatCycles(value) {
-  if (!Number.isFinite(value)) return "Pending";
-  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  return value.toLocaleString();
-}
-
-function formatCycleRunway(snapshot) {
-  if (!snapshot || !snapshot.burnPerDay) return "Burn unknown";
-  const days = snapshot.cycles / snapshot.burnPerDay;
-  if (!Number.isFinite(days)) return "Pending";
-  if (days >= 365) return `${(days / 365).toFixed(1)} years`;
-  return `${Math.floor(days)} days`;
-}
-
-function cyclePercent(snapshot) {
-  if (!snapshot || !snapshot.reservedLimit) return null;
-  return (snapshot.cycles / snapshot.reservedLimit) * 100;
-}
-
-function cycleRunwayStatus(days, snapshot = null, key = "") {
-  if (!Number.isFinite(days)) return { label: "Pending", className: "pending" };
-  const percent = cyclePercent(snapshot);
-  const frontend = key === "frontend" || snapshot?.canister === "frontend" || /frontend/i.test(snapshot?.canisterName || "");
-  if (frontend && Number.isFinite(percent) && percent <= 10) return { label: "Top up before deploy", className: "top-up" };
-  if (frontend && Number.isFinite(percent) && percent <= 20) return { label: "Deploy watch", className: "watch" };
-  if (days < 30) return { label: "Top up soon", className: "top-up" };
-  if (days < 90) return { label: "Watch", className: "watch" };
-  return { label: "Idle healthy", className: "healthy" };
-}
-
-function cycleSnapshotAgeHours(snapshot) {
-  if (!snapshot || !snapshot.capturedAt) return null;
-  const capturedTime = new Date(snapshot.capturedAt).getTime();
-  if (!Number.isFinite(capturedTime)) return null;
-  const hours = (Date.now() - capturedTime) / 36e5;
-  return Number.isFinite(hours) && hours >= 0 ? hours : null;
-}
-
-function cycleFreshnessStatus(hours) {
-  if (!Number.isFinite(hours)) return { label: "Pending", className: "pending" };
-  if (hours <= 24) return { label: "Fresh", className: "fresh" };
-  if (hours <= 168) return { label: "Aging", className: "aging" };
-  return { label: "Stale", className: "stale" };
-}
-
-function formatSnapshotAge(snapshot) {
-  const hours = cycleSnapshotAgeHours(snapshot);
-  if (!Number.isFinite(hours)) return "Pending";
-  if (hours < 1) return "Less than 1 hour";
-  if (hours < 24) return `${Math.floor(hours)} hours`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "1 day" : `${days} days`;
-}
-
-function getAdminCookieValue(key) {
-  const cookie = document.cookie
-    .split("; ")
-    .find((entry) => entry.startsWith(`${key}=`));
-  if (!cookie) return null;
-  return decodeURIComponent(cookie.slice(key.length + 1));
-}
-
-function getCycleSnapshotCookie() {
-  return getAdminCookieValue(ADMIN_CYCLE_SNAPSHOT_KEY);
-}
-
-function persistCycleSnapshots(snapshots) {
-  const serialized = JSON.stringify(snapshots || {});
-  try {
-    localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, serialized);
-  } catch (err) {
-    console.warn("Could not save cycle snapshots to local storage:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_CYCLE_SNAPSHOT_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save cycle snapshots to cookie:", err);
-  }
-}
-
-function persistDashboardReview(review) {
-  const serialized = JSON.stringify(review || {});
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_REVIEW_KEY, serialized);
-  } catch (err) {
-    console.warn("Could not save dashboard review to local storage:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_DASHBOARD_REVIEW_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save dashboard review to cookie:", err);
-  }
-}
-
-function loadDashboardReview() {
-  try {
-    const raw = localStorage.getItem(ADMIN_DASHBOARD_REVIEW_KEY);
-    if (raw) {
-      const review = JSON.parse(raw);
-      if (review && review.reviewedAt) {
-        persistDashboardReview(review);
-        return review;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard review from local storage:", err);
-  }
-
-  try {
-    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_REVIEW_KEY);
-    if (cookieRaw) {
-      const review = JSON.parse(cookieRaw);
-      if (review && review.reviewedAt) {
-        persistDashboardReview(review);
-        return review;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard review from cookie:", err);
-  }
-
-  return null;
-}
-
-function dashboardReviewAgeHours(review) {
-  if (!review || !review.reviewedAt) return null;
-  const reviewedTime = new Date(review.reviewedAt).getTime();
-  if (!Number.isFinite(reviewedTime)) return null;
-  const hours = (Date.now() - reviewedTime) / 36e5;
-  return Number.isFinite(hours) && hours >= 0 ? hours : null;
-}
-
-function dashboardReviewStatus(review) {
-  const hours = dashboardReviewAgeHours(review);
-  if (!Number.isFinite(hours)) return { label: "Review needed", className: "pending" };
-  if (hours <= 24) return { label: "Reviewed", className: "fresh" };
-  if (hours <= 168) return { label: "Aging", className: "aging" };
-  return { label: "Stale", className: "stale" };
-}
-
-function formatDashboardReviewAge(review) {
-  const hours = dashboardReviewAgeHours(review);
-  if (!Number.isFinite(hours)) return "Not reviewed";
-  if (hours < 1) return "Less than 1 hour";
-  if (hours < 24) return `${Math.floor(hours)} hours`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "1 day" : `${days} days`;
-}
-
-function renderDashboardReview(review = loadDashboardReview()) {
-  const reviewElement = document.getElementById("healthDashboardReviewed");
-  const statusElement = document.getElementById("dashboardReviewStatus");
-  const reviewStatus = dashboardReviewStatus(review);
-  const ageLabel = formatDashboardReviewAge(review);
-  const reviewedAtLabel = review && review.reviewedAt
-    ? new Date(review.reviewedAt).toLocaleString()
-    : "";
-
-  if (reviewElement) {
-    reviewElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${reviewStatus.className}">${escapeHtml(reviewStatus.label)}</span>`;
-  }
-  if (statusElement) {
-    statusElement.textContent = reviewedAtLabel
-      ? `Dashboard last reviewed at ${reviewedAtLabel}.`
-      : "Mark the dashboard reviewed after checking the current operator state.";
-  }
-}
-
-function loadCycleSnapshot() {
-  try {
-    const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
-    if (raw) {
-      const snapshots = JSON.parse(raw);
-      persistCycleSnapshots(snapshots);
-      return snapshots;
-    }
-  } catch (err) {
-    console.warn("Could not load cycle snapshots from local storage:", err);
-  }
-
-  try {
-    const cookieRaw = getCycleSnapshotCookie();
-    if (cookieRaw) {
-      const snapshots = JSON.parse(cookieRaw);
-      persistCycleSnapshots(snapshots);
-      return snapshots;
-    }
-  } catch (err) {
-    console.warn("Could not load cycle snapshots from cookie:", err);
-  }
-
-  try {
-    const legacyRaw = localStorage.getItem(ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY);
-    if (!legacyRaw) return {};
-
-    const legacy = JSON.parse(legacyRaw);
-    const snapshots = legacy ? { frontend: legacy } : {};
-    persistCycleSnapshots(snapshots);
-    return snapshots;
-  } catch (err) {
-    console.error("Could not load cycle snapshots:", err);
-    return {};
-  }
-}
-
-function cycleSnapshotSummaryHtml(snapshot, label) {
-  if (!snapshot) {
-    return `
-      <span><strong>${escapeHtml(label)}:</strong> Add a snapshot</span>
-      <span><strong>Idle runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
-      <span><strong>Snapshot:</strong> Pending <span class="admin-cycle-freshness-label pending">Pending</span></span>
-    `;
-  }
-
-  const percent = cyclePercent(snapshot);
-  const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
-  const runwayDays = cycleRunwayDays(snapshot);
-  const runwayStatus = cycleRunwayStatus(runwayDays, snapshot, snapshot.canister);
-  const snapshotAge = cycleSnapshotAgeHours(snapshot);
-  const freshnessStatus = cycleFreshnessStatus(snapshotAge);
-  const frontend = snapshot.canister === "frontend" || /frontend/i.test(snapshot.canisterName || "");
-  const deploymentNote = frontend && percent !== null && percent <= 20
-    ? `<span><strong>Deployment:</strong> Top up before frontend upgrades.</span>`
-    : "";
-  const capturedLabel = snapshot.capturedAt
-    ? new Date(snapshot.capturedAt).toLocaleString()
-    : "Unknown";
-
-  return `
-    <span><strong>${escapeHtml(label)}:</strong> ${formatCycles(snapshot.cycles)}${percentLabel}</span>
-    <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
-    <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
-    <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
-    <span><strong>Idle runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
-    ${deploymentNote}
-    <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
-    <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
-  `;
-}
-
-function cycleRunwayDays(snapshot) {
-  if (!snapshot || !snapshot.burnPerDay) return null;
-  const days = snapshot.cycles / snapshot.burnPerDay;
-  return Number.isFinite(days) ? days : null;
-}
-
-function shortestCycleRunway(snapshots) {
-  return ["frontend", "backend"]
-    .map((key) => {
-      const days = cycleRunwayDays(snapshots[key]);
-      return days === null ? null : { key, days, snapshot: snapshots[key] };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.days - b.days)[0] || null;
-}
-
-function oldestCycleSnapshot(snapshots) {
-  return ["frontend", "backend"]
-    .map((key) => {
-      const hours = cycleSnapshotAgeHours(snapshots[key]);
-      return hours === null ? null : { key, hours };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.hours - a.hours)[0] || null;
-}
-
-function cycleRecommendedAction(snapshots) {
-  const frontend = snapshots.frontend || null;
-  const backend = snapshots.backend || null;
-  if (!frontend || !backend) {
-    return { label: "Paste snapshots", className: "pending" };
-  }
-
-  const frontendPercent = cyclePercent(frontend);
-  if (Number.isFinite(frontendPercent) && frontendPercent <= 10) {
-    return { label: "Top up frontend", className: "top-up" };
-  }
-  if (Number.isFinite(frontendPercent) && frontendPercent <= 20) {
-    return { label: "Watch deploys", className: "watch" };
-  }
-
-  const shortest = shortestCycleRunway(snapshots);
-  if (shortest && shortest.days < 30) {
-    return { label: "Top up soon", className: "top-up" };
-  }
-  if (shortest && shortest.days < 90) {
-    return { label: "Review runway", className: "watch" };
-  }
-
-  const oldest = oldestCycleSnapshot(snapshots);
-  if (oldest && oldest.hours > 168) {
-    return { label: "Refresh snapshots", className: "stale" };
-  }
-  if (oldest && oldest.hours > 24) {
-    return { label: "Snapshots aging", className: "aging" };
-  }
-
-  const dashboardReview = loadDashboardReview();
-  const dashboardReviewAge = dashboardReviewAgeHours(dashboardReview);
-  if (!Number.isFinite(dashboardReviewAge)) {
-    return { label: "Review dashboard", className: "pending" };
-  }
-  if (dashboardReviewAge > 168) {
-    return { label: "Review dashboard", className: "stale" };
-  }
-  if (dashboardReviewAge > 24) {
-    return { label: "Review soon", className: "aging" };
-  }
-
-  return { label: "No action needed", className: "healthy" };
-}
-
-function deployReadinessStatus(snapshots) {
-  const frontend = snapshots.frontend || null;
-  if (!frontend) return { label: "Add frontend snapshot", className: "pending" };
-
-  const snapshotAge = cycleSnapshotAgeHours(frontend);
-  if (Number.isFinite(snapshotAge) && snapshotAge > 24) {
-    return { label: "Refresh first", className: snapshotAge > 168 ? "stale" : "aging" };
-  }
-
-  const percent = cyclePercent(frontend);
-  if (Number.isFinite(percent) && percent <= 10) {
-    return { label: "Top up first", className: "top-up" };
-  }
-  if (Number.isFinite(percent) && percent <= 20) {
-    return { label: "Top up advised", className: "watch" };
-  }
-
-  if (!Number.isFinite(percent)) {
-    return { label: "Limit unknown", className: "watch" };
-  }
-
-  return { label: "Ready", className: "healthy" };
-}
-
-function dashboardAttentionClass(className) {
-  if (className === "healthy" || className === "fresh") return "is-clear";
-  if (className === "watch" || className === "aging") return "is-watch";
-  if (className === "top-up" || className === "stale") return "is-action";
-  return "is-pending";
-}
-
-function setDashboardAttentionItem(id, className, text) {
-  const element = document.getElementById(id);
-  if (!element) return;
-  const valueElement = element.querySelector("span");
-  element.className = `admin-dashboard-attention-item ${dashboardAttentionClass(className)}`;
-  if (valueElement) {
-    valueElement.textContent = text;
-  }
-}
-
-function snapshotAttentionStatus(snapshots) {
-  const frontend = snapshots.frontend || null;
-  const backend = snapshots.backend || null;
-  if (!frontend || !backend) {
-    return { label: "Paste both snapshots", className: "pending" };
-  }
-
-  const oldest = oldestCycleSnapshot(snapshots);
-  if (!oldest) return { label: "Snapshot age unknown", className: "pending" };
-  if (oldest.hours > 168) return { label: "Refresh snapshots", className: "stale" };
-  if (oldest.hours > 24) return { label: "Snapshots aging", className: "aging" };
-  return { label: "Fresh snapshots", className: "healthy" };
-}
-
-function renderDashboardAttention(snapshots) {
-  const snapshotStatus = snapshotAttentionStatus(snapshots);
-  const deployStatus = deployReadinessStatus(snapshots);
-  const review = loadDashboardReview();
-  const reviewStatus = dashboardReviewStatus(review);
-  const reviewLabel = review
-    ? `${formatDashboardReviewAge(review)} ago`
-    : "Not reviewed";
-
-  setDashboardAttentionItem("adminAttentionSnapshots", snapshotStatus.className, snapshotStatus.label);
-  setDashboardAttentionItem("adminAttentionDeploy", deployStatus.className, deployStatus.label);
-  setDashboardAttentionItem("adminAttentionReview", reviewStatus.className, reviewLabel);
-}
-
-function updateDashboardCycleSummary(action) {
-  const headline = document.getElementById("adminDashboardHeadline");
-  const pill = document.getElementById("adminDashboardPill");
-  if (!headline || !pill || !action) return;
-
-  const states = {
-    pending: {
-      text: "Paste frontend and backend cycle snapshots to complete the dashboard view.",
-      pill: "Snapshots needed",
-      className: "is-pending",
-    },
-    "top-up": {
-      text: "Review frontend cycles before the next production deployment.",
-      pill: action.label,
-      className: "is-action",
-    },
-    watch: {
-      text: "Cycle runway is usable, but deployment timing should be reviewed.",
-      pill: action.label,
-      className: "is-watch",
-    },
-    stale: {
-      text: "Refresh cycle snapshots before relying on the dashboard status.",
-      pill: action.label,
-      className: "is-action",
-    },
-    aging: {
-      text: "Cycle snapshots are aging; refresh them before the next deployment.",
-      pill: action.label,
-      className: "is-watch",
-    },
-    healthy: {
-      text: "Aion is operating on the approved continuity and provider path.",
-      pill: "Clear",
-      className: "is-clear",
-    },
-  };
-  const state = action.className === "pending" && action.label !== "Paste snapshots"
-    ? {
-      text: "Review the dashboard and mark it reviewed when the current state looks accurate.",
-      pill: action.label,
-      className: "is-pending",
-    }
-    : action.className === "stale" && action.label === "Review dashboard"
-      ? {
-        text: "The dashboard review is stale; review the current state before relying on it.",
-        pill: action.label,
-        className: "is-action",
-      }
-      : action.className === "aging" && action.label === "Review soon"
-        ? {
-          text: "The dashboard review is aging; refresh it before the next operator decision.",
-          pill: action.label,
-          className: "is-watch",
-        }
-    : states[action.className] || states.pending;
-  headline.textContent = state.text;
-  pill.textContent = state.pill;
-  pill.className = `admin-dashboard-pill ${state.className}`;
-}
-
-function setCycleInputValue(kind, snapshot) {
-  const inputElement = document.getElementById(`${kind}CycleStatusInput`);
-  if (!inputElement || inputElement.value.trim() || !snapshot) return;
-  inputElement.value = `Canister Name: ${snapshot.canisterName || kind}\nCanister Id: ${snapshot.canisterId || ""}\nCycles: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")}\nReserved cycles limit: ${snapshot.reservedLimit ? snapshot.reservedLimit.toLocaleString().replaceAll(",", "_") : ""}\nIdle cycles burned per day: ${snapshot.burnPerDay ? snapshot.burnPerDay.toLocaleString().replaceAll(",", "_") : ""}`;
-}
-
-function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
-  const frontend = snapshots.frontend || null;
-  const backend = snapshots.backend || null;
-  const frontendSummary = document.getElementById("frontendCycleSnapshotSummary");
-  const backendSummary = document.getElementById("backendCycleSnapshotSummary");
-  const shortest = shortestCycleRunway(snapshots);
-  const oldest = oldestCycleSnapshot(snapshots);
-  const recommendedAction = cycleRecommendedAction(snapshots);
-
-  if (!frontend) {
-    setAdminHealthMetric("healthFrontendCycles", "Add snapshot");
-  } else {
-    const percent = cyclePercent(frontend);
-    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
-    setAdminHealthMetric("healthFrontendCycles", `${formatCycles(frontend.cycles)}${percentLabel}`);
-  }
-
-  if (!backend) {
-    setAdminHealthMetric("healthBackendCycles", "Add snapshot");
-  } else {
-    const percent = cyclePercent(backend);
-    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
-    setAdminHealthMetric("healthBackendCycles", `${formatCycles(backend.cycles)}${percentLabel}`);
-  }
-
-  if (!shortest) {
-    const runwayElement = document.getElementById("healthCycleRunway");
-    if (runwayElement) {
-      runwayElement.innerHTML = `Pending<span class="admin-cycle-runway-label pending">Pending</span>`;
-    }
-  } else {
-    const label = ADMIN_CYCLE_LABELS[shortest.key] || shortest.key;
-    const runway = shortest.days >= 365
-      ? `${(shortest.days / 365).toFixed(1)} years`
-      : `${Math.floor(shortest.days)} days`;
-    const runwayStatus = cycleRunwayStatus(shortest.days, shortest.snapshot, shortest.key);
-    const runwayElement = document.getElementById("healthCycleRunway");
-    if (runwayElement) {
-      runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
-    }
-  }
-
-  const snapshotAgeElement = document.getElementById("healthCycleSnapshotAge");
-  if (!oldest) {
-    if (snapshotAgeElement) {
-      snapshotAgeElement.innerHTML = `Pending<span class="admin-cycle-freshness-label pending">Pending</span>`;
-    }
-  } else {
-    const label = ADMIN_CYCLE_LABELS[oldest.key] || oldest.key;
-    const freshnessStatus = cycleFreshnessStatus(oldest.hours);
-    const days = Math.floor(oldest.hours / 24);
-    const ageLabel = oldest.hours < 1
-      ? "Less than 1 hour"
-      : oldest.hours < 24
-        ? `${Math.floor(oldest.hours)} hours`
-        : days === 1
-          ? "1 day"
-          : `${days} days`;
-    if (snapshotAgeElement) {
-      snapshotAgeElement.innerHTML = `${escapeHtml(ageLabel)} · ${escapeHtml(label)}<span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span>`;
-    }
-  }
-
-  if (frontendSummary) {
-    frontendSummary.innerHTML = cycleSnapshotSummaryHtml(frontend, "Frontend");
-  }
-  if (backendSummary) {
-    backendSummary.innerHTML = cycleSnapshotSummaryHtml(backend, "Backend");
-  }
-
-  const actionElement = document.getElementById("healthCycleAction");
-  if (actionElement) {
-    actionElement.innerHTML = `<span class="admin-cycle-runway-label ${recommendedAction.className}">${escapeHtml(recommendedAction.label)}</span>`;
-  }
-  const deployReadinessElement = document.getElementById("healthDeployReadiness");
-  if (deployReadinessElement) {
-    const deployReadiness = deployReadinessStatus(snapshots);
-    deployReadinessElement.innerHTML = `<span class="admin-cycle-runway-label ${deployReadiness.className}">${escapeHtml(deployReadiness.label)}</span>`;
-  }
-  updateDashboardCycleSummary(recommendedAction);
-  renderDashboardReview();
-  renderDashboardAttention(snapshots);
-  setCycleInputValue("frontend", frontend);
-  setCycleInputValue("backend", backend);
-}
-
-window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "frontend") {
-  const input = document.getElementById(`${kind}CycleStatusInput`);
-  const status = document.getElementById("cycleSnapshotStatus");
-
-  try {
-    const snapshot = parseCycleStatusSnapshot(input ? input.value : "", kind);
-    const snapshots = loadCycleSnapshot();
-    snapshots[kind] = snapshot;
-    persistCycleSnapshots(snapshots);
-    renderCycleSnapshot(snapshots);
-    if (status) {
-      status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot updated.`;
-    }
-  } catch (err) {
-    if (status) {
-      status.textContent = err.message || "Could not parse cycle snapshot.";
-    }
-  }
-};
-
-window.clearCycleSnapshot = function clearCycleSnapshot(kind = "frontend") {
-  const snapshots = loadCycleSnapshot();
-  delete snapshots[kind];
-  persistCycleSnapshots(snapshots);
-  const input = document.getElementById(`${kind}CycleStatusInput`);
-  const status = document.getElementById("cycleSnapshotStatus");
-  if (input) input.value = "";
-  renderCycleSnapshot(snapshots);
-  if (status) {
-    status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot cleared.`;
-  }
-};
-
-window.markDashboardReviewed = function markDashboardReviewed() {
-  const review = { reviewedAt: new Date().toISOString() };
-  persistDashboardReview(review);
-  renderDashboardReview(review);
-  renderCycleSnapshot(loadCycleSnapshot());
-};
-// Admin cycles visibility end
+      
 
 const savedGolden = loadSavedGoldenResults();
       if (savedGolden) {
@@ -11803,6 +11177,766 @@ function initializeCandidateModelList() {
     input.value = DEFAULT_CANDIDATE_MODELS.join("\n");
   }
 }
+
+// Admin cycles visibility start
+const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
+const ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
+const ADMIN_DASHBOARD_REVIEW_KEY = "aion_admin_dashboard_review_v1";
+const ADMIN_DASHBOARD_REFRESH_KEY = "aion_admin_dashboard_refresh_v1";
+const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+const ADMIN_CYCLE_LABELS = {
+  frontend: "Frontend",
+  backend: "Backend",
+};
+
+function parseCycleNumber(value) {
+  if (!value) return null;
+  const normalized = String(value).replaceAll("_", "").replaceAll(",", "").trim().toLowerCase();
+  const match = normalized.match(/^(\d+(?:\.\d+)?)([tkmb])?$/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const suffix = match[2];
+  const multiplier = suffix === "t"
+    ? 1_000_000_000_000
+    : suffix === "b"
+      ? 1_000_000_000
+      : suffix === "m"
+        ? 1_000_000
+        : suffix === "k"
+          ? 1_000
+          : 1;
+  return Number.isFinite(amount) ? Math.round(amount * multiplier) : null;
+}
+
+function parseCycleStatusSnapshot(raw, canister = "frontend") {
+  const text = String(raw || "");
+  const cyclesMatch = text.match(/\bCycles:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const burnMatch = text.match(/Idle cycles burned per day:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const reservedMatch = text.match(/Reserved cycles limit:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const nameMatch = text.match(/Canister Name:\s*([^\n]+)/i);
+  const idMatch = text.match(/Canister Id:\s*([^\n]+)/i);
+  const cycles = parseCycleNumber(cyclesMatch && cyclesMatch[1]);
+  const burnPerDay = parseCycleNumber(burnMatch && burnMatch[1]);
+  const reservedLimit = parseCycleNumber(reservedMatch && reservedMatch[1]);
+
+  if (!cycles) {
+    throw new Error("Could not find a Cycles line in the pasted status output.");
+  }
+
+  return {
+    canister,
+    canisterName: nameMatch ? nameMatch[1].trim() : canister,
+    canisterId: idMatch ? idMatch[1].trim() : "",
+    cycles,
+    burnPerDay,
+    reservedLimit,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+function formatCycles(value) {
+  if (!Number.isFinite(value)) return "Pending";
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  return value.toLocaleString();
+}
+
+function formatCycleRunway(snapshot) {
+  if (!snapshot || !snapshot.burnPerDay) return "Burn unknown";
+  const days = snapshot.cycles / snapshot.burnPerDay;
+  if (!Number.isFinite(days)) return "Pending";
+  if (days >= 365) return `${(days / 365).toFixed(1)} years`;
+  return `${Math.floor(days)} days`;
+}
+
+function cyclePercent(snapshot) {
+  if (!snapshot || !snapshot.reservedLimit) return null;
+  return (snapshot.cycles / snapshot.reservedLimit) * 100;
+}
+
+function cycleRunwayStatus(days, snapshot = null, key = "") {
+  if (!Number.isFinite(days)) return { label: "Pending", className: "pending" };
+  const percent = cyclePercent(snapshot);
+  const frontend = key === "frontend" || snapshot?.canister === "frontend" || /frontend/i.test(snapshot?.canisterName || "");
+  if (frontend && Number.isFinite(percent) && percent <= 10) return { label: "Top up before deploy", className: "top-up" };
+  if (frontend && Number.isFinite(percent) && percent <= 20) return { label: "Deploy watch", className: "watch" };
+  if (days < 30) return { label: "Top up soon", className: "top-up" };
+  if (days < 90) return { label: "Watch", className: "watch" };
+  return { label: "Idle healthy", className: "healthy" };
+}
+
+function cycleSnapshotAgeHours(snapshot) {
+  if (!snapshot || !snapshot.capturedAt) return null;
+  const capturedTime = new Date(snapshot.capturedAt).getTime();
+  if (!Number.isFinite(capturedTime)) return null;
+  const hours = (Date.now() - capturedTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function cycleFreshnessStatus(hours) {
+  if (!Number.isFinite(hours)) return { label: "Pending", className: "pending" };
+  if (hours <= 24) return { label: "Fresh", className: "fresh" };
+  if (hours <= 168) return { label: "Aging", className: "aging" };
+  return { label: "Stale", className: "stale" };
+}
+
+function formatSnapshotAge(snapshot) {
+  const hours = cycleSnapshotAgeHours(snapshot);
+  if (!Number.isFinite(hours)) return "Pending";
+  if (hours < 1) return "Less than 1 hour";
+  if (hours < 24) return `${Math.floor(hours)} hours`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function getAdminCookieValue(key) {
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${key}=`));
+  if (!cookie) return null;
+  return decodeURIComponent(cookie.slice(key.length + 1));
+}
+
+function getCycleSnapshotCookie() {
+  return getAdminCookieValue(ADMIN_CYCLE_SNAPSHOT_KEY);
+}
+
+function persistCycleSnapshots(snapshots) {
+  const serialized = JSON.stringify(snapshots || {});
+  try {
+    localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save cycle snapshots to local storage:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_CYCLE_SNAPSHOT_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save cycle snapshots to cookie:", err);
+  }
+}
+
+function persistDashboardReview(review) {
+  const serialized = JSON.stringify(review || {});
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_REVIEW_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save dashboard review to local storage:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_DASHBOARD_REVIEW_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save dashboard review to cookie:", err);
+  }
+}
+
+function persistDashboardRefresh(refresh) {
+  const serialized = JSON.stringify(refresh || {});
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_REFRESH_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save dashboard refresh to local storage:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_DASHBOARD_REFRESH_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save dashboard refresh to cookie:", err);
+  }
+}
+
+function loadDashboardRefresh() {
+  try {
+    const raw = localStorage.getItem(ADMIN_DASHBOARD_REFRESH_KEY);
+    if (raw) {
+      const refresh = JSON.parse(raw);
+      if (refresh && refresh.refreshedAt) {
+        persistDashboardRefresh(refresh);
+        return refresh;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard refresh from local storage:", err);
+  }
+
+  try {
+    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_REFRESH_KEY);
+    if (cookieRaw) {
+      const refresh = JSON.parse(cookieRaw);
+      if (refresh && refresh.refreshedAt) {
+        persistDashboardRefresh(refresh);
+        return refresh;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard refresh from cookie:", err);
+  }
+
+  return null;
+}
+
+function loadDashboardReview() {
+  try {
+    const raw = localStorage.getItem(ADMIN_DASHBOARD_REVIEW_KEY);
+    if (raw) {
+      const review = JSON.parse(raw);
+      if (review && review.reviewedAt) {
+        persistDashboardReview(review);
+        return review;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard review from local storage:", err);
+  }
+
+  try {
+    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_REVIEW_KEY);
+    if (cookieRaw) {
+      const review = JSON.parse(cookieRaw);
+      if (review && review.reviewedAt) {
+        persistDashboardReview(review);
+        return review;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard review from cookie:", err);
+  }
+
+  return null;
+}
+
+function dashboardReviewAgeHours(review) {
+  if (!review || !review.reviewedAt) return null;
+  const reviewedTime = new Date(review.reviewedAt).getTime();
+  if (!Number.isFinite(reviewedTime)) return null;
+  const hours = (Date.now() - reviewedTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function dashboardReviewStatus(review) {
+  const hours = dashboardReviewAgeHours(review);
+  if (!Number.isFinite(hours)) return { label: "Review needed", className: "pending" };
+  if (hours <= 24) return { label: "Reviewed", className: "fresh" };
+  if (hours <= 168) return { label: "Aging", className: "aging" };
+  return { label: "Stale", className: "stale" };
+}
+
+function formatDashboardReviewAge(review) {
+  const hours = dashboardReviewAgeHours(review);
+  if (!Number.isFinite(hours)) return "Not reviewed";
+  if (hours < 1) return "Less than 1 hour";
+  if (hours < 24) return `${Math.floor(hours)} hours`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function dashboardRefreshAgeHours(refresh) {
+  if (!refresh || !refresh.refreshedAt) return null;
+  const refreshedTime = new Date(refresh.refreshedAt).getTime();
+  if (!Number.isFinite(refreshedTime)) return null;
+  const hours = (Date.now() - refreshedTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function dashboardRefreshStatus(refresh) {
+  const hours = dashboardRefreshAgeHours(refresh);
+  if (!Number.isFinite(hours)) return { label: "Refresh needed", className: "pending" };
+  if (hours <= 1) return { label: "Current", className: "fresh" };
+  if (hours <= 24) return { label: "Aging", className: "aging" };
+  return { label: "Stale", className: "stale" };
+}
+
+function formatDashboardRefreshAge(refresh) {
+  const hours = dashboardRefreshAgeHours(refresh);
+  if (!Number.isFinite(hours)) return "Not refreshed";
+  if (hours < 1) return "Less than 1 hour";
+  if (hours < 24) return `${Math.floor(hours)} hours`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function renderDashboardRefresh(refresh = loadDashboardRefresh()) {
+  const refreshElement = document.getElementById("healthDataRefresh");
+  const refreshStatus = dashboardRefreshStatus(refresh);
+  const ageLabel = formatDashboardRefreshAge(refresh);
+  if (refreshElement) {
+    refreshElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${refreshStatus.className}">${escapeHtml(refreshStatus.label)}</span>`;
+  }
+}
+
+function renderDashboardReview(review = loadDashboardReview()) {
+  const reviewElement = document.getElementById("healthDashboardReviewed");
+  const statusElement = document.getElementById("dashboardReviewStatus");
+  const reviewStatus = dashboardReviewStatus(review);
+  const ageLabel = formatDashboardReviewAge(review);
+  const reviewedAtLabel = review && review.reviewedAt
+    ? new Date(review.reviewedAt).toLocaleString()
+    : "";
+
+  if (reviewElement) {
+    reviewElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${reviewStatus.className}">${escapeHtml(reviewStatus.label)}</span>`;
+  }
+  if (statusElement) {
+    statusElement.textContent = reviewedAtLabel
+      ? `Dashboard last reviewed at ${reviewedAtLabel}.`
+      : "Mark the dashboard reviewed after checking the current operator state.";
+  }
+}
+
+function loadCycleSnapshot() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
+    if (raw) {
+      const snapshots = JSON.parse(raw);
+      persistCycleSnapshots(snapshots);
+      return snapshots;
+    }
+  } catch (err) {
+    console.warn("Could not load cycle snapshots from local storage:", err);
+  }
+
+  try {
+    const cookieRaw = getCycleSnapshotCookie();
+    if (cookieRaw) {
+      const snapshots = JSON.parse(cookieRaw);
+      persistCycleSnapshots(snapshots);
+      return snapshots;
+    }
+  } catch (err) {
+    console.warn("Could not load cycle snapshots from cookie:", err);
+  }
+
+  try {
+    const legacyRaw = localStorage.getItem(ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY);
+    if (!legacyRaw) return {};
+
+    const legacy = JSON.parse(legacyRaw);
+    const snapshots = legacy ? { frontend: legacy } : {};
+    persistCycleSnapshots(snapshots);
+    return snapshots;
+  } catch (err) {
+    console.error("Could not load cycle snapshots:", err);
+    return {};
+  }
+}
+
+function cycleSnapshotSummaryHtml(snapshot, label) {
+  if (!snapshot) {
+    return `
+      <span><strong>${escapeHtml(label)}:</strong> Add a snapshot</span>
+      <span><strong>Idle runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
+      <span><strong>Snapshot:</strong> Pending <span class="admin-cycle-freshness-label pending">Pending</span></span>
+    `;
+  }
+
+  const percent = cyclePercent(snapshot);
+  const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
+  const runwayDays = cycleRunwayDays(snapshot);
+  const runwayStatus = cycleRunwayStatus(runwayDays, snapshot, snapshot.canister);
+  const snapshotAge = cycleSnapshotAgeHours(snapshot);
+  const freshnessStatus = cycleFreshnessStatus(snapshotAge);
+  const frontend = snapshot.canister === "frontend" || /frontend/i.test(snapshot.canisterName || "");
+  const deploymentNote = frontend && percent !== null && percent <= 20
+    ? `<span><strong>Deployment:</strong> Top up before frontend upgrades.</span>`
+    : "";
+  const capturedLabel = snapshot.capturedAt
+    ? new Date(snapshot.capturedAt).toLocaleString()
+    : "Unknown";
+
+  return `
+    <span><strong>${escapeHtml(label)}:</strong> ${formatCycles(snapshot.cycles)}${percentLabel}</span>
+    <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
+    <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
+    <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
+    <span><strong>Idle runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
+    ${deploymentNote}
+    <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
+    <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
+  `;
+}
+
+function cycleRunwayDays(snapshot) {
+  if (!snapshot || !snapshot.burnPerDay) return null;
+  const days = snapshot.cycles / snapshot.burnPerDay;
+  return Number.isFinite(days) ? days : null;
+}
+
+function shortestCycleRunway(snapshots) {
+  return ["frontend", "backend"]
+    .map((key) => {
+      const days = cycleRunwayDays(snapshots[key]);
+      return days === null ? null : { key, days, snapshot: snapshots[key] };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.days - b.days)[0] || null;
+}
+
+function oldestCycleSnapshot(snapshots) {
+  return ["frontend", "backend"]
+    .map((key) => {
+      const hours = cycleSnapshotAgeHours(snapshots[key]);
+      return hours === null ? null : { key, hours };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.hours - a.hours)[0] || null;
+}
+
+function cycleRecommendedAction(snapshots) {
+  const frontend = snapshots.frontend || null;
+  const backend = snapshots.backend || null;
+  if (!frontend || !backend) {
+    return { label: "Paste snapshots", className: "pending" };
+  }
+
+  const frontendPercent = cyclePercent(frontend);
+  if (Number.isFinite(frontendPercent) && frontendPercent <= 10) {
+    return { label: "Top up frontend", className: "top-up" };
+  }
+  if (Number.isFinite(frontendPercent) && frontendPercent <= 20) {
+    return { label: "Watch deploys", className: "watch" };
+  }
+
+  const shortest = shortestCycleRunway(snapshots);
+  if (shortest && shortest.days < 30) {
+    return { label: "Top up soon", className: "top-up" };
+  }
+  if (shortest && shortest.days < 90) {
+    return { label: "Review runway", className: "watch" };
+  }
+
+  const oldest = oldestCycleSnapshot(snapshots);
+  if (oldest && oldest.hours > 168) {
+    return { label: "Refresh snapshots", className: "stale" };
+  }
+  if (oldest && oldest.hours > 24) {
+    return { label: "Snapshots aging", className: "aging" };
+  }
+
+  const dashboardRefresh = loadDashboardRefresh();
+  const dashboardRefreshAge = dashboardRefreshAgeHours(dashboardRefresh);
+  if (!Number.isFinite(dashboardRefreshAge)) {
+    return { label: "Refresh dashboard", className: "pending" };
+  }
+  if (dashboardRefreshAge > 24) {
+    return { label: "Refresh dashboard", className: "stale" };
+  }
+
+  const dashboardReview = loadDashboardReview();
+  const dashboardReviewAge = dashboardReviewAgeHours(dashboardReview);
+  if (!Number.isFinite(dashboardReviewAge)) {
+    return { label: "Review dashboard", className: "pending" };
+  }
+  if (dashboardReviewAge > 168) {
+    return { label: "Review dashboard", className: "stale" };
+  }
+  if (dashboardReviewAge > 24) {
+    return { label: "Review soon", className: "aging" };
+  }
+
+  return { label: "No action needed", className: "healthy" };
+}
+
+function deployReadinessStatus(snapshots) {
+  const frontend = snapshots.frontend || null;
+  if (!frontend) return { label: "Add frontend snapshot", className: "pending" };
+
+  const snapshotAge = cycleSnapshotAgeHours(frontend);
+  if (Number.isFinite(snapshotAge) && snapshotAge > 24) {
+    return { label: "Refresh first", className: snapshotAge > 168 ? "stale" : "aging" };
+  }
+
+  const percent = cyclePercent(frontend);
+  if (Number.isFinite(percent) && percent <= 10) {
+    return { label: "Top up first", className: "top-up" };
+  }
+  if (Number.isFinite(percent) && percent <= 20) {
+    return { label: "Top up advised", className: "watch" };
+  }
+
+  if (!Number.isFinite(percent)) {
+    return { label: "Limit unknown", className: "watch" };
+  }
+
+  return { label: "Ready", className: "healthy" };
+}
+
+function dashboardAttentionClass(className) {
+  if (className === "healthy" || className === "fresh") return "is-clear";
+  if (className === "watch" || className === "aging") return "is-watch";
+  if (className === "top-up" || className === "stale") return "is-action";
+  return "is-pending";
+}
+
+function setDashboardAttentionItem(id, className, text) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const valueElement = element.querySelector("span");
+  element.className = `admin-dashboard-attention-item ${dashboardAttentionClass(className)}`;
+  if (valueElement) {
+    valueElement.textContent = text;
+  }
+}
+
+function snapshotAttentionStatus(snapshots) {
+  const frontend = snapshots.frontend || null;
+  const backend = snapshots.backend || null;
+  if (!frontend || !backend) {
+    return { label: "Paste both snapshots", className: "pending" };
+  }
+
+  const oldest = oldestCycleSnapshot(snapshots);
+  if (!oldest) return { label: "Snapshot age unknown", className: "pending" };
+  if (oldest.hours > 168) return { label: "Refresh snapshots", className: "stale" };
+  if (oldest.hours > 24) return { label: "Snapshots aging", className: "aging" };
+  return { label: "Fresh snapshots", className: "healthy" };
+}
+
+function renderDashboardAttention(snapshots) {
+  const snapshotStatus = snapshotAttentionStatus(snapshots);
+  const deployStatus = deployReadinessStatus(snapshots);
+  const review = loadDashboardReview();
+  const reviewStatus = dashboardReviewStatus(review);
+  const reviewLabel = review
+    ? `${formatDashboardReviewAge(review)} ago`
+    : "Not reviewed";
+
+  setDashboardAttentionItem("adminAttentionSnapshots", snapshotStatus.className, snapshotStatus.label);
+  setDashboardAttentionItem("adminAttentionDeploy", deployStatus.className, deployStatus.label);
+  setDashboardAttentionItem("adminAttentionReview", reviewStatus.className, reviewLabel);
+}
+
+function updateDashboardCycleSummary(action) {
+  const headline = document.getElementById("adminDashboardHeadline");
+  const pill = document.getElementById("adminDashboardPill");
+  if (!headline || !pill || !action) return;
+
+  const states = {
+    pending: {
+      text: "Paste frontend and backend cycle snapshots to complete the dashboard view.",
+      pill: "Snapshots needed",
+      className: "is-pending",
+    },
+    "top-up": {
+      text: "Review frontend cycles before the next production deployment.",
+      pill: action.label,
+      className: "is-action",
+    },
+    watch: {
+      text: "Cycle runway is usable, but deployment timing should be reviewed.",
+      pill: action.label,
+      className: "is-watch",
+    },
+    stale: {
+      text: "Refresh cycle snapshots before relying on the dashboard status.",
+      pill: action.label,
+      className: "is-action",
+    },
+    aging: {
+      text: "Cycle snapshots are aging; refresh them before the next deployment.",
+      pill: action.label,
+      className: "is-watch",
+    },
+    healthy: {
+      text: "Aion is operating on the approved continuity and provider path.",
+      pill: "Clear",
+      className: "is-clear",
+    },
+  };
+  const state = action.className === "pending" && action.label !== "Paste snapshots"
+    ? {
+      text: action.label === "Refresh dashboard"
+        ? "Refresh dashboard data before relying on the current operator view."
+        : "Review the dashboard and mark it reviewed when the current state looks accurate.",
+      pill: action.label,
+      className: "is-pending",
+    }
+    : action.className === "stale" && action.label === "Review dashboard"
+      ? {
+        text: "The dashboard review is stale; review the current state before relying on it.",
+        pill: action.label,
+        className: "is-action",
+      }
+      : action.className === "aging" && action.label === "Review soon"
+        ? {
+          text: "The dashboard review is aging; refresh it before the next operator decision.",
+          pill: action.label,
+          className: "is-watch",
+        }
+        : action.className === "stale" && action.label === "Refresh dashboard"
+          ? {
+            text: "Dashboard data is stale; refresh it before the next operator decision.",
+            pill: action.label,
+            className: "is-action",
+          }
+    : states[action.className] || states.pending;
+  headline.textContent = state.text;
+  pill.textContent = state.pill;
+  pill.className = `admin-dashboard-pill ${state.className}`;
+}
+
+function setCycleInputValue(kind, snapshot) {
+  const inputElement = document.getElementById(`${kind}CycleStatusInput`);
+  if (!inputElement || inputElement.value.trim() || !snapshot) return;
+  inputElement.value = `Canister Name: ${snapshot.canisterName || kind}\nCanister Id: ${snapshot.canisterId || ""}\nCycles: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")}\nReserved cycles limit: ${snapshot.reservedLimit ? snapshot.reservedLimit.toLocaleString().replaceAll(",", "_") : ""}\nIdle cycles burned per day: ${snapshot.burnPerDay ? snapshot.burnPerDay.toLocaleString().replaceAll(",", "_") : ""}`;
+}
+
+function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
+  const frontend = snapshots.frontend || null;
+  const backend = snapshots.backend || null;
+  const frontendSummary = document.getElementById("frontendCycleSnapshotSummary");
+  const backendSummary = document.getElementById("backendCycleSnapshotSummary");
+  const shortest = shortestCycleRunway(snapshots);
+  const oldest = oldestCycleSnapshot(snapshots);
+  const recommendedAction = cycleRecommendedAction(snapshots);
+
+  if (!frontend) {
+    setAdminHealthMetric("healthFrontendCycles", "Add snapshot");
+  } else {
+    const percent = cyclePercent(frontend);
+    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
+    setAdminHealthMetric("healthFrontendCycles", `${formatCycles(frontend.cycles)}${percentLabel}`);
+  }
+
+  if (!backend) {
+    setAdminHealthMetric("healthBackendCycles", "Add snapshot");
+  } else {
+    const percent = cyclePercent(backend);
+    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
+    setAdminHealthMetric("healthBackendCycles", `${formatCycles(backend.cycles)}${percentLabel}`);
+  }
+
+  if (!shortest) {
+    const runwayElement = document.getElementById("healthCycleRunway");
+    if (runwayElement) {
+      runwayElement.innerHTML = `Pending<span class="admin-cycle-runway-label pending">Pending</span>`;
+    }
+  } else {
+    const label = ADMIN_CYCLE_LABELS[shortest.key] || shortest.key;
+    const runway = shortest.days >= 365
+      ? `${(shortest.days / 365).toFixed(1)} years`
+      : `${Math.floor(shortest.days)} days`;
+    const runwayStatus = cycleRunwayStatus(shortest.days, shortest.snapshot, shortest.key);
+    const runwayElement = document.getElementById("healthCycleRunway");
+    if (runwayElement) {
+      runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
+    }
+  }
+
+  const snapshotAgeElement = document.getElementById("healthCycleSnapshotAge");
+  if (!oldest) {
+    if (snapshotAgeElement) {
+      snapshotAgeElement.innerHTML = `Pending<span class="admin-cycle-freshness-label pending">Pending</span>`;
+    }
+  } else {
+    const label = ADMIN_CYCLE_LABELS[oldest.key] || oldest.key;
+    const freshnessStatus = cycleFreshnessStatus(oldest.hours);
+    const days = Math.floor(oldest.hours / 24);
+    const ageLabel = oldest.hours < 1
+      ? "Less than 1 hour"
+      : oldest.hours < 24
+        ? `${Math.floor(oldest.hours)} hours`
+        : days === 1
+          ? "1 day"
+          : `${days} days`;
+    if (snapshotAgeElement) {
+      snapshotAgeElement.innerHTML = `${escapeHtml(ageLabel)} · ${escapeHtml(label)}<span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span>`;
+    }
+  }
+
+  if (frontendSummary) {
+    frontendSummary.innerHTML = cycleSnapshotSummaryHtml(frontend, "Frontend");
+  }
+  if (backendSummary) {
+    backendSummary.innerHTML = cycleSnapshotSummaryHtml(backend, "Backend");
+  }
+
+  const actionElement = document.getElementById("healthCycleAction");
+  if (actionElement) {
+    actionElement.innerHTML = `<span class="admin-cycle-runway-label ${recommendedAction.className}">${escapeHtml(recommendedAction.label)}</span>`;
+  }
+  const deployReadinessElement = document.getElementById("healthDeployReadiness");
+  if (deployReadinessElement) {
+    const deployReadiness = deployReadinessStatus(snapshots);
+    deployReadinessElement.innerHTML = `<span class="admin-cycle-runway-label ${deployReadiness.className}">${escapeHtml(deployReadiness.label)}</span>`;
+  }
+  updateDashboardCycleSummary(recommendedAction);
+  renderDashboardRefresh();
+  renderDashboardReview();
+  renderDashboardAttention(snapshots);
+  setCycleInputValue("frontend", frontend);
+  setCycleInputValue("backend", backend);
+}
+
+window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "frontend") {
+  const input = document.getElementById(`${kind}CycleStatusInput`);
+  const status = document.getElementById("cycleSnapshotStatus");
+
+  try {
+    const snapshot = parseCycleStatusSnapshot(input ? input.value : "", kind);
+    const snapshots = loadCycleSnapshot();
+    snapshots[kind] = snapshot;
+    persistCycleSnapshots(snapshots);
+    renderCycleSnapshot(snapshots);
+    if (status) {
+      status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot updated.`;
+    }
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not parse cycle snapshot.";
+    }
+  }
+};
+
+window.clearCycleSnapshot = function clearCycleSnapshot(kind = "frontend") {
+  const snapshots = loadCycleSnapshot();
+  delete snapshots[kind];
+  persistCycleSnapshots(snapshots);
+  const input = document.getElementById(`${kind}CycleStatusInput`);
+  const status = document.getElementById("cycleSnapshotStatus");
+  if (input) input.value = "";
+  renderCycleSnapshot(snapshots);
+  if (status) {
+    status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot cleared.`;
+  }
+};
+
+window.markDashboardReviewed = function markDashboardReviewed() {
+  const review = { reviewedAt: new Date().toISOString() };
+  persistDashboardReview(review);
+  renderDashboardReview(review);
+  renderCycleSnapshot(loadCycleSnapshot());
+};
+
+window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
+  const button = document.getElementById("adminDashboardRefreshButton");
+  const previousText = button ? button.textContent : "";
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Refreshing...";
+  }
+
+  try {
+    await Promise.allSettled([
+      loadMemories(),
+      loadGoldenTests(),
+      loadFeedback(),
+    ]);
+    const refresh = { refreshedAt: new Date().toISOString() };
+    persistDashboardRefresh(refresh);
+    renderDashboardRefresh(refresh);
+    renderCycleSnapshot(loadCycleSnapshot());
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = previousText || "Refresh dashboard";
+    }
+  }
+};
+// Admin cycles visibility end
 
 const savedGolden = loadSavedGoldenResults();
 
