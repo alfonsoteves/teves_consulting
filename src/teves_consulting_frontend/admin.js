@@ -1050,7 +1050,7 @@ window.loadFeedback = async function loadFeedback() {
       feedback.filter(f => f.rating === "up").length;
     document.getElementById("feedbackDown").textContent =
       feedback.filter(f => f.rating === "down").length;
-    setAdminHealthMetric("healthFeedbackCount", feedback.length);
+    renderFeedbackDashboardSignal(feedback);
 
     if (feedback.length === 0) {
       list.innerHTML = "<p>No feedback yet.</p>";
@@ -11146,6 +11146,8 @@ function renderGoldenTests(data, options = {}) {
   document.getElementById("goldenSummary").textContent =
     `${data.passed || 0}/${data.total || 0} passed`;
 
+  renderGoldenDashboardSignal(data);
+
   document.getElementById("goldenResults").innerHTML =
     (data.results || [])
       .map((r) => `
@@ -11177,6 +11179,57 @@ function initializeCandidateModelList() {
     input.value = DEFAULT_CANDIDATE_MODELS.join("\n");
   }
 }
+
+// Admin dashboard quality signals start
+function dashboardQualityClass(className) {
+  if (className === "success" || className === "healthy") return "healthy";
+  if (className === "warning" || className === "watch") return "watch";
+  if (className === "error" || className === "stale") return "stale";
+  return "pending";
+}
+
+function renderDashboardBadge(label, className = "pending") {
+  return `<span class="admin-cycle-runway-label ${dashboardQualityClass(className)}">${escapeHtml(label)}</span>`;
+}
+
+function renderGoldenDashboardSignal(data = null) {
+  const element = document.getElementById("healthGoldenTests");
+  if (!element) return;
+  if (!data || !Number.isFinite(Number(data.total)) || Number(data.total) === 0) {
+    element.innerHTML = renderDashboardBadge("No run", "pending");
+    return;
+  }
+
+  const total = Number(data.total || 0);
+  const passed = Number(data.passed || 0);
+  const label = `${passed}/${total} passed`;
+  const className = passed === total ? "success" : passed > 0 ? "warning" : "error";
+  element.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(passed === total ? "Passing" : "Review", className)}`;
+}
+
+function renderFeedbackDashboardSignal(feedback = []) {
+  const countElement = document.getElementById("healthFeedbackCount");
+  const signalElement = document.getElementById("healthFeedbackSignal");
+  const items = Array.isArray(feedback) ? feedback : [];
+  const up = items.filter((item) => item.rating === "up").length;
+  const down = items.filter((item) => item.rating === "down").length;
+  const total = items.length;
+
+  if (countElement) {
+    countElement.textContent = total;
+  }
+  if (!signalElement) return;
+
+  if (total === 0) {
+    signalElement.innerHTML = renderDashboardBadge("No feedback", "pending");
+    return;
+  }
+
+  const label = `${up} helpful · ${down} needs work`;
+  const className = down === 0 ? "success" : down > up ? "warning" : "healthy";
+  signalElement.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(down === 0 ? "Clean" : "Review", className)}`;
+}
+// Admin dashboard quality signals end
 
 // Admin cycles visibility start
 const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
@@ -11946,4 +11999,6 @@ if (savedGolden) {
 initializeCandidateHarnessContext();
 initializeCandidateModelList();
 renderCycleSnapshot();
+renderGoldenDashboardSignal(loadSavedGoldenResults());
+renderFeedbackDashboardSignal(latestFeedback);
 initAuth();

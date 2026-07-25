@@ -1629,6 +1629,8 @@
         <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Recommended action</div><div id="healthCycleAction" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Data refresh</div><div id="healthDataRefresh" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Golden tests</div><div id="healthGoldenTests" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Feedback signal</div><div id="healthFeedbackSignal" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Deploy readiness</div><div id="healthDeployReadiness" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
@@ -1666,7 +1668,7 @@
         </div>
       </div>
 
-    <details id="memoryOverviewPanel" class="admin-section-tool-primary" open>
+<details id="memoryOverviewPanel" class="admin-section-tool-primary" open>
       <summary><strong>Memory Overview</strong></summary>
 
       <div id="memoryOverview">
@@ -3076,7 +3078,7 @@
         </div>
       </div>
 
-    <details id="memoryHealthPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
+<details id="memoryHealthPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Memory Health Preview</strong></summary>
 
       <p>Inspect memory graph health without changing memories or live retrieval.</p>
@@ -3200,7 +3202,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         <p id="dashboardReviewStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
       </details>
 
-    <details id="knowledgeSynthesisPanel" class="advanced-operator-tool admin-section-tool-secondary">
+<details id="knowledgeSynthesisPanel" class="advanced-operator-tool admin-section-tool-secondary">
       <summary><strong>Knowledge Synthesis</strong></summary>
 
       <p>Inspect grounded memory synthesis without changing memories or live retrieval.</p>
@@ -3269,7 +3271,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         </div>
       </div>
 
-    <details id="providerStatusPanel" class="admin-section-tool-primary" open>
+<details id="providerStatusPanel" class="admin-section-tool-primary" open>
       <summary><strong>Provider Status & Registry</strong></summary>
 
       <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
@@ -3426,7 +3428,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         </div>
       </div>
 
-    <details id="goldenTestsPanel" class="admin-section-tool-routine" open>
+<details id="goldenTestsPanel" class="admin-section-tool-routine" open>
       <summary><strong>Golden Tests</strong></summary>
 
       <p id="goldenLastRun">Last run: Never</p>
@@ -3557,7 +3559,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
     })();
   </script>
   <!-- Admin diagnostic declutter end -->
-
   <!-- Admin section overviews start -->
   <script>
     (() => {
