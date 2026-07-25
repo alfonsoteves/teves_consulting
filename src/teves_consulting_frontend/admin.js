@@ -1131,6 +1131,7 @@ window.loadGoldenTests = async function loadGoldenTests() {
       // Admin cycles visibility start
 const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
 const ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
+const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const ADMIN_CYCLE_LABELS = {
   frontend: "Frontend",
   backend: "Backend",
@@ -1202,11 +1203,15 @@ function cyclePercent(snapshot) {
   return (snapshot.cycles / snapshot.reservedLimit) * 100;
 }
 
-function cycleRunwayStatus(days) {
+function cycleRunwayStatus(days, snapshot = null, key = "") {
   if (!Number.isFinite(days)) return { label: "Pending", className: "pending" };
+  const percent = cyclePercent(snapshot);
+  const frontend = key === "frontend" || snapshot?.canister === "frontend" || /frontend/i.test(snapshot?.canisterName || "");
+  if (frontend && Number.isFinite(percent) && percent <= 10) return { label: "Top up before deploy", className: "top-up" };
+  if (frontend && Number.isFinite(percent) && percent <= 20) return { label: "Deploy watch", className: "watch" };
   if (days < 30) return { label: "Top up soon", className: "top-up" };
   if (days < 90) return { label: "Watch", className: "watch" };
-  return { label: "Healthy", className: "healthy" };
+  return { label: "Idle healthy", className: "healthy" };
 }
 
 function cycleSnapshotAgeHours(snapshot) {
@@ -1233,16 +1238,59 @@ function formatSnapshotAge(snapshot) {
   return days === 1 ? "1 day" : `${days} days`;
 }
 
+function getCycleSnapshotCookie() {
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${ADMIN_CYCLE_SNAPSHOT_KEY}=`));
+  if (!cookie) return null;
+  return decodeURIComponent(cookie.slice(ADMIN_CYCLE_SNAPSHOT_KEY.length + 1));
+}
+
+function persistCycleSnapshots(snapshots) {
+  const serialized = JSON.stringify(snapshots || {});
+  try {
+    localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save cycle snapshots to local storage:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_CYCLE_SNAPSHOT_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save cycle snapshots to cookie:", err);
+  }
+}
+
 function loadCycleSnapshot() {
   try {
     const raw = localStorage.getItem(ADMIN_CYCLE_SNAPSHOT_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const snapshots = JSON.parse(raw);
+      persistCycleSnapshots(snapshots);
+      return snapshots;
+    }
+  } catch (err) {
+    console.warn("Could not load cycle snapshots from local storage:", err);
+  }
 
+  try {
+    const cookieRaw = getCycleSnapshotCookie();
+    if (cookieRaw) {
+      const snapshots = JSON.parse(cookieRaw);
+      persistCycleSnapshots(snapshots);
+      return snapshots;
+    }
+  } catch (err) {
+    console.warn("Could not load cycle snapshots from cookie:", err);
+  }
+
+  try {
     const legacyRaw = localStorage.getItem(ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY);
     if (!legacyRaw) return {};
 
     const legacy = JSON.parse(legacyRaw);
-    return legacy ? { frontend: legacy } : {};
+    const snapshots = legacy ? { frontend: legacy } : {};
+    persistCycleSnapshots(snapshots);
+    return snapshots;
   } catch (err) {
     console.error("Could not load cycle snapshots:", err);
     return {};
@@ -1253,7 +1301,7 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   if (!snapshot) {
     return `
       <span><strong>${escapeHtml(label)}:</strong> Add a snapshot</span>
-      <span><strong>Runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
+      <span><strong>Idle runway:</strong> Pending <span class="admin-cycle-runway-label pending">Pending</span></span>
       <span><strong>Snapshot:</strong> Pending <span class="admin-cycle-freshness-label pending">Pending</span></span>
     `;
   }
@@ -1261,9 +1309,13 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   const percent = cyclePercent(snapshot);
   const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
   const runwayDays = cycleRunwayDays(snapshot);
-  const runwayStatus = cycleRunwayStatus(runwayDays);
+  const runwayStatus = cycleRunwayStatus(runwayDays, snapshot, snapshot.canister);
   const snapshotAge = cycleSnapshotAgeHours(snapshot);
   const freshnessStatus = cycleFreshnessStatus(snapshotAge);
+  const frontend = snapshot.canister === "frontend" || /frontend/i.test(snapshot.canisterName || "");
+  const deploymentNote = frontend && percent !== null && percent <= 20
+    ? `<span><strong>Deployment:</strong> Top up before frontend upgrades.</span>`
+    : "";
   const capturedLabel = snapshot.capturedAt
     ? new Date(snapshot.capturedAt).toLocaleString()
     : "Unknown";
@@ -1273,7 +1325,8 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
     <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
     <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
     <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
-    <span><strong>Runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
+    <span><strong>Idle runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
+    ${deploymentNote}
     <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
     <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
   `;
@@ -1289,7 +1342,7 @@ function shortestCycleRunway(snapshots) {
   return ["frontend", "backend"]
     .map((key) => {
       const days = cycleRunwayDays(snapshots[key]);
-      return days === null ? null : { key, days };
+      return days === null ? null : { key, days, snapshot: snapshots[key] };
     })
     .filter(Boolean)
     .sort((a, b) => a.days - b.days)[0] || null;
@@ -1345,7 +1398,7 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
     const runway = shortest.days >= 365
       ? `${(shortest.days / 365).toFixed(1)} years`
       : `${Math.floor(shortest.days)} days`;
-    const runwayStatus = cycleRunwayStatus(shortest.days);
+    const runwayStatus = cycleRunwayStatus(shortest.days, shortest.snapshot, shortest.key);
     const runwayElement = document.getElementById("healthCycleRunway");
     if (runwayElement) {
       runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
@@ -1391,7 +1444,7 @@ window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "
     const snapshot = parseCycleStatusSnapshot(input ? input.value : "", kind);
     const snapshots = loadCycleSnapshot();
     snapshots[kind] = snapshot;
-    localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, JSON.stringify(snapshots));
+    persistCycleSnapshots(snapshots);
     renderCycleSnapshot(snapshots);
     if (status) {
       status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot updated.`;
@@ -1406,7 +1459,7 @@ window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "
 window.clearCycleSnapshot = function clearCycleSnapshot(kind = "frontend") {
   const snapshots = loadCycleSnapshot();
   delete snapshots[kind];
-  localStorage.setItem(ADMIN_CYCLE_SNAPSHOT_KEY, JSON.stringify(snapshots));
+  persistCycleSnapshots(snapshots);
   const input = document.getElementById(`${kind}CycleStatusInput`);
   const status = document.getElementById("cycleSnapshotStatus");
   if (input) input.value = "";
