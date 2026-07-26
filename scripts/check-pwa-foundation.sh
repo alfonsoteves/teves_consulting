@@ -56,6 +56,13 @@ assert(worker.includes('request.method !== "GET"'), "Service worker must avoid c
 assert(worker.includes("url.origin !== self.location.origin"), "Service worker must avoid cross-origin caching.");
 assert(worker.includes("AION_SKIP_WAITING"), "Service worker must support controlled update activation.");
 
+const pwaHelper = read(path.join(frontendRoot, "assets/js/aion-pwa.js"));
+assert(pwaHelper.includes("installActionFallbacks"), "PWA helper must install offline/loading action fallbacks.");
+assert(pwaHelper.includes("AionPwa"), "PWA helper must expose the AionPwa offline status API.");
+assert(pwaHelper.includes("aion-pwa-reset"), "PWA helper must support an emergency cache reset URL.");
+assert(pwaHelper.includes("beforeinstallprompt"), "PWA helper must support browser install readiness prompts.");
+assert(pwaHelper.includes("promptInstall"), "PWA helper must expose a safe install prompt action.");
+
 const offline = read(path.join(frontendRoot, "offline.html"));
 assert(offline.includes("No message, memory write, or authenticated action has been queued."), "Offline page must state that sensitive actions are not queued.");
 
