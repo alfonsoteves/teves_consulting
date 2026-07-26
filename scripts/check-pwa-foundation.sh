@@ -63,6 +63,8 @@ assert(pwaHelper.includes("aion-pwa-reset"), "PWA helper must support an emergen
 assert(pwaHelper.includes("beforeinstallprompt"), "PWA helper must support browser install readiness prompts.");
 assert(pwaHelper.includes("promptInstall"), "PWA helper must expose a safe install prompt action.");
 
+assert(fs.existsSync(path.join("docs", "aion-pwa-release-evidence.md")), "PWA release evidence document must exist.");
+
 const offline = read(path.join(frontendRoot, "offline.html"));
 assert(offline.includes("No message, memory write, or authenticated action has been queued."), "Offline page must state that sensitive actions are not queued.");
 

@@ -4,6 +4,8 @@
 
 This first PWA release makes the existing public Aion web client installable while preserving the existing ICP identity, continuity, memory, provider, and deployment architecture.
 
+Detailed release evidence is tracked in `docs/aion-pwa-release-evidence.md`.
+
 Admin remains browser-oriented. The service worker does not register from `admin.html` and bypasses `/admin.html` and `/admin/` requests.
 
 ## Cache Policy
