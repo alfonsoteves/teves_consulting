@@ -12,6 +12,8 @@ const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
+const OPENAI_PRODUCTION_ROUTE_ID = "openai-production-baseline";
+const NATIVE_PRODUCTION_ROUTE_ID = "icp-admin-candidate";
 const DEFAULT_CANDIDATE_MODELS = [
   LLM_CANDIDATE_MODEL,
   "qwen3:32b",
@@ -10074,6 +10076,305 @@ window.runCandidateModelRegistryDryRun = function runCandidateModelRegistryDryRu
   const container = document.getElementById("candidateModelRegistryResults");
   if (container) {
     container.innerHTML = renderCandidateModelRegistry();
+  }
+};
+
+function currentOperatorIdentifier() {
+  try {
+    const principal = identity && identity.getPrincipal && identity.getPrincipal();
+    return principal && principal.toText ? principal.toText() : "admin-operator";
+  } catch (_error) {
+    return "admin-operator";
+  }
+}
+
+function checkedValue(id) {
+  const element = document.getElementById(id);
+  return Boolean(element && element.checked);
+}
+
+function routeSwitchAcknowledgementsReady() {
+  return [
+    "productionRouteOperatorAuthorized",
+    "productionRouteIdentityReviewed",
+    "productionRouteAuditAcknowledged",
+    "productionRouteRollbackAcknowledged",
+    "productionRouteNoFallbackAcknowledged",
+    "productionRouteNoRetryAcknowledged",
+    "productionRouteNoDeploymentAcknowledged",
+    "productionRouteNoMemoryContinuityAcknowledged",
+  ].every(checkedValue);
+}
+
+function productionRouteSwitchReason() {
+  return valueFromInput("productionRouteSwitchReason") || "Operator-selected production route change.";
+}
+
+function productionRouteSwitchRequest(routeId) {
+  const command = routeId === OPENAI_PRODUCTION_ROUTE_ID
+    ? "select_openai_production_baseline"
+    : "select_native_production_candidate";
+
+  return {
+    requestedRouteId: routeId,
+    command,
+    operatorIdentifier: currentOperatorIdentifier(),
+    reason: productionRouteSwitchReason(),
+    operatorAuthorized: checkedValue("productionRouteOperatorAuthorized"),
+    routeIdentityReviewed: checkedValue("productionRouteIdentityReviewed"),
+    auditAcknowledged: checkedValue("productionRouteAuditAcknowledged"),
+    rollbackAcknowledged: checkedValue("productionRouteRollbackAcknowledged"),
+    noFallbackAcknowledged: checkedValue("productionRouteNoFallbackAcknowledged"),
+    noRetryAcknowledged: checkedValue("productionRouteNoRetryAcknowledged"),
+    noDeploymentAcknowledged: checkedValue("productionRouteNoDeploymentAcknowledged"),
+    noMemoryContinuityMutationAcknowledged: checkedValue("productionRouteNoMemoryContinuityAcknowledged"),
+    fallbackRequested: false,
+    retryRequested: false,
+    deploymentRequested: false,
+    openAiRetirementRequested: false,
+    memoryMutationRequested: false,
+    continuityMutationRequested: false,
+    productionCutoverRequested: false,
+    permanentDefaultChangeRequested: false,
+  };
+}
+
+function productionRouteRollbackRequest() {
+  return {
+    operatorIdentifier: currentOperatorIdentifier(),
+    reason: productionRouteSwitchReason(),
+    operatorAuthorized: checkedValue("productionRouteOperatorAuthorized"),
+    rollbackAcknowledged: checkedValue("productionRouteRollbackAcknowledged"),
+    fallbackRequested: false,
+    retryRequested: false,
+    deploymentRequested: false,
+    openAiRetirementRequested: false,
+    memoryMutationRequested: false,
+    continuityMutationRequested: false,
+    productionCutoverRequested: false,
+    permanentDefaultChangeRequested: false,
+  };
+}
+
+async function readProductionRouteSwitchResponse(response) {
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (_error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const detail = data && (data.detail || data.error);
+    throw new Error(typeof detail === "string" ? detail : `Route switch request failed with HTTP ${response.status}.`);
+  }
+
+  return data || {};
+}
+
+function renderProductionRouteSwitchState(data = {}) {
+  const activeRoute = data.activeProductionRoute || {};
+  const routes = Array.isArray(data.supportedProductionRoutes)
+    ? data.supportedProductionRoutes
+    : [];
+  const activeIsOpenAi = data.activeProductionRouteId === OPENAI_PRODUCTION_ROUTE_ID;
+  const activeIsNative = data.activeProductionRouteId === NATIVE_PRODUCTION_ROUTE_ID;
+  const rows = routes.map((route) => `
+    <tr>
+      <td><strong>${escapeHtml(route.label || route.routeId || "Unknown route")}</strong></td>
+      <td>${escapeHtml(route.providerId || "n/a")}</td>
+      <td>${renderStatusBadge(route.routeId === data.activeProductionRouteId ? "active" : "available", route.routeId === data.activeProductionRouteId ? "success" : "info")}</td>
+      <td>${renderStatusBadge(route.publicAnswerEligible ? "production-capable" : "review", route.publicAnswerEligible ? "success" : "error")}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="memory-card">
+      <h3>Active Production Route</h3>
+      ${renderMetricGrid({
+        route: activeRoute.label || data.activeProductionRouteId || "unknown",
+        provider: activeRoute.providerId || "unknown",
+        rollback: data.rollbackTargetRouteId || OPENAI_PRODUCTION_ROUTE_ID,
+        audit: data.auditCount ?? 0,
+      })}
+      <p>
+        ${renderStatusBadge(activeIsOpenAi ? "OpenAI active" : activeIsNative ? "Native active" : "Review route", activeIsOpenAi || activeIsNative ? "success" : "error")}
+        ${renderStatusBadge(data.automaticFallback ? "fallback enabled" : "no fallback", data.automaticFallback ? "error" : "info")}
+        ${renderStatusBadge(data.automaticRetry ? "retry enabled" : "no retry", data.automaticRetry ? "error" : "info")}
+      </p>
+    </div>
+    <div class="memory-card">
+      <h3>Supported Routes</h3>
+      <table>
+        <thead><tr><th>Route</th><th>Provider</th><th>Status</th><th>Production</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderProductionRouteSwitchAudit(data = {}) {
+  const events = Array.isArray(data.events) ? data.events : [];
+  if (!events.length) {
+    return `
+      <div class="memory-card">
+        <h3>Route Audit</h3>
+        <p>No route-switch events recorded yet.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="memory-card">
+      <h3>Route Audit</h3>
+      <table>
+        <thead><tr><th>Time</th><th>Command</th><th>Previous</th><th>Selected</th><th>Operator</th></tr></thead>
+        <tbody>
+          ${events.map((entry) => `
+            <tr>
+              <td>${escapeHtml(entry.createdAt || "n/a")}</td>
+              <td>${escapeHtml(entry.command || "n/a")}</td>
+              <td>${escapeHtml(entry.previousProductionRouteId || "n/a")}</td>
+              <td>${escapeHtml(entry.selectedProductionRouteId || "n/a")}</td>
+              <td>${escapeHtml(entry.operatorIdentifier || "n/a")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+window.refreshProductionRouteSwitch = async function refreshProductionRouteSwitch() {
+  const container = document.getElementById("productionRouteSwitchState");
+  if (!container) return;
+
+  if (!isAuthenticated || !isOperator) {
+    container.innerHTML = "<p>Sign in with operator access first.</p>";
+    return;
+  }
+
+  container.innerHTML = "<p>Refreshing production route...</p>";
+
+  try {
+    const response = await fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/production-route-switch`);
+    const data = await readProductionRouteSwitchResponse(response);
+    container.innerHTML = renderProductionRouteSwitchState(data);
+  } catch (err) {
+    console.error("Production route refresh failed:", err);
+    container.innerHTML = `<p>Production route refresh failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+window.refreshProductionRouteSwitchAudit = async function refreshProductionRouteSwitchAudit() {
+  const container = document.getElementById("productionRouteSwitchAudit");
+  if (!container) return;
+
+  if (!isAuthenticated || !isOperator) {
+    container.innerHTML = "<p>Sign in with operator access first.</p>";
+    return;
+  }
+
+  container.innerHTML = "<p>Loading route audit...</p>";
+
+  try {
+    const response = await fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/production-route-switch/audit`);
+    const data = await readProductionRouteSwitchResponse(response);
+    container.innerHTML = renderProductionRouteSwitchAudit(data);
+  } catch (err) {
+    console.error("Production route audit failed:", err);
+    container.innerHTML = `<p>Production route audit failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+async function applyProductionRouteSwitch(routeId) {
+  const container = document.getElementById("productionRouteSwitchResults");
+  if (!container) return;
+
+  if (!isAuthenticated || !isOperator) {
+    container.innerHTML = "<p>Sign in with operator access first.</p>";
+    return;
+  }
+
+  if (!routeSwitchAcknowledgementsReady()) {
+    container.innerHTML = "<p>Review and check each operator confirmation before changing the production route.</p>";
+    return;
+  }
+
+  const label = routeId === NATIVE_PRODUCTION_ROUTE_ID ? "native" : "OpenAI";
+  if (!window.confirm(`Select ${label} as the production answer route?`)) {
+    return;
+  }
+
+  container.innerHTML = `<p>Selecting ${escapeHtml(label)}...</p>`;
+
+  try {
+    const response = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/production-route-switch/select`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(productionRouteSwitchRequest(routeId)),
+      }
+    );
+    const data = await readProductionRouteSwitchResponse(response);
+    container.innerHTML = renderProductionRouteSwitchState(data);
+    await window.refreshProductionRouteSwitchAudit();
+    if (typeof recordAdminDashboardActivity === "function") {
+      recordAdminDashboardActivity("Production route selected", data.activeProductionRouteId || routeId);
+    }
+  } catch (err) {
+    console.error("Production route selection failed:", err);
+    container.innerHTML = `<p>Production route selection failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+}
+
+window.selectNativeProductionRoute = function selectNativeProductionRoute() {
+  return applyProductionRouteSwitch(NATIVE_PRODUCTION_ROUTE_ID);
+};
+
+window.selectOpenAiProductionRoute = function selectOpenAiProductionRoute() {
+  return applyProductionRouteSwitch(OPENAI_PRODUCTION_ROUTE_ID);
+};
+
+window.rollbackProductionRouteToOpenAi = async function rollbackProductionRouteToOpenAi() {
+  const container = document.getElementById("productionRouteSwitchResults");
+  if (!container) return;
+
+  if (!isAuthenticated || !isOperator) {
+    container.innerHTML = "<p>Sign in with operator access first.</p>";
+    return;
+  }
+
+  if (!checkedValue("productionRouteOperatorAuthorized") || !checkedValue("productionRouteRollbackAcknowledged")) {
+    container.innerHTML = "<p>Confirm operator authorization and rollback acknowledgement before rollback.</p>";
+    return;
+  }
+
+  if (!window.confirm("Roll production back to the OpenAI baseline?")) {
+    return;
+  }
+
+  container.innerHTML = "<p>Rolling back to OpenAI...</p>";
+
+  try {
+    const response = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}/admin/production-route-switch/rollback`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(productionRouteRollbackRequest()),
+      }
+    );
+    const data = await readProductionRouteSwitchResponse(response);
+    container.innerHTML = renderProductionRouteSwitchState(data);
+    await window.refreshProductionRouteSwitchAudit();
+    if (typeof recordAdminDashboardActivity === "function") {
+      recordAdminDashboardActivity("Production route rolled back", data.activeProductionRouteId || OPENAI_PRODUCTION_ROUTE_ID);
+    }
+  } catch (err) {
+    console.error("Production route rollback failed:", err);
+    container.innerHTML = `<p>Production route rollback failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 

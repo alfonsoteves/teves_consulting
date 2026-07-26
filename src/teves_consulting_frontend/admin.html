@@ -4094,6 +4094,11 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <button type="button" data-admin-detail-jump="providerStatusPanel">Open status</button>
         </div>
         <div class="admin-section-overview-card">
+          <strong>Production route</strong>
+          <span>Select OpenAI or native for the production answer route, then roll back manually.</span>
+          <button type="button" data-admin-detail-jump="productionRouteSwitchPanel">Open switch</button>
+        </div>
+        <div class="admin-section-overview-card">
           <strong>Candidate tests</strong>
           <span>Run Admin-only candidate checks without changing public answers.</span>
           <button type="button" data-admin-detail-jump="candidateTestConsolePanel">Open tests</button>
@@ -4185,6 +4190,40 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
         <div id="icpLlmCandidVerificationNotesResults"></div>
       </details>
+    </details>
+    <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
+      <summary><strong>Production Route Switch</strong></summary>
+
+      <p>Select the production answer route used by Aion, inspect route identity, and manually roll back to the OpenAI baseline.</p>
+
+      <button type="button" onclick="refreshProductionRouteSwitch()">Refresh Route</button>
+      <button type="button" onclick="refreshProductionRouteSwitchAudit()">View Audit</button>
+
+      <div id="productionRouteSwitchState"></div>
+
+      <div class="memory-card">
+        <h3>Operator Confirmation</h3>
+        <div class="form-grid">
+          <label>Reason
+            <input id="productionRouteSwitchReason" type="text" value="Operator-selected Phase 8 production route validation.">
+          </label>
+        </div>
+        <label><input id="productionRouteOperatorAuthorized" type="checkbox"> I am the authorized operator.</label>
+        <label><input id="productionRouteIdentityReviewed" type="checkbox"> I reviewed the active route identity.</label>
+        <label><input id="productionRouteAuditAcknowledged" type="checkbox"> I understand this selection is audited.</label>
+        <label><input id="productionRouteRollbackAcknowledged" type="checkbox"> I understand rollback returns to OpenAI.</label>
+        <label><input id="productionRouteNoFallbackAcknowledged" type="checkbox"> I understand there is no automatic fallback.</label>
+        <label><input id="productionRouteNoRetryAcknowledged" type="checkbox"> I understand there is no automatic retry.</label>
+        <label><input id="productionRouteNoDeploymentAcknowledged" type="checkbox"> I am not requesting a deployment from this control.</label>
+        <label><input id="productionRouteNoMemoryContinuityAcknowledged" type="checkbox"> I am not changing memory or continuity behavior.</label>
+      </div>
+
+      <button type="button" onclick="selectNativeProductionRoute()">Select Native</button>
+      <button type="button" onclick="selectOpenAiProductionRoute()">Select OpenAI</button>
+      <button type="button" onclick="rollbackProductionRouteToOpenAi()">Roll Back to OpenAI</button>
+
+      <div id="productionRouteSwitchResults"></div>
+      <div id="productionRouteSwitchAudit"></div>
     </details>
     <details id="candidateTestConsolePanel" class="admin-section-tool-secondary">
       <summary><strong>Candidate Test Console</strong></summary>
