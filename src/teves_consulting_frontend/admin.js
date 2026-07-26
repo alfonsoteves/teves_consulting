@@ -1257,6 +1257,18 @@ function displaySiteMetrics(metrics = []) {
   return normalizeSiteMetrics(metrics).filter((entry) => isTrackableSiteMetricPath(entry.pagePath));
 }
 
+function technicalSiteMetrics(metrics = []) {
+  return normalizeSiteMetrics(metrics).filter((entry) => !isTrackableSiteMetricPath(entry.pagePath));
+}
+
+function technicalSiteMetricsSummary(metrics = []) {
+  const rows = technicalSiteMetrics(metrics);
+  return {
+    rows: rows.length,
+    uses: rows.reduce((total, entry) => total + metricNatToNumber(entry.count), 0),
+  };
+}
+
 function summarizeSiteMetrics(metrics = []) {
   const displayMetrics = displaySiteMetrics(metrics);
   const today = siteMetricDayKey();
@@ -1399,6 +1411,7 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
   const writesElement = document.getElementById("siteMetricsWrites");
   const coverageElement = document.getElementById("siteMetricsCoverage");
   const storageElement = document.getElementById("siteMetricsStorage");
+  const filteredElement = document.getElementById("siteMetricsFiltered");
   const boundaryElement = document.getElementById("siteMetricsBoundary");
   const latestElement = document.getElementById("siteMetricsLatest");
   const resultsElement = document.getElementById("siteMetricsResults");
@@ -1418,6 +1431,8 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
   if (writesElement) writesElement.textContent = `${estimatedSiteMetricWritesPerDay(summary).toLocaleString()} / day`;
   if (coverageElement) coverageElement.textContent = `${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} pages`;
   if (storageElement) storageElement.textContent = `${displayMetrics.length.toLocaleString()} shown / ${normalizeSiteMetrics(metrics).length.toLocaleString()} raw`;
+  const filteredSummary = technicalSiteMetricsSummary(metrics);
+  if (filteredElement) filteredElement.textContent = `${filteredSummary.rows.toLocaleString()} rows`;
   if (boundaryElement) boundaryElement.textContent = "GA supplement";
   if (latestElement) {
     latestElement.textContent = summary.latest
@@ -1428,8 +1443,11 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
   refreshSiteMetricsDashboardSignals();
 
   if (!resultsElement) return;
+  const filteredNote = filteredSummary.rows
+    ? `<p class="meta">Filtered ${escapeHtml(filteredSummary.rows.toLocaleString())} technical row${filteredSummary.rows === 1 ? "" : "s"} (${escapeHtml(filteredSummary.uses.toLocaleString())} tracked use${filteredSummary.uses === 1 ? "" : "s"}) from crawler, icon, sitemap, or asset requests.</p>`
+    : "";
   if (!displayMetrics.length) {
-    resultsElement.innerHTML = '<p class="meta">No ICP site metrics have been recorded yet.</p>';
+    resultsElement.innerHTML = filteredNote || '<p class="meta">No ICP site metrics have been recorded yet.</p>';
     return;
   }
 
@@ -1450,6 +1468,7 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
     </tr>
   `).join("");
   resultsElement.innerHTML = `
+    ${filteredNote}
     <div class="memory-card">
       <h3>Daily trend, last 7 days</h3>
       <table>
@@ -1513,6 +1532,7 @@ function buildSiteMetricsSummaryText() {
     `Estimated writes/day: ${estimatedSiteMetricWritesPerDay(summary).toLocaleString()}`,
     `Tracker coverage: ${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} public pages`,
     `Storage rows shown: ${displaySiteMetrics(latestSiteMetrics).length.toLocaleString()} / ${normalizeSiteMetrics(latestSiteMetrics).length.toLocaleString()} raw`,
+    `Filtered technical rows: ${technicalSiteMetricsSummary(latestSiteMetrics).rows.toLocaleString()}`,
     "Boundary: Approximate ICP supplement; Google Analytics remains source of truth",
     "Privacy: Stores day, path, title, locale, and count; no visitor IDs, IPs, or user agents",
     `Latest view: ${summary.latest ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}` : "None"}`,
