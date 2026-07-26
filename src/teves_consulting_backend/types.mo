@@ -33,4 +33,14 @@ module {
     confidence : Nat;
     status : Text;
   };
+
+  public type WebAnalyticsDailyCount = {
+    dayKey : Text;
+    pagePath : Text;
+    pageTitle : Text;
+    locale : Text;
+    count : Nat;
+    firstSeenAt : Int;
+    lastSeenAt : Int;
+  };
 };

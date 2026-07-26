@@ -1,5 +1,6 @@
 import Array "mo:core/Array";
 import Principal "mo:core/Principal";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Types "types";
 import CertifiedPolicyLifecycle "lib/CertifiedPolicyLifecycle";
@@ -13,6 +14,7 @@ import ProviderRoutePreviewService "lib/ProviderRoutePreviewService";
 import OperatorAccess "lib/OperatorAccess";
 import OperatorSession "lib/OperatorSession";
 import SummaryAccess "lib/SummaryAccess";
+import WebAnalytics "lib/WebAnalytics";
 
 actor {
   CertifiedPolicyLifecycle.refresh();
@@ -22,6 +24,7 @@ actor {
   var memorySummaries : [Types.MemorySummary] = [];
   var nextMemoryId : Nat = 0;
   var operatorSessionGrants : [OperatorSession.Grant] = [];
+  var webAnalyticsDailyCounts : [Types.WebAnalyticsDailyCount] = [];
 
   public shared ({ caller }) func whoami() : async Text {
     caller.toText();
@@ -85,6 +88,32 @@ actor {
   ) : async [Types.Feedback] {
     OperatorAccess.requireOperator(caller);
     SummaryAccess.recent(feedbackEntries, limit);
+  };
+
+  public shared func recordPageView(
+    dayKey : Text,
+    pagePath : Text,
+    pageTitle : Text,
+    locale : Text,
+  ) : async Bool {
+    let result = WebAnalytics.recordPageView(
+      webAnalyticsDailyCounts,
+      WebAnalytics.maxDailyCounts,
+      dayKey,
+      pagePath,
+      pageTitle,
+      locale,
+      Time.now(),
+    );
+    webAnalyticsDailyCounts := result.counts;
+    result.accepted;
+  };
+
+  public shared query ({ caller }) func getWebAnalyticsDailyCounts(
+    limit : Nat
+  ) : async [Types.WebAnalyticsDailyCount] {
+    OperatorAccess.requireOperator(caller);
+    SummaryAccess.recent(webAnalyticsDailyCounts, limit);
   };
 
   public shared ({ caller }) func storeSummary(

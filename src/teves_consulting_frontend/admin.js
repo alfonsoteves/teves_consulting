@@ -337,6 +337,16 @@ const idlFactory = ({ IDL }) => {
     isReplicated: IDL.Bool,
   });
 
+  const WebAnalyticsDailyCount = IDL.Record({
+    dayKey: IDL.Text,
+    pagePath: IDL.Text,
+    pageTitle: IDL.Text,
+    locale: IDL.Text,
+    count: IDL.Nat,
+    firstSeenAt: IDL.Int,
+    lastSeenAt: IDL.Int,
+  });
+
   const ContinuityPreviewResponse = IDL.Record({
     queryText: IDL.Text,
     queryIntent: IDL.Text,
@@ -388,6 +398,12 @@ const idlFactory = ({ IDL }) => {
         timestamp: IDL.Text,
         receivedAt: IDL.Int,
       }))],
+      ["query"]
+    ),
+
+    getWebAnalyticsDailyCounts: IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(WebAnalyticsDailyCount)],
       ["query"]
     ),
 
@@ -500,6 +516,9 @@ async function initAuth() {
     identity = authClient.getIdentity();
     await createAuthenticatedActor();
     await refreshOperatorAccess();
+    if (isOperator) {
+      await loadSiteMetrics();
+    }
   }
 
   updateAuthUI();
@@ -874,6 +893,7 @@ window.handleAuth = async function handleAuth() {
         await loadMemories();
         await loadGoldenTests();
         await loadFeedback();
+        await loadSiteMetrics();
         const refresh = { refreshedAt: new Date().toISOString() };
         persistDashboardRefresh(refresh);
         renderDashboardRefresh(refresh);
@@ -1086,6 +1106,479 @@ window.loadFeedback = async function loadFeedback() {
   }
 };
 
+let latestSiteMetrics = [];
+let latestSiteMetricsLoadedAt = null;
+let latestSiteMetricsError = "";
+let latestSiteMetricsSource = "none";
+const SITE_METRICS_PUBLIC_PAGE_COUNT = 164;
+const SITE_METRICS_BACKEND_ROW_LIMIT = 2000;
+const SITE_METRICS_QUERY_LIMIT = 2000;
+
+function normalizeSiteMetricEntry(entry = {}) {
+  return {
+    dayKey: String(entry.dayKey || ""),
+    pagePath: String(entry.pagePath || "/"),
+    pageTitle: String(entry.pageTitle || entry.pagePath || "/"),
+    locale: String(entry.locale || "unknown"),
+    count: String(entry.count || "0"),
+    firstSeenAt: String(entry.firstSeenAt || "0"),
+    lastSeenAt: String(entry.lastSeenAt || "0"),
+  };
+}
+
+function normalizeSiteMetrics(metrics = []) {
+  return Array.isArray(metrics)
+    ? metrics.map(normalizeSiteMetricEntry)
+    : [];
+}
+
+function persistSiteMetricsCache(metrics = latestSiteMetrics, loadedAt = latestSiteMetricsLoadedAt) {
+  try {
+    localStorage.setItem(
+      ADMIN_SITE_METRICS_CACHE_KEY,
+      JSON.stringify({
+        loadedAt,
+        metrics: normalizeSiteMetrics(metrics).slice(0, SITE_METRICS_QUERY_LIMIT),
+      }),
+    );
+  } catch (err) {
+    console.warn("Could not save site metrics cache:", err);
+  }
+}
+
+function clearPersistedSiteMetricsCache() {
+  try {
+    localStorage.removeItem(ADMIN_SITE_METRICS_CACHE_KEY);
+  } catch (err) {
+    console.warn("Could not clear site metrics cache:", err);
+  }
+}
+
+function loadSiteMetricsCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_SITE_METRICS_CACHE_KEY);
+    const cached = raw ? JSON.parse(raw) : null;
+    if (!cached || !Array.isArray(cached.metrics)) return null;
+    return {
+      loadedAt: cached.loadedAt || null,
+      metrics: normalizeSiteMetrics(cached.metrics),
+    };
+  } catch (err) {
+    console.warn("Could not load site metrics cache:", err);
+    return null;
+  }
+}
+
+function restoreCachedSiteMetrics() {
+  const cached = loadSiteMetricsCache();
+  if (!cached || !cached.metrics.length) {
+    renderSiteMetricsHealth(latestSiteMetrics);
+    return;
+  }
+  latestSiteMetrics = cached.metrics;
+  latestSiteMetricsLoadedAt = cached.loadedAt;
+  latestSiteMetricsError = "";
+  latestSiteMetricsSource = "cache";
+  renderSiteMetrics(latestSiteMetrics);
+  const status = document.getElementById("siteMetricsStatus");
+  if (status && cached.loadedAt) {
+    status.textContent = `Showing cached metrics from ${new Date(cached.loadedAt).toLocaleString()}.`;
+  }
+}
+
+function formatSiteMetricsLoadedAt() {
+  if (latestSiteMetricsError) return "Load failed";
+  if (!latestSiteMetricsLoadedAt) return "Not loaded";
+  const loadedAt = new Date(latestSiteMetricsLoadedAt);
+  if (!Number.isFinite(loadedAt.getTime())) return "Unknown";
+  const ageMinutes = Math.max(0, Math.round((Date.now() - loadedAt.getTime()) / 60000));
+  const source = latestSiteMetricsSource === "cache" ? "Cached" : "Live";
+  if (ageMinutes < 1) return `${source} just now`;
+  if (ageMinutes < 60) return `${source} ${ageMinutes}m ago`;
+  const ageHours = Math.round(ageMinutes / 60);
+  if (ageHours < 48) return `${source} ${ageHours}h ago`;
+  return `${source} ${loadedAt.toLocaleDateString()}`;
+}
+
+function renderSiteMetricsLoadedStatus() {
+  const loadedElement = document.getElementById("siteMetricsLoaded");
+  if (loadedElement) {
+    loadedElement.textContent = formatSiteMetricsLoadedAt();
+  }
+}
+
+function siteMetricDayKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function recentSiteMetricDayKeyList(days = 7) {
+  const keys = [];
+  for (let index = 0; index < days; index += 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - index);
+    keys.push(siteMetricDayKey(date));
+  }
+  return keys;
+}
+
+function recentSiteMetricDayKeys(days = 7) {
+  return new Set(recentSiteMetricDayKeyList(days));
+}
+
+function metricNatToNumber(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function safeSiteMetricHref(path = "/") {
+  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
+    ? path
+    : "/";
+}
+
+function summarizeSiteMetrics(metrics = []) {
+  const today = siteMetricDayKey();
+  const weekKeyList = recentSiteMetricDayKeyList(7);
+  const weekKeys = new Set(weekKeyList);
+  const monthKeys = recentSiteMetricDayKeys(30);
+  const weekPages = new Set();
+  let todayViews = 0;
+  let weekViews = 0;
+  let monthViews = 0;
+  let latest = null;
+  const pageTotals = new Map();
+  const dailyTotals = new Map();
+  const monthlyDailyTotals = new Map();
+  const localeTotals = {
+    en: 0,
+    es: 0,
+    other: 0,
+  };
+
+  metrics.forEach((entry) => {
+    const count = metricNatToNumber(entry.count);
+    const pagePath = entry.pagePath || "/";
+    const locale = entry.locale || "unknown";
+    const pageKey = `${pagePath}::${locale}`;
+    if (entry.dayKey === today) {
+      todayViews += count;
+    }
+    if (monthKeys.has(entry.dayKey)) {
+      monthViews += count;
+      const existingMonthDay = monthlyDailyTotals.get(entry.dayKey) || { dayKey: entry.dayKey, count: 0 };
+      existingMonthDay.count += count;
+      monthlyDailyTotals.set(entry.dayKey, existingMonthDay);
+    }
+    if (weekKeys.has(entry.dayKey)) {
+      weekViews += count;
+      const existingDay = dailyTotals.get(entry.dayKey) || { dayKey: entry.dayKey, count: 0, en: 0, es: 0 };
+      existingDay.count += count;
+      if (locale === "en") existingDay.en += count;
+      if (locale === "es") existingDay.es += count;
+      dailyTotals.set(entry.dayKey, existingDay);
+      if (locale === "en" || locale === "es") {
+        localeTotals[locale] += count;
+      } else {
+        localeTotals.other += count;
+      }
+      weekPages.add(pageKey);
+      const existing = pageTotals.get(pageKey) || {
+        pagePath,
+        pageTitle: entry.pageTitle || pagePath,
+        locale,
+        count: 0,
+      };
+      existing.count += count;
+      pageTotals.set(pageKey, existing);
+    }
+    const lastSeenAt = Number(entry.lastSeenAt || 0);
+    if (!latest || lastSeenAt > Number(latest.lastSeenAt || 0)) {
+      latest = entry;
+    }
+  });
+
+  return {
+    todayViews,
+    weekViews,
+    trackedPages: weekPages.size,
+    localeTotals,
+    latest,
+    dailyTotals: weekKeyList.map((dayKey) => dailyTotals.get(dayKey) || { dayKey, count: 0, en: 0, es: 0 }),
+    monthViews,
+    dailyAverage30: Math.round(monthViews / 30),
+    peakDay30: Array.from(monthlyDailyTotals.values())
+      .sort((a, b) => b.count - a.count || b.dayKey.localeCompare(a.dayKey))[0] || null,
+    topPages: Array.from(pageTotals.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8),
+  };
+}
+
+function estimatedSiteMetricWritesPerDay(summary) {
+  return Math.round((summary?.weekViews || 0) / 7);
+}
+
+function siteMetricsHealthStatus(metrics = latestSiteMetrics) {
+  if (latestSiteMetricsError) {
+    return { label: "Load failed", className: "watch", detailId: "siteMetricsPanel" };
+  }
+  if (!latestSiteMetricsLoadedAt) {
+    return { label: "Not loaded", className: "pending", detailId: "siteMetricsPanel" };
+  }
+
+  const loadedAt = new Date(latestSiteMetricsLoadedAt).getTime();
+  const ageHours = Number.isFinite(loadedAt)
+    ? (Date.now() - loadedAt) / (60 * 60 * 1000)
+    : Infinity;
+  if (!Number.isFinite(ageHours) || ageHours > 24) {
+    return { label: "Refresh metrics", className: "stale", detailId: "siteMetricsPanel" };
+  }
+
+  const summary = summarizeSiteMetrics(metrics);
+  if (summary.weekViews === 0) {
+    return { label: "No uses yet", className: "watch", detailId: "siteMetricsPanel" };
+  }
+
+  return {
+    label: `${summary.weekViews.toLocaleString()} uses`,
+    className: "healthy",
+    detailId: "siteMetricsPanel",
+  };
+}
+
+function renderSiteMetricsHealth(metrics = latestSiteMetrics) {
+  const element = document.getElementById("healthSiteMetrics");
+  if (!element) return;
+  const status = siteMetricsHealthStatus(metrics);
+  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}">${escapeHtml(status.label)}</span>`;
+}
+
+function refreshSiteMetricsDashboardSignals() {
+  renderSiteMetricsHealth(latestSiteMetrics);
+  if (typeof renderDashboardActionQueue === "function") {
+    renderDashboardActionQueue(loadCycleSnapshot());
+  }
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+}
+
+function renderSiteMetrics(metrics = latestSiteMetrics) {
+  const summary = summarizeSiteMetrics(metrics);
+  const todayElement = document.getElementById("siteMetricsToday");
+  const weekElement = document.getElementById("siteMetricsWeek");
+  const monthElement = document.getElementById("siteMetricsMonth");
+  const averageElement = document.getElementById("siteMetricsDailyAverage");
+  const peakDayElement = document.getElementById("siteMetricsPeakDay");
+  const pagesElement = document.getElementById("siteMetricsPages");
+  const englishElement = document.getElementById("siteMetricsEnglish");
+  const spanishElement = document.getElementById("siteMetricsSpanish");
+  const writesElement = document.getElementById("siteMetricsWrites");
+  const coverageElement = document.getElementById("siteMetricsCoverage");
+  const storageElement = document.getElementById("siteMetricsStorage");
+  const boundaryElement = document.getElementById("siteMetricsBoundary");
+  const latestElement = document.getElementById("siteMetricsLatest");
+  const resultsElement = document.getElementById("siteMetricsResults");
+
+  if (todayElement) todayElement.textContent = summary.todayViews.toLocaleString();
+  if (weekElement) weekElement.textContent = summary.weekViews.toLocaleString();
+  if (monthElement) monthElement.textContent = summary.monthViews.toLocaleString();
+  if (averageElement) averageElement.textContent = summary.dailyAverage30.toLocaleString();
+  if (peakDayElement) {
+    peakDayElement.textContent = summary.peakDay30
+      ? `${summary.peakDay30.count.toLocaleString()} · ${summary.peakDay30.dayKey}`
+      : "No views yet";
+  }
+  if (pagesElement) pagesElement.textContent = summary.trackedPages.toLocaleString();
+  if (englishElement) englishElement.textContent = summary.localeTotals.en.toLocaleString();
+  if (spanishElement) spanishElement.textContent = summary.localeTotals.es.toLocaleString();
+  if (writesElement) writesElement.textContent = `${estimatedSiteMetricWritesPerDay(summary).toLocaleString()} / day`;
+  if (coverageElement) coverageElement.textContent = `${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} pages`;
+  if (storageElement) storageElement.textContent = `${normalizeSiteMetrics(metrics).length.toLocaleString()} / ${SITE_METRICS_BACKEND_ROW_LIMIT.toLocaleString()}`;
+  if (boundaryElement) boundaryElement.textContent = "GA supplement";
+  if (latestElement) {
+    latestElement.textContent = summary.latest
+      ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}`
+      : "No views yet";
+  }
+  renderSiteMetricsLoadedStatus();
+  refreshSiteMetricsDashboardSignals();
+
+  if (!resultsElement) return;
+  if (!metrics.length) {
+    resultsElement.innerHTML = '<p class="meta">No ICP site metrics have been recorded yet.</p>';
+    return;
+  }
+
+  const dailyRows = summary.dailyTotals.map((day) => `
+    <tr>
+      <td>${escapeHtml(day.dayKey)}</td>
+      <td>${escapeHtml(day.count.toLocaleString())}</td>
+      <td>${escapeHtml(day.en.toLocaleString())}</td>
+      <td>${escapeHtml(day.es.toLocaleString())}</td>
+    </tr>
+  `).join("");
+  const pageRows = summary.topPages.map((page) => `
+    <tr>
+      <td>${escapeHtml(page.pageTitle || page.pagePath)}</td>
+      <td><a href="${escapeHtml(safeSiteMetricHref(page.pagePath))}" target="_blank" rel="noopener noreferrer">${escapeHtml(page.pagePath)}</a></td>
+      <td>${escapeHtml(page.locale)}</td>
+      <td>${escapeHtml(page.count.toLocaleString())}</td>
+    </tr>
+  `).join("");
+  resultsElement.innerHTML = `
+    <div class="memory-card">
+      <h3>Daily trend, last 7 days</h3>
+      <table>
+        <thead><tr><th>Day</th><th>Uses</th><th>English</th><th>Spanish</th></tr></thead>
+        <tbody>${dailyRows || '<tr><td colspan="4">No tracked uses in the last 7 days.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Top pages, last 7 days</h3>
+      <table>
+        <thead><tr><th>Title</th><th>Path</th><th>Locale</th><th>Uses</th></tr></thead>
+        <tbody>${pageRows || '<tr><td colspan="4">No tracked uses in the last 7 days.</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+window.loadSiteMetrics = async function loadSiteMetrics() {
+  const status = document.getElementById("siteMetricsStatus");
+  if (!isAuthenticated) {
+    alert("Please sign in first.");
+    return;
+  }
+  if (status) status.textContent = "Loading site metrics...";
+  try {
+    latestSiteMetrics = normalizeSiteMetrics(await window.adminActor.getWebAnalyticsDailyCounts(BigInt(SITE_METRICS_QUERY_LIMIT)));
+    latestSiteMetricsLoadedAt = new Date().toISOString();
+    latestSiteMetricsError = "";
+    latestSiteMetricsSource = "live";
+    persistSiteMetricsCache(latestSiteMetrics, latestSiteMetricsLoadedAt);
+    renderSiteMetrics(latestSiteMetrics);
+    const summary = summarizeSiteMetrics(latestSiteMetrics);
+    if (status) {
+      status.textContent = `Loaded ${latestSiteMetrics.length.toLocaleString()} daily page counters.`;
+    }
+    recordAdminDashboardActivity("Site metrics refreshed", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
+  } catch (err) {
+    console.error("Failed to load site metrics:", err);
+    latestSiteMetricsError = err.message || String(err);
+    renderSiteMetricsLoadedStatus();
+    refreshSiteMetricsDashboardSignals();
+    if (status) {
+      status.textContent = `Failed to load site metrics. ${err.message || String(err)}`;
+    }
+  }
+};
+
+function buildSiteMetricsSummaryText() {
+  const summary = summarizeSiteMetrics(latestSiteMetrics);
+  const lines = [
+    "Aion Operator Site Metrics",
+    `Generated: ${new Date().toLocaleString()}`,
+    `Today: ${summary.todayViews.toLocaleString()}`,
+    `Last 7 days: ${summary.weekViews.toLocaleString()}`,
+    `Last 30 days: ${summary.monthViews.toLocaleString()}`,
+    `Average/day, 30 days: ${summary.dailyAverage30.toLocaleString()}`,
+    `Peak day, 30 days: ${summary.peakDay30 ? `${summary.peakDay30.count.toLocaleString()} · ${summary.peakDay30.dayKey}` : "None"}`,
+    `Pages, 7 days: ${summary.trackedPages.toLocaleString()}`,
+    `English, 7 days: ${summary.localeTotals.en.toLocaleString()}`,
+    `Spanish, 7 days: ${summary.localeTotals.es.toLocaleString()}`,
+    `Estimated writes/day: ${estimatedSiteMetricWritesPerDay(summary).toLocaleString()}`,
+    `Tracker coverage: ${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} public pages`,
+    `Storage rows loaded: ${normalizeSiteMetrics(latestSiteMetrics).length.toLocaleString()} / ${SITE_METRICS_BACKEND_ROW_LIMIT.toLocaleString()}`,
+    "Boundary: Approximate ICP supplement; Google Analytics remains source of truth",
+    "Privacy: Stores day, path, title, locale, and count; no visitor IDs, IPs, or user agents",
+    `Latest view: ${summary.latest ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}` : "None"}`,
+    `Loaded: ${formatSiteMetricsLoadedAt()}`,
+    "",
+    "Daily trend, last 7 days",
+  ];
+  summary.dailyTotals.forEach((day) => {
+    lines.push(`${day.dayKey}: ${day.count.toLocaleString()} tracked uses · ${day.en.toLocaleString()} en · ${day.es.toLocaleString()} es`);
+  });
+  if (!summary.dailyTotals.length) {
+    lines.push("No tracked uses recorded in the last 7 days.");
+  }
+  lines.push("");
+  lines.push(
+    "Top pages, last 7 days",
+  );
+  summary.topPages.forEach((page, index) => {
+    lines.push(`${index + 1}. ${page.pageTitle || page.pagePath} · ${page.pagePath} · ${page.locale} · ${page.count.toLocaleString()} tracked uses`);
+  });
+  if (!summary.topPages.length) {
+    lines.push("No tracked uses recorded in the last 7 days.");
+  }
+  return lines.join("\n");
+}
+
+window.copySiteMetricsSummary = async function copySiteMetricsSummary() {
+  const status = document.getElementById("siteMetricsStatus");
+  try {
+    await copyTextToClipboard(buildSiteMetricsSummaryText());
+    const summary = summarizeSiteMetrics(latestSiteMetrics);
+    if (status) status.textContent = "Site metrics summary copied.";
+    recordAdminDashboardActivity("Site metrics copied", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
+  } catch (err) {
+    console.error("Could not copy site metrics:", err);
+    if (status) status.textContent = "Could not copy site metrics.";
+  }
+};
+
+function csvCell(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function buildSiteMetricsCsvText(metrics = latestSiteMetrics) {
+  const lines = [
+    ["dayKey", "pagePath", "pageTitle", "locale", "count", "firstSeenAt", "lastSeenAt"].map(csvCell).join(","),
+  ];
+  normalizeSiteMetrics(metrics).forEach((entry) => {
+    lines.push([
+      entry.dayKey,
+      entry.pagePath,
+      entry.pageTitle,
+      entry.locale,
+      entry.count,
+      entry.firstSeenAt,
+      entry.lastSeenAt,
+    ].map(csvCell).join(","));
+  });
+  return lines.join("\n");
+}
+
+window.copySiteMetricsCsv = async function copySiteMetricsCsv() {
+  const status = document.getElementById("siteMetricsStatus");
+  try {
+    await copyTextToClipboard(buildSiteMetricsCsvText());
+    const summary = summarizeSiteMetrics(latestSiteMetrics);
+    if (status) status.textContent = "Site metrics CSV copied.";
+    recordAdminDashboardActivity("Site metrics CSV copied", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
+  } catch (err) {
+    console.error("Could not copy site metrics CSV:", err);
+    if (status) status.textContent = "Could not copy site metrics CSV.";
+  }
+};
+
+window.clearSiteMetricsCache = function clearSiteMetricsCache() {
+  const status = document.getElementById("siteMetricsStatus");
+  clearPersistedSiteMetricsCache();
+  latestSiteMetrics = [];
+  latestSiteMetricsLoadedAt = null;
+  latestSiteMetricsError = "";
+  latestSiteMetricsSource = "none";
+  renderSiteMetrics(latestSiteMetrics);
+  renderLocalBackupMetric();
+  recordAdminDashboardActivity("Site metrics cache cleared");
+  if (status) {
+    status.textContent = "Site metrics cache cleared. Refresh metrics to load the latest counters.";
+  }
+};
+
 window.exportFeedback = function exportFeedback() {
   const plainFeedback = latestFeedback.map(f => ({
     id: f.id.toString(),
@@ -1162,6 +1655,12 @@ window.runGoldenTests = async function runGoldenTests() {
 
     const data = await res.json();
     renderGoldenTests(data, { save: true });
+    if (typeof updateAdminDashboardChecklist === "function") {
+      updateAdminDashboardChecklist({ quality: true });
+    }
+    if (typeof recordAdminDashboardActivity === "function") {
+      recordAdminDashboardActivity("Golden tests run", `${data.passed || 0}/${data.total || 0} passed`);
+    }
 
   } catch (err) {
     console.error("Failed to run golden tests:", err);
@@ -11192,19 +11691,115 @@ function renderDashboardBadge(label, className = "pending") {
   return `<span class="admin-cycle-runway-label ${dashboardQualityClass(className)}">${escapeHtml(label)}</span>`;
 }
 
+function goldenResultAgeHours(data) {
+  if (!data || !data.last_run_at) return null;
+  const runTime = new Date(data.last_run_at).getTime();
+  if (!Number.isFinite(runTime)) return null;
+  const hours = (Date.now() - runTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function goldenFreshnessStatus(data) {
+  const hours = goldenResultAgeHours(data);
+  if (!Number.isFinite(hours)) return { label: "Age unknown", className: "watch" };
+  if (hours > 720) return { label: "Run again", className: "stale" };
+  if (hours > 168) return { label: "Aging", className: "watch" };
+  return { label: "Fresh", className: "healthy" };
+}
+
+function goldenQualityStatus(data = loadSavedGoldenResults()) {
+  if (!data || !Number.isFinite(Number(data.total)) || Number(data.total) === 0) {
+    return { label: "Run golden tests", className: "pending", detailId: "goldenTestsPanel" };
+  }
+
+  const total = Number(data.total || 0);
+  const passed = Number(data.passed || 0);
+  if (passed === total) {
+    const freshness = goldenFreshnessStatus(data);
+    if (freshness.className === "stale") {
+      return { label: "Run golden tests", className: "stale", detailId: "goldenTestsPanel" };
+    }
+    if (freshness.className === "watch") {
+      return { label: "Tests aging", className: "watch", detailId: "goldenTestsPanel" };
+    }
+    return { label: "Tests passing", className: "healthy", detailId: "goldenTestsPanel" };
+  }
+  if (passed > 0) {
+    return { label: "Review tests", className: "watch", detailId: "goldenTestsPanel" };
+  }
+  return { label: "Tests failing", className: "stale", detailId: "goldenTestsPanel" };
+}
+
+function feedbackQualityStatus(feedback = latestFeedback) {
+  const items = Array.isArray(feedback) ? feedback : [];
+  if (items.length === 0) {
+    return { label: "No feedback", className: "pending", detailId: "feedbackDashboardPanel" };
+  }
+
+  const up = items.filter((item) => item.rating === "up").length;
+  const down = items.filter((item) => item.rating === "down").length;
+  if (down === 0) {
+    return { label: "Feedback clean", className: "healthy", detailId: "feedbackDashboardPanel" };
+  }
+  if (down > up) {
+    return { label: "Review feedback", className: "stale", detailId: "feedbackDashboardPanel" };
+  }
+  return { label: "Feedback watch", className: "watch", detailId: "feedbackDashboardPanel" };
+}
+
+function combinedQualityAttentionStatus(data = loadSavedGoldenResults(), feedback = latestFeedback) {
+  const golden = goldenQualityStatus(data);
+  const feedbackStatus = feedbackQualityStatus(feedback);
+  const priority = { stale: 3, watch: 2, pending: 1, healthy: 0 };
+  return (priority[feedbackStatus.className] || 0) > (priority[golden.className] || 0)
+    ? feedbackStatus
+    : golden;
+}
+
+function renderDashboardQualityAttention(data = loadSavedGoldenResults(), feedback = latestFeedback) {
+  const status = combinedQualityAttentionStatus(data, feedback);
+  if (typeof setDashboardAttentionItem === "function") {
+    setDashboardAttentionItem("adminAttentionQuality", status.className, status.label);
+  }
+  const element = document.getElementById("adminAttentionQuality");
+  if (element && status.detailId) {
+    element.dataset.adminDetailJump = status.detailId;
+    delete element.dataset.adminViewJump;
+  }
+}
+
+function refreshRecommendedActionFromQuality() {
+  if (typeof renderCycleSnapshot === "function") {
+    renderCycleSnapshot(loadCycleSnapshot());
+  }
+}
+
 function renderGoldenDashboardSignal(data = null) {
   const element = document.getElementById("healthGoldenTests");
-  if (!element) return;
   if (!data || !Number.isFinite(Number(data.total)) || Number(data.total) === 0) {
-    element.innerHTML = renderDashboardBadge("No run", "pending");
+    if (element) {
+      element.innerHTML = renderDashboardBadge("No run", "pending");
+    }
+    renderDashboardQualityAttention(data, latestFeedback);
+    refreshRecommendedActionFromQuality();
     return;
   }
 
   const total = Number(data.total || 0);
   const passed = Number(data.passed || 0);
   const label = `${passed}/${total} passed`;
-  const className = passed === total ? "success" : passed > 0 ? "warning" : "error";
-  element.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(passed === total ? "Passing" : "Review", className)}`;
+  const freshness = passed === total ? goldenFreshnessStatus(data) : null;
+  const className = passed === total
+    ? freshness.className === "healthy" ? "success" : "warning"
+    : passed > 0 ? "warning" : "error";
+  const badge = passed === total
+    ? freshness.label === "Fresh" ? "Passing" : freshness.label
+    : "Review";
+  if (element) {
+    element.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(badge, className)}`;
+  }
+  renderDashboardQualityAttention(data, latestFeedback);
+  refreshRecommendedActionFromQuality();
 }
 
 function renderFeedbackDashboardSignal(feedback = []) {
@@ -11218,16 +11813,22 @@ function renderFeedbackDashboardSignal(feedback = []) {
   if (countElement) {
     countElement.textContent = total;
   }
-  if (!signalElement) return;
-
   if (total === 0) {
-    signalElement.innerHTML = renderDashboardBadge("No feedback", "pending");
+    if (signalElement) {
+      signalElement.innerHTML = renderDashboardBadge("No feedback", "pending");
+    }
+    renderDashboardQualityAttention(loadSavedGoldenResults(), items);
+    refreshRecommendedActionFromQuality();
     return;
   }
 
   const label = `${up} helpful · ${down} needs work`;
   const className = down === 0 ? "success" : down > up ? "warning" : "healthy";
-  signalElement.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(down === 0 ? "Clean" : "Review", className)}`;
+  if (signalElement) {
+    signalElement.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(down === 0 ? "Clean" : "Review", className)}`;
+  }
+  renderDashboardQualityAttention(loadSavedGoldenResults(), items);
+  refreshRecommendedActionFromQuality();
 }
 // Admin dashboard quality signals end
 
@@ -11236,10 +11837,759 @@ const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
 const ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
 const ADMIN_DASHBOARD_REVIEW_KEY = "aion_admin_dashboard_review_v1";
 const ADMIN_DASHBOARD_REFRESH_KEY = "aion_admin_dashboard_refresh_v1";
+const ADMIN_DASHBOARD_ACTIVITY_KEY = "aion_admin_dashboard_activity_v1";
+const ADMIN_DASHBOARD_NOTE_KEY = "aion_admin_dashboard_note_v1";
+const ADMIN_DASHBOARD_NOTE_DRAFT_KEY = "aion_admin_dashboard_note_draft_v1";
+const ADMIN_DASHBOARD_CHECKLIST_KEY = "aion_admin_dashboard_checklist_v1";
+const ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY = "aion_admin_dashboard_review_evidence_v1";
+const ADMIN_CYCLE_HISTORY_KEY = "aion_admin_cycle_history_v1";
+const ADMIN_SITE_METRICS_CACHE_KEY = "aion_admin_site_metrics_cache_v1";
 const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const ADMIN_CYCLE_LABELS = {
   frontend: "Frontend",
   backend: "Backend",
+  wallet: "Wallet",
+};
+const ADMIN_DASHBOARD_CHECKLIST_ITEMS = [
+  { key: "snapshots", inputId: "adminChecklistSnapshots", label: "Snapshots reviewed" },
+  { key: "wallet", inputId: "adminChecklistWallet", label: "Wallet checked" },
+  { key: "quality", inputId: "adminChecklistQuality", label: "Quality reviewed" },
+  { key: "evidence", inputId: "adminChecklistEvidence", label: "Evidence saved" },
+  { key: "note", inputId: "adminChecklistNote", label: "Handoff note ready" },
+];
+const ADMIN_FRONTEND_DEPLOY_RESERVE = 100_000_000_000;
+let currentAdminRecommendedAction = {
+  label: "Paste snapshots",
+  className: "pending",
+  detailId: "cycleRunwayPanel",
+};
+
+function loadAdminDashboardActivity() {
+  try {
+    const raw = localStorage.getItem(ADMIN_DASHBOARD_ACTIVITY_KEY);
+    if (raw) {
+      const entries = JSON.parse(raw);
+      if (Array.isArray(entries)) {
+        persistAdminDashboardActivity(entries);
+        return entries.slice(0, 8);
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard activity:", err);
+  }
+
+  try {
+    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_ACTIVITY_KEY);
+    const entries = cookieRaw ? JSON.parse(cookieRaw) : [];
+    if (Array.isArray(entries)) {
+      persistAdminDashboardActivity(entries);
+      return entries.slice(0, 8);
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard activity from cookie:", err);
+  }
+
+  return [];
+}
+
+function persistAdminDashboardActivity(entries) {
+  const serialized = JSON.stringify((entries || []).slice(0, 8));
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_ACTIVITY_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save dashboard activity:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_DASHBOARD_ACTIVITY_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save dashboard activity to cookie:", err);
+  }
+}
+
+function formatAdminActivityTime(timestamp) {
+  if (!timestamp) return "Pending";
+  const time = new Date(timestamp);
+  if (!Number.isFinite(time.getTime())) return "Pending";
+  return time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function renderAdminDashboardActivity(entries = loadAdminDashboardActivity()) {
+  const list = document.getElementById("adminDashboardActivityList");
+  if (!list) return;
+  if (!entries.length) {
+    list.innerHTML = `<li><span>No recent activity yet.</span><time>Pending</time></li>`;
+    if (typeof renderAdminReviewPacket === "function") {
+      renderAdminReviewPacket();
+    }
+    return;
+  }
+
+  list.innerHTML = entries
+    .slice(0, 5)
+    .map((entry) => {
+      const detail = entry.detail ? ` <span class="meta">${escapeHtml(entry.detail)}</span>` : "";
+      const timestamp = entry.timestamp || "";
+      return `<li><span><strong>${escapeHtml(entry.label || "Dashboard update")}</strong>${detail}</span><time datetime="${escapeHtml(timestamp)}">${escapeHtml(formatAdminActivityTime(timestamp))}</time></li>`;
+    })
+    .join("");
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+}
+
+function recordAdminDashboardActivity(label, detail = "") {
+  const entries = loadAdminDashboardActivity();
+  const next = [
+    {
+      label,
+      detail,
+      timestamp: new Date().toISOString(),
+    },
+    ...entries,
+  ].slice(0, 8);
+  persistAdminDashboardActivity(next);
+  renderAdminDashboardActivity(next);
+}
+
+window.clearAdminDashboardActivity = function clearAdminDashboardActivity() {
+  persistAdminDashboardActivity([]);
+  renderAdminDashboardActivity([]);
+};
+
+function loadAdminDashboardNote() {
+  try {
+    const note = localStorage.getItem(ADMIN_DASHBOARD_NOTE_KEY);
+    if (note !== null) {
+      persistAdminDashboardNote(note);
+      return note;
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard note:", err);
+  }
+
+  try {
+    return getAdminCookieValue(ADMIN_DASHBOARD_NOTE_KEY) || "";
+  } catch (err) {
+    console.warn("Could not load dashboard note from cookie:", err);
+    return "";
+  }
+}
+
+function persistAdminDashboardNote(note) {
+  const value = note || "";
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_NOTE_KEY, value);
+  } catch (err) {
+    console.warn("Could not save dashboard note:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_DASHBOARD_NOTE_KEY}=${encodeURIComponent(value)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save dashboard note to cookie:", err);
+  }
+}
+
+function loadAdminDashboardNoteDraft() {
+  try {
+    return localStorage.getItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY) || "";
+  } catch (err) {
+    console.warn("Could not load dashboard note draft:", err);
+    return "";
+  }
+}
+
+function persistAdminDashboardNoteDraft(note) {
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY, note || "");
+  } catch (err) {
+    console.warn("Could not save dashboard note draft:", err);
+  }
+}
+
+function clearAdminDashboardNoteDraft() {
+  try {
+    localStorage.removeItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY);
+  } catch (err) {
+    console.warn("Could not clear dashboard note draft:", err);
+  }
+}
+
+function renderAdminDashboardNote(note = loadAdminDashboardNote()) {
+  const input = document.getElementById("adminDashboardNoteInput");
+  const status = document.getElementById("adminDashboardNoteStatus");
+  const draft = loadAdminDashboardNoteDraft();
+  if (input && !input.value.trim()) {
+    input.value = draft || note || "";
+    if (!input.dataset.adminDraftBound) {
+      input.addEventListener("input", () => {
+        persistAdminDashboardNoteDraft(input.value);
+        if (status) {
+          status.textContent = input.value.trim() ? "Draft saved locally" : (note ? "Saved locally" : "Not saved");
+        }
+        if (typeof renderAdminReviewPacket === "function") {
+          renderAdminReviewPacket();
+        }
+        if (typeof renderLocalBackupMetric === "function") {
+          renderLocalBackupMetric();
+        }
+      });
+      input.dataset.adminDraftBound = "true";
+    }
+  }
+  if (status) {
+    status.textContent = draft ? "Draft saved locally" : note ? "Saved locally" : "Not saved";
+  }
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+  if (typeof renderLocalBackupMetric === "function") {
+    renderLocalBackupMetric();
+  }
+}
+
+function buildAdminDashboardNoteTemplate(kind = "daily") {
+  const templates = {
+    daily: {
+      title: "Daily operator review",
+      focus: "Refresh dashboard data, check quality, and leave the next operator with the current state.",
+    },
+    deploy: {
+      title: "Before deploy review",
+      focus: "Confirm cycles, local checks, deploy readiness, and handoff evidence before production work.",
+    },
+    weekly: {
+      title: "Weekly maintenance review",
+      focus: "Look for drift across memory, feedback, quality signals, providers, and operator evidence.",
+    },
+  };
+  const template = templates[kind] || templates.daily;
+  const checklist = loadAdminDashboardChecklist();
+  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+  const topUpAmount = recommendedFrontendTopUpAmount(loadCycleSnapshot());
+  const lines = [
+    `${template.title} — ${new Date().toLocaleString()}`,
+    "",
+    `Focus: ${template.focus}`,
+    `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
+    `Recommended action: ${dashboardMetricText("healthCycleAction")}`,
+    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
+    `Data refresh: ${dashboardMetricText("healthDataRefresh")}`,
+    `Freshness: ${dashboardMetricText("healthFreshness")}`,
+    `Deploy readiness: ${dashboardMetricText("healthDeployReadiness")}`,
+    `Deploy buffer: ${dashboardMetricText("healthDeployBuffer")}`,
+    `Pre-deploy check: ${dashboardMetricText("healthPreDeployCheck")}`,
+    `Quality: ${dashboardMetricText("adminAttentionQuality")}`,
+    `Review evidence: ${evidence.label}`,
+    `Local backup: ${dashboardMetricText("healthLocalBackup")}`,
+    `Cycle movement: ${dashboardMetricText("healthCycleMovement")}`,
+    `Frontend cycles: ${dashboardMetricText("healthFrontendCycles")}`,
+    `Backend cycles: ${dashboardMetricText("healthBackendCycles")}`,
+    `Wallet cycles: ${dashboardMetricText("healthWalletCycles")}`,
+    `Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
+    "",
+    "Checklist:",
+  ];
+  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
+    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
+  });
+  lines.push("");
+  lines.push("Operator notes:");
+  lines.push("- ");
+  return lines.join("\n");
+}
+
+window.fillAdminDashboardNoteTemplate = function fillAdminDashboardNoteTemplate(kind = "daily") {
+  const input = document.getElementById("adminDashboardNoteInput");
+  if (!input) return;
+  input.value = buildAdminDashboardNoteTemplate(kind);
+  persistAdminDashboardNoteDraft(input.value);
+  input.focus();
+  const label = kind === "deploy" ? "Deploy note template inserted" : kind === "weekly" ? "Weekly note template inserted" : "Daily note template inserted";
+  recordAdminDashboardActivity(label, "Review and save when ready");
+  renderAdminDashboardNote();
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+};
+
+window.startAdminDashboardCadenceReview = function startAdminDashboardCadenceReview(kind = "daily") {
+  if (typeof openAdminDetailPanel === "function") {
+    openAdminDetailPanel("adminDashboardHandoff");
+  }
+  window.fillAdminDashboardNoteTemplate(kind);
+};
+
+window.saveAdminDashboardNote = function saveAdminDashboardNote() {
+  const input = document.getElementById("adminDashboardNoteInput");
+  const note = input ? input.value.trim() : "";
+  persistAdminDashboardNote(note);
+  clearAdminDashboardNoteDraft();
+  renderAdminDashboardNote(note);
+  updateAdminDashboardChecklist({ note: Boolean(note) });
+  recordAdminDashboardActivity("Operator note saved", note ? "Included in copied summaries" : "Empty note saved");
+};
+
+window.clearAdminDashboardNote = function clearAdminDashboardNote() {
+  const input = document.getElementById("adminDashboardNoteInput");
+  if (input) input.value = "";
+  persistAdminDashboardNote("");
+  clearAdminDashboardNoteDraft();
+  renderAdminDashboardNote("");
+  updateAdminDashboardChecklist({ note: false });
+  recordAdminDashboardActivity("Operator note cleared");
+};
+
+function loadAdminReviewEvidence() {
+  try {
+    const raw = localStorage.getItem(ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn("Could not load review evidence:", err);
+    return null;
+  }
+}
+
+function persistAdminReviewEvidence(evidence) {
+  try {
+    if (!evidence) {
+      localStorage.removeItem(ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY);
+      return;
+    }
+    localStorage.setItem(ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY, JSON.stringify(evidence));
+  } catch (err) {
+    console.warn("Could not save review evidence:", err);
+  }
+}
+
+function parseAdminReviewEvidence(raw) {
+  const text = String(raw || "").trim();
+  if (!text) {
+    throw new Error("Paste review command output before saving evidence.");
+  }
+  return {
+    raw: text,
+    savedAt: new Date().toISOString(),
+    diffCheck: /git diff --check/i.test(text) && !/(whitespace errors|conflict marker|<<<<<<<|>>>>>>>)/i.test(text),
+    assetsPrepared: /Preparing frontend assets/i.test(text),
+    jsChecked: /node --check\s+src\/teves_consulting_frontend\/admin\.js/i.test(text) && !/(SyntaxError|ReferenceError|TypeError)/i.test(text),
+    scriptsCompiled: /py_compile/i.test(text) && !/(Traceback|SyntaxError|IndentationError)/i.test(text),
+    bundleIdempotent: /html_idempotent=0/i.test(text) && /js_idempotent=0/i.test(text),
+    testsPassed: /Tests passed/i.test(text) && /passed\s+\d+\s+files/i.test(text),
+  };
+}
+
+function reviewEvidenceCheckKeys() {
+  return ["diffCheck", "assetsPrepared", "jsChecked", "scriptsCompiled", "bundleIdempotent", "testsPassed"];
+}
+
+function reviewEvidenceCheckLabels() {
+  return {
+    diffCheck: "Diff check",
+    assetsPrepared: "Assets prepared",
+    jsChecked: "JavaScript checked",
+    scriptsCompiled: "Scripts compiled",
+    bundleIdempotent: "Bundle repeatable",
+    testsPassed: "Tests passed",
+  };
+}
+
+function reviewEvidenceAgeHours(evidence) {
+  if (!evidence || !evidence.savedAt) return null;
+  const savedTime = new Date(evidence.savedAt).getTime();
+  if (!Number.isFinite(savedTime)) return null;
+  const hours = (Date.now() - savedTime) / 36e5;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+function reviewEvidenceStatus(evidence = loadAdminReviewEvidence()) {
+  const total = reviewEvidenceCheckKeys().length;
+  if (!evidence) return { label: "Not saved", className: "pending", checks: 0, total };
+  const checks = reviewEvidenceCheckKeys().filter((key) => evidence[key]).length;
+  const hours = reviewEvidenceAgeHours(evidence);
+  if (!Number.isFinite(hours)) return { label: `${checks}/${total} checks saved`, className: "watch", checks, total };
+  if (hours > 168) return { label: "Evidence stale", className: "stale", checks, total };
+  if (hours > 24) return { label: "Evidence aging", className: "watch", checks, total };
+  return { label: `${checks}/${total} checks fresh`, className: checks >= total - 1 ? "healthy" : "watch", checks, total };
+}
+
+function renderAdminReviewEvidence(evidence = loadAdminReviewEvidence()) {
+  const input = document.getElementById("adminDashboardReviewEvidenceInput");
+  const status = document.getElementById("adminDashboardReviewEvidenceStatus");
+  const metric = document.getElementById("healthReviewEvidence");
+  const checksList = document.getElementById("adminDashboardReviewEvidenceChecks");
+  const evidenceStatus = reviewEvidenceStatus(evidence);
+  if (input && !input.value.trim() && evidence && evidence.raw) {
+    input.value = evidence.raw;
+  }
+  if (checksList) {
+    const labels = reviewEvidenceCheckLabels();
+    checksList.innerHTML = reviewEvidenceCheckKeys()
+      .map((key) => {
+        const detected = Boolean(evidence && evidence[key]);
+        return `<li class="${detected ? "is-detected" : ""}">${escapeHtml(labels[key] || key)}: ${detected ? "Detected" : "Pending"}</li>`;
+      })
+      .join("");
+  }
+  if (status) {
+    status.textContent = evidence
+      ? `Saved locally · ${evidenceStatus.label} · ${new Date(evidence.savedAt).toLocaleString()}`
+      : "Not saved";
+  }
+  if (metric) {
+    metric.innerHTML = `<span class="admin-cycle-runway-label ${evidenceStatus.className}">${escapeHtml(evidenceStatus.label)}</span>`;
+  }
+  renderDashboardFreshness();
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+}
+
+window.saveAdminReviewEvidence = function saveAdminReviewEvidence() {
+  const input = document.getElementById("adminDashboardReviewEvidenceInput");
+  const status = document.getElementById("adminDashboardReviewEvidenceStatus");
+  try {
+    const evidence = parseAdminReviewEvidence(input ? input.value : "");
+    persistAdminReviewEvidence(evidence);
+    renderAdminReviewEvidence(evidence);
+    updateAdminDashboardChecklist({ evidence: reviewEvidenceStatus(evidence).checks >= reviewEvidenceStatus(evidence).total - 1 });
+    recordAdminDashboardActivity("Review evidence saved", reviewEvidenceStatus(evidence).label);
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not save review evidence.";
+    }
+  }
+};
+
+window.pasteAdminReviewEvidenceFromClipboard = async function pasteAdminReviewEvidenceFromClipboard() {
+  const input = document.getElementById("adminDashboardReviewEvidenceInput");
+  const status = document.getElementById("adminDashboardReviewEvidenceStatus");
+  try {
+    const text = await readTextFromClipboardOrPrompt("Paste review command output.");
+    if (!text.trim()) return;
+    if (input) {
+      input.value = text;
+    }
+    window.saveAdminReviewEvidence();
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not read review evidence.";
+    }
+  }
+};
+
+window.clearAdminReviewEvidence = function clearAdminReviewEvidence() {
+  const input = document.getElementById("adminDashboardReviewEvidenceInput");
+  if (input) input.value = "";
+  persistAdminReviewEvidence(null);
+  renderAdminReviewEvidence(null);
+  updateAdminDashboardChecklist({ evidence: false });
+  recordAdminDashboardActivity("Review evidence cleared");
+};
+
+function normalizeAdminDashboardChecklist(checklist = {}) {
+  return ADMIN_DASHBOARD_CHECKLIST_ITEMS.reduce((next, item) => {
+    next[item.key] = Boolean(checklist[item.key]);
+    return next;
+  }, {});
+}
+
+function loadAdminDashboardChecklist() {
+  try {
+    const raw = localStorage.getItem(ADMIN_DASHBOARD_CHECKLIST_KEY);
+    if (raw) {
+      const checklist = normalizeAdminDashboardChecklist(JSON.parse(raw));
+      persistAdminDashboardChecklist(checklist);
+      return checklist;
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard checklist:", err);
+  }
+
+  try {
+    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_CHECKLIST_KEY);
+    if (cookieRaw) {
+      const checklist = normalizeAdminDashboardChecklist(JSON.parse(cookieRaw));
+      persistAdminDashboardChecklist(checklist);
+      return checklist;
+    }
+  } catch (err) {
+    console.warn("Could not load dashboard checklist from cookie:", err);
+  }
+
+  return normalizeAdminDashboardChecklist();
+}
+
+function persistAdminDashboardChecklist(checklist) {
+  const serialized = JSON.stringify(normalizeAdminDashboardChecklist(checklist));
+  try {
+    localStorage.setItem(ADMIN_DASHBOARD_CHECKLIST_KEY, serialized);
+  } catch (err) {
+    console.warn("Could not save dashboard checklist:", err);
+  }
+  try {
+    document.cookie = `${ADMIN_DASHBOARD_CHECKLIST_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+  } catch (err) {
+    console.warn("Could not save dashboard checklist to cookie:", err);
+  }
+}
+
+function readAdminDashboardChecklistFromInputs() {
+  return ADMIN_DASHBOARD_CHECKLIST_ITEMS.reduce((next, item) => {
+    const input = document.getElementById(item.inputId);
+    next[item.key] = Boolean(input && input.checked);
+    return next;
+  }, {});
+}
+
+function formatAdminChecklistSummary(checklist = loadAdminDashboardChecklist()) {
+  const normalized = normalizeAdminDashboardChecklist(checklist);
+  const completed = ADMIN_DASHBOARD_CHECKLIST_ITEMS.filter((item) => normalized[item.key]).length;
+  return `${completed} of ${ADMIN_DASHBOARD_CHECKLIST_ITEMS.length} complete`;
+}
+
+function adminChecklistStatus(checklist = loadAdminDashboardChecklist()) {
+  const normalized = normalizeAdminDashboardChecklist(checklist);
+  const completed = ADMIN_DASHBOARD_CHECKLIST_ITEMS.filter((item) => normalized[item.key]).length;
+  if (completed === ADMIN_DASHBOARD_CHECKLIST_ITEMS.length) {
+    return { label: "Ready", className: "healthy", completed };
+  }
+  if (completed > 0) {
+    return { label: `${completed}/${ADMIN_DASHBOARD_CHECKLIST_ITEMS.length} complete`, className: "watch", completed };
+  }
+  return { label: "Checklist pending", className: "pending", completed };
+}
+
+function renderAdminDashboardChecklist(checklist = loadAdminDashboardChecklist()) {
+  const normalized = normalizeAdminDashboardChecklist(checklist);
+  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
+    const input = document.getElementById(item.inputId);
+    if (input) {
+      input.checked = Boolean(normalized[item.key]);
+      input.onchange = () => {
+        const checklist = readAdminDashboardChecklistFromInputs();
+        persistAdminDashboardChecklist(checklist);
+        renderAdminDashboardChecklist(checklist);
+        recordAdminDashboardActivity("Operator checklist updated", formatAdminChecklistSummary(checklist));
+      };
+    }
+  });
+  const status = document.getElementById("adminDashboardChecklistStatus");
+  if (status) {
+    const checklistStatus = adminChecklistStatus(normalized);
+    status.textContent = checklistStatus.completed ? `Saved locally · ${formatAdminChecklistSummary(normalized)}` : "Not saved";
+  }
+  const metric = document.getElementById("healthHandoffReadiness");
+  if (metric) {
+    const checklistStatus = adminChecklistStatus(normalized);
+    metric.innerHTML = `<span class="admin-cycle-runway-label ${checklistStatus.className}">${escapeHtml(checklistStatus.label)}</span>`;
+  }
+  if (typeof refreshAdminRecommendedAction === "function") {
+    refreshAdminRecommendedAction();
+  }
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+}
+
+function updateAdminDashboardChecklist(updates = {}, options = {}) {
+  const current = loadAdminDashboardChecklist();
+  const allowed = new Set(ADMIN_DASHBOARD_CHECKLIST_ITEMS.map((item) => item.key));
+  const next = { ...current };
+  Object.entries(updates || {}).forEach(([key, value]) => {
+    if (allowed.has(key)) {
+      next[key] = Boolean(value);
+    }
+  });
+  persistAdminDashboardChecklist(next);
+  renderAdminDashboardChecklist(next);
+  if (options.activityLabel) {
+    recordAdminDashboardActivity(options.activityLabel, formatAdminChecklistSummary(next));
+  }
+  return next;
+}
+
+window.saveAdminDashboardChecklist = function saveAdminDashboardChecklist() {
+  const checklist = readAdminDashboardChecklistFromInputs();
+  persistAdminDashboardChecklist(checklist);
+  renderAdminDashboardChecklist(checklist);
+  recordAdminDashboardActivity("Operator checklist saved", formatAdminChecklistSummary(checklist));
+};
+
+window.clearAdminDashboardChecklist = function clearAdminDashboardChecklist() {
+  persistAdminDashboardChecklist(normalizeAdminDashboardChecklist());
+  renderAdminDashboardChecklist();
+  recordAdminDashboardActivity("Operator checklist cleared");
+};
+
+function buildAdminDashboardState() {
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    cycleSnapshots: loadCycleSnapshot(),
+    cycleHistory: loadCycleHistory(),
+    dashboardRefresh: loadDashboardRefresh(),
+    dashboardReview: loadDashboardReview(),
+    dashboardActivity: loadAdminDashboardActivity(),
+    dashboardNote: loadAdminDashboardNote(),
+    dashboardNoteDraft: loadAdminDashboardNoteDraft(),
+    dashboardChecklist: loadAdminDashboardChecklist(),
+    reviewEvidence: loadAdminReviewEvidence(),
+    siteMetricsCache: loadSiteMetricsCache(),
+    goldenResults: typeof loadSavedGoldenResults === "function" ? loadSavedGoldenResults() : null,
+  };
+}
+
+function applyAdminDashboardState(state) {
+  if (!state || typeof state !== "object") {
+    throw new Error("Dashboard state must be a JSON object.");
+  }
+
+  if (state.cycleSnapshots && typeof state.cycleSnapshots === "object") {
+    persistCycleSnapshots(state.cycleSnapshots);
+  }
+  if (Array.isArray(state.cycleHistory)) {
+    persistCycleHistory(state.cycleHistory);
+  }
+  if (state.dashboardRefresh && state.dashboardRefresh.refreshedAt) {
+    persistDashboardRefresh(state.dashboardRefresh);
+  }
+  if (state.dashboardReview && state.dashboardReview.reviewedAt) {
+    persistDashboardReview(state.dashboardReview);
+  }
+  if (Array.isArray(state.dashboardActivity)) {
+    persistAdminDashboardActivity(state.dashboardActivity);
+  }
+  if (typeof state.dashboardNote === "string") {
+    persistAdminDashboardNote(state.dashboardNote);
+  }
+  if (typeof state.dashboardNoteDraft === "string") {
+    persistAdminDashboardNoteDraft(state.dashboardNoteDraft);
+  }
+  if (state.dashboardChecklist && typeof state.dashboardChecklist === "object") {
+    persistAdminDashboardChecklist(state.dashboardChecklist);
+  }
+  if (state.reviewEvidence && typeof state.reviewEvidence === "object") {
+    persistAdminReviewEvidence(state.reviewEvidence);
+  }
+  if (state.siteMetricsCache && Array.isArray(state.siteMetricsCache.metrics)) {
+    latestSiteMetrics = normalizeSiteMetrics(state.siteMetricsCache.metrics);
+    latestSiteMetricsLoadedAt = state.siteMetricsCache.loadedAt || new Date().toISOString();
+    latestSiteMetricsError = "";
+    persistSiteMetricsCache(latestSiteMetrics, latestSiteMetricsLoadedAt);
+    renderSiteMetrics(latestSiteMetrics);
+  }
+  if (state.goldenResults && typeof saveGoldenResults === "function") {
+    saveGoldenResults(state.goldenResults);
+    renderGoldenDashboardSignal(state.goldenResults);
+  }
+
+  renderCycleSnapshot(loadCycleSnapshot());
+  renderCycleMovement();
+  renderDashboardRefresh();
+  renderDashboardReview();
+  renderAdminReviewEvidence();
+  renderAdminDashboardNote();
+  renderAdminDashboardChecklist();
+  renderAdminDashboardActivity();
+  renderAdminReviewPacket();
+}
+
+async function readTextFromClipboardOrPrompt(message) {
+  if (navigator.clipboard && window.isSecureContext && navigator.clipboard.readText) {
+    const text = await navigator.clipboard.readText();
+    if (text) return text;
+  }
+  return window.prompt(message) || "";
+}
+
+window.copyAdminDashboardState = async function copyAdminDashboardState() {
+  const button = document.getElementById("adminDashboardCopyStateButton");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(JSON.stringify(buildAdminDashboardState(), null, 2));
+    recordAdminDashboardActivity("Dashboard state copied", "Local backup JSON");
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy state";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy dashboard state:", err);
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy state";
+      }, 2200);
+    }
+  }
+};
+
+window.copyAdminReviewCommands = async function copyAdminReviewCommands() {
+  const button = document.getElementById("adminDashboardCopyReviewCommandsButton");
+  const previousText = button ? button.textContent : "";
+  const commands = [
+    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
+    "git diff --check",
+    "scripts/prepare-frontend-assets.sh",
+    "node --check src/teves_consulting_frontend/admin.js",
+    "PYTHONPYCACHEPREFIX=/private/tmp/admin-pycache python3 -m py_compile /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_dashboard_polish.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_cycles_visibility.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_dashboard_quality_signals.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_section_overviews.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py",
+    "tmpdir=$(mktemp -d /private/tmp/admin-bundle-check.XXXXXX)",
+    'cp -R src/teves_consulting_frontend "$tmpdir/frontend"',
+    'python3 /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py "$tmpdir/frontend"',
+    'cp "$tmpdir/frontend/admin.html" "$tmpdir/admin.after1.html"',
+    'cp "$tmpdir/frontend/admin.js" "$tmpdir/admin.after1.js"',
+    'python3 /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py "$tmpdir/frontend"',
+    'cmp -s "$tmpdir/admin.after1.html" "$tmpdir/frontend/admin.html"; html_status=$?',
+    'cmp -s "$tmpdir/admin.after1.js" "$tmpdir/frontend/admin.js"; js_status=$?',
+    "printf 'tmpdir=%s\\nhtml_idempotent=%s\\njs_idempotent=%s\\n' \"$tmpdir\" \"$html_status\" \"$js_status\"",
+    'node --check "$tmpdir/frontend/admin.js"',
+    "mops test",
+  ].join("\n");
+  try {
+    await copyTextToClipboard(commands);
+    recordAdminDashboardActivity("Review commands copied", "No deploy command included");
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy checks";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy review commands:", err);
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy checks";
+      }, 2200);
+    }
+  }
+};
+
+window.restoreAdminDashboardState = async function restoreAdminDashboardState() {
+  const button = document.getElementById("adminDashboardRestoreStateButton");
+  const previousText = button ? button.textContent : "";
+  try {
+    const raw = await readTextFromClipboardOrPrompt("Paste dashboard state JSON.");
+    if (!raw.trim()) return;
+    const state = JSON.parse(raw);
+    applyAdminDashboardState(state);
+    recordAdminDashboardActivity("Dashboard state restored", "Local backup JSON");
+    if (button) {
+      button.textContent = "Restored";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Restore";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not restore dashboard state:", err);
+    if (button) {
+      button.textContent = "Restore failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Restore";
+      }, 2400);
+    }
+  }
 };
 
 function parseCycleNumber(value) {
@@ -11266,11 +12616,14 @@ function parseCycleStatusSnapshot(raw, canister = "frontend") {
   const cyclesMatch = text.match(/\bCycles:\s*([0-9_,.]+\s*[tkmb]?)/i);
   const burnMatch = text.match(/Idle cycles burned per day:\s*([0-9_,.]+\s*[tkmb]?)/i);
   const reservedMatch = text.match(/Reserved cycles limit:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const memoryMatch = text.match(/Memory size:\s*([0-9_,.]+\s*[tkmb]?)/i);
+  const statusMatch = text.match(/Status:\s*([^\n]+)/i);
   const nameMatch = text.match(/Canister Name:\s*([^\n]+)/i);
   const idMatch = text.match(/Canister Id:\s*([^\n]+)/i);
   const cycles = parseCycleNumber(cyclesMatch && cyclesMatch[1]);
   const burnPerDay = parseCycleNumber(burnMatch && burnMatch[1]);
   const reservedLimit = parseCycleNumber(reservedMatch && reservedMatch[1]);
+  const memorySize = parseCycleNumber(memoryMatch && memoryMatch[1]);
 
   if (!cycles) {
     throw new Error("Could not find a Cycles line in the pasted status output.");
@@ -11283,8 +12636,69 @@ function parseCycleStatusSnapshot(raw, canister = "frontend") {
     cycles,
     burnPerDay,
     reservedLimit,
+    memorySize,
+    status: statusMatch ? statusMatch[1].trim() : "",
     capturedAt: new Date().toISOString(),
   };
+}
+
+function parseCycleWalletSnapshot(raw) {
+  const text = String(raw || "");
+  const balanceMatch = text.match(/\bBalance:\s*([0-9_,.]+\s*[tkmb]?)\s*cycles/i);
+  const cycles = parseCycleNumber(balanceMatch && balanceMatch[1]);
+  if (!cycles) {
+    throw new Error("Could not find a Balance line in the pasted cycles wallet output.");
+  }
+  return {
+    canister: "wallet",
+    canisterName: "Cycles wallet",
+    cycles,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+function parseCombinedCycleSnapshots(raw) {
+  const text = String(raw || "");
+  const snapshots = {};
+
+  try {
+    snapshots.wallet = parseCycleWalletSnapshot(text);
+  } catch (_err) {
+    // Combined paste may omit the wallet balance; keep any existing wallet snapshot.
+  }
+
+  const sections = text
+    .split(/(?=Canister Id:\s*[^\n]+\nCanister Name:)/i)
+    .map((section) => section.trim())
+    .filter((section) => /\bCycles:\s*[0-9_,.]+/i.test(section));
+  const unnamedSections = [];
+
+  sections.forEach((section) => {
+    const nameMatch = section.match(/Canister Name:\s*([^\n]+)/i);
+    const name = nameMatch ? nameMatch[1].trim().toLowerCase() : "";
+    if (name.includes("frontend")) {
+      snapshots.frontend = parseCycleStatusSnapshot(section, "frontend");
+      return;
+    }
+    if (name.includes("backend")) {
+      snapshots.backend = parseCycleStatusSnapshot(section, "backend");
+      return;
+    }
+    unnamedSections.push(section);
+  });
+
+  if (!snapshots.frontend && unnamedSections[0]) {
+    snapshots.frontend = parseCycleStatusSnapshot(unnamedSections[0], "frontend");
+  }
+  if (!snapshots.backend && unnamedSections[1]) {
+    snapshots.backend = parseCycleStatusSnapshot(unnamedSections[1], "backend");
+  }
+
+  if (!snapshots.wallet && !snapshots.frontend && !snapshots.backend) {
+    throw new Error("Could not find wallet, frontend, or backend cycle data in the combined paste.");
+  }
+
+  return snapshots;
 }
 
 function formatCycles(value) {
@@ -11293,6 +12707,90 @@ function formatCycles(value) {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   return value.toLocaleString();
+}
+
+function formatTopUpAmount(amount) {
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  const billions = Math.floor(amount / 1_000_000_000);
+  if (billions >= 1) return `${billions}b`;
+  const millions = Math.floor(amount / 1_000_000);
+  if (millions >= 1) return `${millions}m`;
+  return String(Math.floor(amount));
+}
+
+function recommendedFrontendTopUpAmount(snapshots = loadCycleSnapshot()) {
+  const frontend = snapshots.frontend || null;
+  const wallet = snapshots.wallet || null;
+  if (!wallet || !Number.isFinite(wallet.cycles)) return null;
+
+  const walletBuffer = 25_000_000_000;
+  const available = wallet.cycles - walletBuffer;
+  if (available < 1_000_000_000) return null;
+
+  const frontendTarget = frontend && Number.isFinite(frontend.reservedLimit)
+    ? frontend.reservedLimit
+    : 5_000_000_000_000;
+  const frontendCycles = frontend && Number.isFinite(frontend.cycles) ? frontend.cycles : 0;
+  const needed = Math.max(0, frontendTarget - frontendCycles);
+  const rawAmount = needed > 0 ? Math.min(available, needed) : available;
+  const rounded = Math.floor(rawAmount / 1_000_000_000) * 1_000_000_000;
+  return rounded >= 1_000_000_000 ? rounded : null;
+}
+
+function topUpPlanStatus(snapshots = loadCycleSnapshot()) {
+  const frontend = snapshots.frontend || null;
+  const wallet = snapshots.wallet || null;
+  if (!frontend || !wallet) {
+    return { label: "Add snapshots", className: "pending" };
+  }
+
+  const walletBuffer = 25_000_000_000;
+  const frontendTarget = Number.isFinite(frontend.reservedLimit)
+    ? frontend.reservedLimit
+    : 5_000_000_000_000;
+  const needed = Math.max(0, frontendTarget - frontend.cycles);
+  const available = Math.max(0, wallet.cycles - walletBuffer);
+  if (needed <= 0) {
+    return { label: "No top-up needed", className: "healthy" };
+  }
+  if (available < 1_000_000_000) {
+    return { label: "Wallet short", className: "top-up" };
+  }
+
+  const amount = recommendedFrontendTopUpAmount(snapshots);
+  if (!amount) {
+    return { label: "Top-up pending", className: "watch" };
+  }
+  const walletAfter = Math.max(0, wallet.cycles - amount);
+  const className = amount < needed ? "watch" : "healthy";
+  return {
+    label: `${formatCycles(amount)} · wallet after ${formatCycles(walletAfter)}`,
+    className,
+  };
+}
+
+function canisterStateStatus(snapshots = loadCycleSnapshot()) {
+  const items = ["frontend", "backend"].map((key) => snapshots[key]).filter(Boolean);
+  if (!items.length) {
+    return { label: "Add snapshots", className: "pending" };
+  }
+
+  const stopped = items.filter((snapshot) => /^stopped$/i.test(snapshot.status || ""));
+  const nonRunning = items.filter((snapshot) => snapshot.status && !/^running$/i.test(snapshot.status));
+  const unknown = items.filter((snapshot) => !snapshot.status);
+  if (stopped.length) {
+    return { label: `${stopped.length} stopped`, className: "top-up" };
+  }
+  if (nonRunning.length) {
+    return { label: `${nonRunning.length} not running`, className: "watch" };
+  }
+  if (unknown.length) {
+    return { label: "Status unknown", className: "aging" };
+  }
+  if (items.length < 2) {
+    return { label: "One canister running", className: "watch" };
+  }
+  return { label: "Frontend and backend running", className: "healthy" };
 }
 
 function formatCycleRunway(snapshot) {
@@ -11514,6 +13012,7 @@ function renderDashboardRefresh(refresh = loadDashboardRefresh()) {
   if (refreshElement) {
     refreshElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${refreshStatus.className}">${escapeHtml(refreshStatus.label)}</span>`;
   }
+  renderDashboardFreshness();
 }
 
 function renderDashboardReview(review = loadDashboardReview()) {
@@ -11533,6 +13032,46 @@ function renderDashboardReview(review = loadDashboardReview()) {
       ? `Dashboard last reviewed at ${reviewedAtLabel}.`
       : "Mark the dashboard reviewed after checking the current operator state.";
   }
+  renderDashboardFreshness();
+}
+
+function dashboardFreshnessStatus(snapshots = loadCycleSnapshot()) {
+  const snapshotStatus = snapshotAttentionStatus(snapshots);
+  const refreshStatus = dashboardRefreshStatus(loadDashboardRefresh());
+  const reviewStatus = dashboardReviewStatus(loadDashboardReview());
+  const evidenceStatus = reviewEvidenceStatus(loadAdminReviewEvidence());
+  const checks = [
+    { label: "Snapshots", className: snapshotStatus.className === "healthy" ? "fresh" : snapshotStatus.className },
+    { label: "Refresh", className: refreshStatus.className },
+    { label: "Review", className: reviewStatus.className },
+    { label: "Evidence", className: evidenceStatus.className === "healthy" ? "fresh" : evidenceStatus.className },
+  ];
+  const priority = { stale: 4, "top-up": 4, aging: 3, watch: 3, pending: 2, fresh: 0, healthy: 0 };
+  const worst = checks
+    .slice()
+    .sort((a, b) => (priority[b.className] || 1) - (priority[a.className] || 1))[0];
+  const current = checks.filter((check) => check.className === "fresh" || check.className === "healthy").length;
+  const missing = checks.filter((check) => check.className !== "fresh" && check.className !== "healthy").map((check) => check.label);
+  if (!worst || current === checks.length) {
+    return { label: "Current", className: "fresh", current, total: checks.length, missing: [] };
+  }
+  const className = worst.className === "watch" ? "aging" : worst.className;
+  const label = className === "stale"
+    ? "Stale"
+    : className === "aging"
+      ? "Aging"
+      : className === "pending"
+        ? "Needs data"
+        : worst.label;
+  return { label: `${label} · ${current}/${checks.length} current`, className, current, total: checks.length, missing };
+}
+
+function renderDashboardFreshness(snapshots = loadCycleSnapshot()) {
+  const element = document.getElementById("healthFreshness");
+  if (!element) return;
+  const status = dashboardFreshnessStatus(snapshots);
+  const title = status.missing.length ? `Needs: ${status.missing.join(", ")}` : "Dashboard freshness checks are current.";
+  element.innerHTML = `<span class="admin-cycle-freshness-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
 }
 
 function loadCycleSnapshot() {
@@ -11572,6 +13111,101 @@ function loadCycleSnapshot() {
   }
 }
 
+function loadCycleHistory() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CYCLE_HISTORY_KEY);
+    const entries = raw ? JSON.parse(raw) : [];
+    return Array.isArray(entries) ? entries.slice(0, 24) : [];
+  } catch (err) {
+    console.warn("Could not load cycle history:", err);
+    return [];
+  }
+}
+
+function persistCycleHistory(entries) {
+  try {
+    localStorage.setItem(ADMIN_CYCLE_HISTORY_KEY, JSON.stringify((entries || []).slice(0, 24)));
+  } catch (err) {
+    console.warn("Could not save cycle history:", err);
+  }
+}
+
+function recordCycleHistory(updates, previousSnapshots = loadCycleSnapshot()) {
+  const entries = Object.entries(updates || {})
+    .map(([kind, snapshot]) => {
+      const previous = previousSnapshots ? previousSnapshots[kind] : null;
+      if (!snapshot || !Number.isFinite(snapshot.cycles) || !previous || !Number.isFinite(previous.cycles)) {
+        return null;
+      }
+      const previousCapturedAt = previous.capturedAt || "";
+      const nextCapturedAt = snapshot.capturedAt || "";
+      if (previous.cycles === snapshot.cycles && previousCapturedAt === nextCapturedAt) {
+        return null;
+      }
+      return {
+        kind,
+        cycles: snapshot.cycles,
+        previousCycles: previous.cycles,
+        delta: snapshot.cycles - previous.cycles,
+        capturedAt: nextCapturedAt,
+        recordedAt: new Date().toISOString(),
+      };
+    })
+    .filter(Boolean);
+  if (!entries.length) return;
+  persistCycleHistory([...entries, ...loadCycleHistory()]);
+}
+
+function formatCycleDelta(delta) {
+  if (!Number.isFinite(delta)) return "Pending";
+  if (delta === 0) return "No change";
+  const sign = delta > 0 ? "+" : "-";
+  return `${sign}${formatCycles(Math.abs(delta))}`;
+}
+
+function cycleMovementStatus(entry) {
+  if (!entry) return { label: "Collecting", className: "pending" };
+  const label = `${ADMIN_CYCLE_LABELS[entry.kind] || entry.kind} ${formatCycleDelta(entry.delta)}`;
+  if (entry.delta < -100_000_000_000) return { label, className: "top-up" };
+  if (entry.delta < 0) return { label, className: "watch" };
+  if (entry.delta > 0) return { label, className: "healthy" };
+  return { label, className: "fresh" };
+}
+
+function renderCycleMovement() {
+  const element = document.getElementById("healthCycleMovement");
+  const entry = loadCycleHistory()[0] || null;
+  const status = cycleMovementStatus(entry);
+  const title = entry
+    ? `Previous: ${formatCycles(entry.previousCycles)} · Current: ${formatCycles(entry.cycles)}`
+    : "Paste a second snapshot to compare movement.";
+  if (element) {
+    element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
+  }
+  renderCycleMovementHistory();
+}
+
+function renderCycleMovementHistory(entries = loadCycleHistory()) {
+  const panel = document.getElementById("cycleMovementHistory");
+  const list = document.getElementById("cycleMovementHistoryList");
+  if (!panel || !list) return;
+  const heading = panel.querySelector("span");
+  if (!entries.length) {
+    if (heading) heading.innerHTML = "<strong>Recent movement:</strong> Collecting";
+    list.innerHTML = "<li><span>Paste a second snapshot to compare movement.</span><time>Pending</time></li>";
+    return;
+  }
+  if (heading) heading.innerHTML = "<strong>Recent movement:</strong> Latest cycle changes";
+  list.innerHTML = entries.slice(0, 5).map((entry) => {
+    const status = cycleMovementStatus(entry);
+    const recorded = entry.recordedAt ? new Date(entry.recordedAt) : null;
+    const time = recorded && Number.isFinite(recorded.getTime())
+      ? recorded.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : "Pending";
+    return `<li><span><strong>${escapeHtml(status.label)}</strong> from ${escapeHtml(formatCycles(entry.previousCycles))} to ${escapeHtml(formatCycles(entry.cycles))}</span><time datetime="${escapeHtml(entry.recordedAt || "")}">${escapeHtml(time)}</time></li>`;
+  }).join("");
+}
+
 function cycleSnapshotSummaryHtml(snapshot, label) {
   if (!snapshot) {
     return `
@@ -11598,12 +13232,68 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   return `
     <span><strong>${escapeHtml(label)}:</strong> ${formatCycles(snapshot.cycles)}${percentLabel}</span>
     <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
+    <span><strong>Status:</strong> ${escapeHtml(snapshot.status || "Unknown")}</span>
+    <span><strong>Memory:</strong> ${formatCycles(snapshot.memorySize)}</span>
     <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
     <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
     <span><strong>Idle runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
     ${deploymentNote}
     <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
     <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
+  `;
+}
+
+function walletCycleSnapshotSummaryHtml(snapshot) {
+  if (!snapshot) {
+    return `
+      <span><strong>Wallet:</strong> Add a balance</span>
+      <span><strong>Available:</strong> Pending</span>
+      <span><strong>Snapshot:</strong> Pending <span class="admin-cycle-freshness-label pending">Pending</span></span>
+    `;
+  }
+
+  const snapshotAge = cycleSnapshotAgeHours(snapshot);
+  const freshnessStatus = cycleFreshnessStatus(snapshotAge);
+  const capturedLabel = snapshot.capturedAt
+    ? new Date(snapshot.capturedAt).toLocaleString()
+    : "Unknown";
+  return `
+    <span><strong>Wallet:</strong> ${formatCycles(snapshot.cycles)}</span>
+    <span><strong>Available:</strong> ${formatCycles(snapshot.cycles)} cycles</span>
+    <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
+    <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
+  `;
+}
+
+function frontendTopUpSummaryHtml(snapshots = loadCycleSnapshot()) {
+  const frontend = snapshots.frontend || null;
+  const wallet = snapshots.wallet || null;
+  if (!frontend || !wallet) {
+    return `
+      <span><strong>Top-up plan:</strong> Add wallet and frontend snapshots</span>
+      <span><strong>Recommended:</strong> Pending</span>
+      <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
+      <span><strong>Wallet after:</strong> Pending</span>
+    `;
+  }
+
+  const amount = recommendedFrontendTopUpAmount(snapshots);
+  if (!amount) {
+    return `
+      <span><strong>Top-up plan:</strong> No wallet amount available</span>
+      <span><strong>Recommended:</strong> Pending</span>
+      <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
+      <span><strong>Wallet after:</strong> ${formatCycles(wallet.cycles)}</span>
+    `;
+  }
+
+  const walletAfter = Math.max(0, wallet.cycles - amount);
+  const target = Number.isFinite(frontend.reservedLimit) ? formatCycles(frontend.reservedLimit) : "5.00T";
+  return `
+    <span><strong>Top-up plan:</strong> Frontend toward ${escapeHtml(target)}</span>
+    <span><strong>Recommended:</strong> ${formatCycles(amount)} (${escapeHtml(formatTopUpAmount(amount))})</span>
+    <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
+    <span><strong>Wallet after:</strong> ${formatCycles(walletAfter)}</span>
   `;
 }
 
@@ -11624,7 +13314,7 @@ function shortestCycleRunway(snapshots) {
 }
 
 function oldestCycleSnapshot(snapshots) {
-  return ["frontend", "backend"]
+  return ["frontend", "backend", "wallet"]
     .map((key) => {
       const hours = cycleSnapshotAgeHours(snapshots[key]);
       return hours === null ? null : { key, hours };
@@ -11636,53 +13326,101 @@ function oldestCycleSnapshot(snapshots) {
 function cycleRecommendedAction(snapshots) {
   const frontend = snapshots.frontend || null;
   const backend = snapshots.backend || null;
+  const wallet = snapshots.wallet || null;
   if (!frontend || !backend) {
-    return { label: "Paste snapshots", className: "pending" };
+    return { label: "Paste snapshots", className: "pending", detailId: "cycleRunwayPanel" };
   }
 
   const frontendPercent = cyclePercent(frontend);
   if (Number.isFinite(frontendPercent) && frontendPercent <= 10) {
-    return { label: "Top up frontend", className: "top-up" };
+    if (!wallet) {
+      return { label: "Check wallet", className: "pending", detailId: "cycleRunwayPanel" };
+    }
+    if (wallet.cycles < 25_000_000_000) {
+      return { label: "Buy cycles", className: "top-up", detailId: "cycleRunwayPanel" };
+    }
+    return { label: "Top up frontend", className: "top-up", detailId: "cycleRunwayPanel" };
   }
   if (Number.isFinite(frontendPercent) && frontendPercent <= 20) {
-    return { label: "Watch deploys", className: "watch" };
+    if (!wallet) {
+      return { label: "Check wallet", className: "pending", detailId: "cycleRunwayPanel" };
+    }
+    if (wallet.cycles < 25_000_000_000) {
+      return { label: "Buy cycles", className: "top-up", detailId: "cycleRunwayPanel" };
+    }
+    return { label: "Watch deploys", className: "watch", detailId: "cycleRunwayPanel" };
   }
 
   const shortest = shortestCycleRunway(snapshots);
   if (shortest && shortest.days < 30) {
-    return { label: "Top up soon", className: "top-up" };
+    return { label: "Top up soon", className: "top-up", detailId: "cycleRunwayPanel" };
   }
   if (shortest && shortest.days < 90) {
-    return { label: "Review runway", className: "watch" };
+    return { label: "Review runway", className: "watch", detailId: "cycleRunwayPanel" };
   }
 
   const oldest = oldestCycleSnapshot(snapshots);
   if (oldest && oldest.hours > 168) {
-    return { label: "Refresh snapshots", className: "stale" };
+    return { label: "Refresh snapshots", className: "stale", detailId: "cycleRunwayPanel" };
   }
   if (oldest && oldest.hours > 24) {
-    return { label: "Snapshots aging", className: "aging" };
+    return { label: "Snapshots aging", className: "aging", detailId: "cycleRunwayPanel" };
   }
 
   const dashboardRefresh = loadDashboardRefresh();
   const dashboardRefreshAge = dashboardRefreshAgeHours(dashboardRefresh);
   if (!Number.isFinite(dashboardRefreshAge)) {
-    return { label: "Refresh dashboard", className: "pending" };
+    return { label: "Refresh dashboard", className: "pending", command: "refresh" };
   }
   if (dashboardRefreshAge > 24) {
-    return { label: "Refresh dashboard", className: "stale" };
+    return { label: "Refresh dashboard", className: "stale", command: "refresh" };
   }
 
   const dashboardReview = loadDashboardReview();
   const dashboardReviewAge = dashboardReviewAgeHours(dashboardReview);
   if (!Number.isFinite(dashboardReviewAge)) {
-    return { label: "Review dashboard", className: "pending" };
+    return { label: "Review dashboard", className: "pending", detailId: "cycleRunwayPanel" };
   }
   if (dashboardReviewAge > 168) {
-    return { label: "Review dashboard", className: "stale" };
+    return { label: "Review dashboard", className: "stale", detailId: "cycleRunwayPanel" };
   }
   if (dashboardReviewAge > 24) {
-    return { label: "Review soon", className: "aging" };
+    return { label: "Review soon", className: "aging", detailId: "cycleRunwayPanel" };
+  }
+
+  if (typeof combinedQualityAttentionStatus === "function") {
+    const quality = combinedQualityAttentionStatus();
+    if (quality && quality.className !== "healthy") {
+      return {
+        label: quality.label,
+        className: quality.className,
+        source: "quality",
+        detailId: quality.detailId,
+      };
+    }
+  }
+
+  const evidenceStatus = reviewEvidenceStatus();
+  if (evidenceStatus.className !== "healthy") {
+    return {
+      label: evidenceStatus.className === "pending"
+        ? "Save evidence"
+        : evidenceStatus.className === "watch"
+          ? "Review evidence"
+          : evidenceStatus.label,
+      className: evidenceStatus.className,
+      source: "evidence",
+      detailId: "adminDashboardHandoff",
+    };
+  }
+
+  const handoffStatus = adminChecklistStatus();
+  if (handoffStatus.className !== "healthy") {
+    return {
+      label: "Complete handoff",
+      className: handoffStatus.className === "pending" ? "pending" : "watch",
+      detailId: "adminDashboardHandoff",
+    };
   }
 
   return { label: "No action needed", className: "healthy" };
@@ -11690,6 +13428,7 @@ function cycleRecommendedAction(snapshots) {
 
 function deployReadinessStatus(snapshots) {
   const frontend = snapshots.frontend || null;
+  const wallet = snapshots.wallet || null;
   if (!frontend) return { label: "Add frontend snapshot", className: "pending" };
 
   const snapshotAge = cycleSnapshotAgeHours(frontend);
@@ -11699,9 +13438,13 @@ function deployReadinessStatus(snapshots) {
 
   const percent = cyclePercent(frontend);
   if (Number.isFinite(percent) && percent <= 10) {
+    if (!wallet) return { label: "Check wallet", className: "pending" };
+    if (wallet.cycles < 25_000_000_000) return { label: "Buy cycles", className: "top-up" };
     return { label: "Top up first", className: "top-up" };
   }
   if (Number.isFinite(percent) && percent <= 20) {
+    if (!wallet) return { label: "Check wallet", className: "pending" };
+    if (wallet.cycles < 25_000_000_000) return { label: "Buy cycles", className: "top-up" };
     return { label: "Top up advised", className: "watch" };
   }
 
@@ -11710,6 +13453,89 @@ function deployReadinessStatus(snapshots) {
   }
 
   return { label: "Ready", className: "healthy" };
+}
+
+function frontendDeployBufferStatus(snapshots = loadCycleSnapshot()) {
+  const frontend = snapshots.frontend || null;
+  if (!frontend || !Number.isFinite(frontend.cycles)) {
+    return {
+      label: "Add snapshot",
+      className: "pending",
+      buffer: null,
+      reserve: ADMIN_FRONTEND_DEPLOY_RESERVE,
+    };
+  }
+
+  const buffer = frontend.cycles - ADMIN_FRONTEND_DEPLOY_RESERVE;
+  if (buffer < 0) {
+    return {
+      label: `${formatCycles(Math.abs(buffer))} short`,
+      className: "top-up",
+      buffer,
+      reserve: ADMIN_FRONTEND_DEPLOY_RESERVE,
+    };
+  }
+  if (buffer < ADMIN_FRONTEND_DEPLOY_RESERVE) {
+    return {
+      label: `${formatCycles(buffer)} buffer`,
+      className: "watch",
+      buffer,
+      reserve: ADMIN_FRONTEND_DEPLOY_RESERVE,
+    };
+  }
+  return {
+    label: `${formatCycles(buffer)} buffer`,
+    className: "healthy",
+    buffer,
+    reserve: ADMIN_FRONTEND_DEPLOY_RESERVE,
+  };
+}
+
+function renderFrontendDeployBuffer(snapshots = loadCycleSnapshot()) {
+  const element = document.getElementById("healthDeployBuffer");
+  if (!element) return;
+  const status = frontendDeployBufferStatus(snapshots);
+  const title = `Suggested frontend deployment reserve: ${formatCycles(status.reserve)} cycles`;
+  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
+}
+
+function preDeployCheckStatus(snapshots = loadCycleSnapshot()) {
+  const frontendAge = cycleSnapshotAgeHours(snapshots.frontend || null);
+  const quality = typeof combinedQualityAttentionStatus === "function"
+    ? combinedQualityAttentionStatus()
+    : { label: "Quality pending", className: "pending" };
+  const checks = [
+    { label: "Fresh frontend snapshot", ready: Number.isFinite(frontendAge) && frontendAge <= 24 },
+    { label: "Deploy readiness", ready: deployReadinessStatus(snapshots).className === "healthy" },
+    { label: "Deploy buffer", ready: frontendDeployBufferStatus(snapshots).className === "healthy" },
+    { label: "Dashboard reviewed", ready: dashboardReviewStatus(loadDashboardReview()).className === "healthy" },
+    { label: "Quality clear", ready: quality.className === "healthy" },
+    { label: "Evidence saved", ready: reviewEvidenceStatus(loadAdminReviewEvidence()).className === "healthy" },
+  ];
+  const completed = checks.filter((check) => check.ready).length;
+  const missing = checks.filter((check) => !check.ready).map((check) => check.label);
+  const className = completed === checks.length
+    ? "healthy"
+    : completed >= checks.length - 1
+      ? "watch"
+      : completed >= Math.ceil(checks.length / 2)
+        ? "aging"
+        : "pending";
+  return {
+    label: completed === checks.length ? "Ready" : `${completed}/${checks.length} ready`,
+    className,
+    completed,
+    total: checks.length,
+    missing,
+  };
+}
+
+function renderPreDeployCheck(snapshots = loadCycleSnapshot()) {
+  const element = document.getElementById("healthPreDeployCheck");
+  if (!element) return;
+  const status = preDeployCheckStatus(snapshots);
+  const title = status.missing.length ? `Missing: ${status.missing.join(", ")}` : "Pre-deploy checks are clear.";
+  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
 }
 
 function dashboardAttentionClass(className) {
@@ -11757,10 +13583,250 @@ function renderDashboardAttention(snapshots) {
   setDashboardAttentionItem("adminAttentionReview", reviewStatus.className, reviewLabel);
 }
 
+function dashboardActionQueue(snapshots = loadCycleSnapshot()) {
+  const queue = [];
+  const seen = new Set();
+  const add = (action) => {
+    if (!action || !action.label) return;
+    const key = `${action.label}:${action.detailId || action.command || ""}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    queue.push(action);
+  };
+
+  const primary = currentAdminRecommendedAction && currentAdminRecommendedAction.label
+    ? currentAdminRecommendedAction
+    : cycleRecommendedAction(snapshots);
+  if (primary.className !== "healthy") {
+    add({ ...primary, tag: "Next" });
+  }
+
+  const snapshotStatus = snapshotAttentionStatus(snapshots);
+  if (snapshotStatus.className !== "healthy") {
+    add({ label: snapshotStatus.label, className: snapshotStatus.className, detailId: "cycleRunwayPanel", tag: "Snapshots" });
+  }
+
+  const deployStatus = deployReadinessStatus(snapshots);
+  if (deployStatus.className !== "healthy") {
+    add({ label: deployStatus.label, className: deployStatus.className, detailId: "cycleRunwayPanel", tag: "Deploy" });
+  }
+
+  const deployBuffer = frontendDeployBufferStatus(snapshots);
+  if (deployBuffer.className !== "healthy") {
+    add({ label: `Deploy buffer: ${deployBuffer.label}`, className: deployBuffer.className, detailId: "cycleRunwayPanel", tag: "Buffer" });
+  }
+
+  const canisterState = canisterStateStatus(snapshots);
+  if (canisterState.className === "top-up" || canisterState.className === "watch" || canisterState.className === "aging") {
+    add({ label: `Canister state: ${canisterState.label}`, className: canisterState.className, detailId: "cycleRunwayPanel", tag: "Canisters" });
+  }
+
+  const topUpPlan = topUpPlanStatus(snapshots);
+  if (topUpPlan.className === "top-up" || topUpPlan.className === "watch") {
+    add({ label: `Top-up plan: ${topUpPlan.label}`, className: topUpPlan.className, detailId: "cycleRunwayPanel", tag: "Cycles" });
+  }
+
+  const preDeploy = preDeployCheckStatus(snapshots);
+  if (preDeploy.className !== "healthy") {
+    add({ label: `Pre-deploy: ${preDeploy.label}`, className: preDeploy.className, detailId: "cycleRunwayPanel", tag: "Deploy" });
+  }
+
+  const reviewStatus = dashboardReviewStatus(loadDashboardReview());
+  if (reviewStatus.className !== "healthy") {
+    add({ label: reviewStatus.label, className: reviewStatus.className, detailId: "cycleRunwayPanel", tag: "Review" });
+  }
+
+  if (typeof combinedQualityAttentionStatus === "function") {
+    const quality = combinedQualityAttentionStatus();
+    if (quality && quality.className !== "healthy") {
+      add({ label: quality.label, className: quality.className, detailId: quality.detailId || "goldenTestsPanel", tag: "Quality" });
+    }
+  }
+
+  const siteMetrics = siteMetricsHealthStatus();
+  if (["pending", "stale"].includes(siteMetrics.className) || siteMetrics.label === "Load failed") {
+    add({ label: `Site metrics: ${siteMetrics.label}`, className: siteMetrics.className, detailId: "siteMetricsPanel", tag: "Reports" });
+  }
+
+  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+  if (evidence.className !== "healthy") {
+    add({ label: evidence.label, className: evidence.className, detailId: "adminDashboardHandoff", tag: "Evidence" });
+  }
+
+  const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
+  if (checklist.className !== "healthy") {
+    add({ label: checklist.label, className: checklist.className, detailId: "adminDashboardHandoff", tag: "Handoff" });
+  }
+
+  if (!queue.length) {
+    add({ label: "Dashboard clear", className: "healthy", tag: "Clear" });
+  }
+
+  return queue.slice(0, 4);
+}
+
+function renderDashboardActionQueue(snapshots = loadCycleSnapshot()) {
+  const element = document.getElementById("adminDashboardActionQueue");
+  if (!element) return;
+  const items = dashboardActionQueue(snapshots);
+  element.innerHTML = items.map((action) => {
+    const className = dashboardAttentionClass(action.className);
+    const actionAttr = action.command === "refresh"
+      ? ' onclick="refreshAdminDashboardData()"'
+      : action.detailId
+        ? ` data-admin-detail-jump="${escapeHtml(action.detailId)}"`
+        : "";
+    return `<li><button type="button" class="admin-dashboard-queue-item ${className}"${actionAttr}><strong>${escapeHtml(action.label)}</strong><span>${escapeHtml(action.tag || "Next")}</span></button></li>`;
+  }).join("");
+}
+
+function operatorReadinessScore(snapshots = loadCycleSnapshot()) {
+  const quality = typeof combinedQualityAttentionStatus === "function"
+    ? combinedQualityAttentionStatus()
+    : { label: "Quality pending", className: "pending" };
+  const checks = [
+    { label: "Snapshots", ready: snapshotAttentionStatus(snapshots).className === "healthy" },
+    { label: "Wallet", ready: Boolean(snapshots.wallet) },
+    { label: "Deploy", ready: deployReadinessStatus(snapshots).className === "healthy" },
+    { label: "Buffer", ready: frontendDeployBufferStatus(snapshots).className === "healthy" },
+    { label: "Pre-deploy", ready: preDeployCheckStatus(snapshots).className === "healthy" },
+    { label: "Quality", ready: quality.className === "healthy" },
+    { label: "Evidence", ready: reviewEvidenceStatus(loadAdminReviewEvidence()).className === "healthy" },
+    { label: "Handoff", ready: adminChecklistStatus(loadAdminDashboardChecklist()).className === "healthy" },
+  ];
+  const completed = checks.filter((check) => check.ready).length;
+  const total = checks.length;
+  const missing = checks.filter((check) => !check.ready).map((check) => check.label);
+  const className = completed === total
+    ? "healthy"
+    : completed >= total - 1
+      ? "watch"
+      : completed >= Math.ceil(total / 2)
+        ? "aging"
+        : "pending";
+  return {
+    label: `${completed}/${total} ready`,
+    className,
+    completed,
+    total,
+    missing,
+  };
+}
+
+function renderOperatorReadinessMetric(snapshots = loadCycleSnapshot()) {
+  const metric = document.getElementById("healthOperatorReadiness");
+  const score = operatorReadinessScore(snapshots);
+  const missing = score.missing.length ? `Missing: ${score.missing.slice(0, 3).join(", ")}` : "Ready for handoff";
+  if (metric) {
+    metric.innerHTML = `<span class="admin-cycle-runway-label ${score.className}" title="${escapeHtml(missing)}">${escapeHtml(score.label)}</span>`;
+  }
+  const blockers = document.getElementById("healthReadinessBlockers");
+  if (blockers) {
+    blockers.textContent = score.missing.length ? score.missing.join(", ") : "None";
+  }
+}
+
+function localBackupStatus() {
+  const snapshots = loadCycleSnapshot();
+  const checklist = loadAdminDashboardChecklist();
+  const buckets = [
+    { label: "Cycles", saved: Boolean(snapshots.frontend || snapshots.backend || snapshots.wallet) },
+    { label: "Review", saved: Boolean(loadDashboardReview()) },
+    { label: "Refresh", saved: Boolean(loadDashboardRefresh()) },
+    { label: "Checklist", saved: ADMIN_DASHBOARD_CHECKLIST_ITEMS.some((item) => checklist[item.key]) },
+    { label: "Evidence", saved: Boolean(loadAdminReviewEvidence()) },
+    { label: "Note", saved: Boolean(loadAdminDashboardNote() || loadAdminDashboardNoteDraft()) },
+    { label: "Activity", saved: Boolean(loadAdminDashboardActivity().length) },
+    { label: "Movement", saved: Boolean(loadCycleHistory().length) },
+    { label: "Site metrics", saved: Boolean(loadSiteMetricsCache()?.metrics?.length) },
+  ];
+  const saved = buckets.filter((bucket) => bucket.saved).length;
+  const missing = buckets.filter((bucket) => !bucket.saved).map((bucket) => bucket.label);
+  const className = saved === buckets.length
+    ? "healthy"
+    : saved >= 4
+      ? "watch"
+      : saved > 0
+        ? "aging"
+        : "pending";
+  return {
+    label: `${saved}/${buckets.length} saved`,
+    className,
+    saved,
+    total: buckets.length,
+    missing,
+  };
+}
+
+function renderLocalBackupMetric() {
+  const metric = document.getElementById("healthLocalBackup");
+  if (!metric) return;
+  const status = localBackupStatus();
+  const title = status.missing.length ? `Missing: ${status.missing.join(", ")}` : "All local dashboard buckets have saved state.";
+  metric.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
+}
+
 function updateDashboardCycleSummary(action) {
   const headline = document.getElementById("adminDashboardHeadline");
   const pill = document.getElementById("adminDashboardPill");
   if (!headline || !pill || !action) return;
+
+  const qualityCopy = {
+    "Run golden tests": {
+      text: "Run golden tests before relying on the dashboard quality state.",
+      className: "is-pending",
+    },
+    "Tests aging": {
+      text: "Golden tests are aging; run them again before the next quality-sensitive decision.",
+      className: "is-watch",
+    },
+    "Review tests": {
+      text: "Golden tests need review before treating the current answer path as clear.",
+      className: "is-watch",
+    },
+    "Tests failing": {
+      text: "Golden tests are failing; review answer quality before the next operator decision.",
+      className: "is-action",
+    },
+    "No feedback": {
+      text: "No feedback has been loaded yet; refresh dashboard data before judging quality.",
+      className: "is-pending",
+    },
+    "Review feedback": {
+      text: "Feedback needs review before treating the current user signal as clear.",
+      className: "is-action",
+    },
+    "Feedback watch": {
+      text: "Feedback has some negative signal; review it before the next quality decision.",
+      className: "is-watch",
+    },
+  };
+  const actionCopy = {
+    "Check wallet": {
+      text: "Paste the cycles wallet balance before deciding whether the frontend canister can be topped up.",
+      className: "is-pending",
+    },
+    "Buy cycles": {
+      text: "Cycles wallet balance is low; buy or transfer cycles before the next frontend top-up.",
+      className: "is-action",
+    },
+    "Save evidence": {
+      text: "Save local review evidence before marking this operator handoff ready.",
+      className: "is-pending",
+    },
+    "Review evidence": {
+      text: "Review evidence is incomplete or aging; rerun checks or save a stronger evidence packet.",
+      className: "is-watch",
+    },
+    "Evidence aging": {
+      text: "Review evidence is aging; refresh it before the next operator decision.",
+      className: "is-watch",
+    },
+    "Evidence stale": {
+      text: "Review evidence is stale; rerun checks and save fresh evidence.",
+      className: "is-action",
+    },
+  };
 
   const states = {
     pending: {
@@ -11794,7 +13860,23 @@ function updateDashboardCycleSummary(action) {
       className: "is-clear",
     },
   };
-  const state = action.className === "pending" && action.label !== "Paste snapshots"
+  const state = action.source === "quality" && qualityCopy[action.label]
+    ? {
+      text: action.label === "Run golden tests" && action.className === "stale"
+        ? "Golden-test evidence is stale; run tests again before relying on the current quality state."
+        : qualityCopy[action.label].text,
+      pill: action.label,
+      className: action.label === "Run golden tests" && action.className === "stale"
+        ? "is-action"
+        : qualityCopy[action.label].className,
+    }
+    : actionCopy[action.label]
+      ? {
+        text: actionCopy[action.label].text,
+        pill: action.label,
+        className: actionCopy[action.label].className,
+      }
+    : action.className === "pending" && action.label !== "Paste snapshots"
     ? {
       text: action.label === "Refresh dashboard"
         ? "Refresh dashboard data before relying on the current operator view."
@@ -11826,20 +13908,626 @@ function updateDashboardCycleSummary(action) {
   pill.className = `admin-dashboard-pill ${state.className}`;
 }
 
+function updateRecommendedActionButton(action) {
+  const button = document.getElementById("adminDashboardActionButton");
+  if (!button || !action) return;
+  const clear = action.className === "healthy";
+  button.disabled = clear;
+  button.textContent = clear ? "Dashboard clear" : "Open action";
+  button.title = clear ? "No immediate operator action is needed." : `Open: ${action.label}`;
+}
+
+function renderRecommendedActionMetric(action) {
+  const actionElement = document.getElementById("healthCycleAction");
+  if (actionElement) {
+    actionElement.innerHTML = `<span class="admin-cycle-runway-label ${action.className}">${escapeHtml(action.label)}</span>`;
+  }
+}
+
+function refreshAdminRecommendedAction(snapshots = loadCycleSnapshot()) {
+  const action = cycleRecommendedAction(snapshots);
+  currentAdminRecommendedAction = action;
+  updateRecommendedActionButton(action);
+  renderRecommendedActionMetric(action);
+  updateDashboardCycleSummary(action);
+  renderDashboardAttention(snapshots);
+  renderDashboardActionQueue(snapshots);
+  renderOperatorReadinessMetric(snapshots);
+  renderLocalBackupMetric();
+  if (typeof renderAdminReviewPacket === "function") {
+    renderAdminReviewPacket();
+  }
+  return action;
+}
+
+function openAdminDetailPanel(detailId) {
+  const detail = document.getElementById(detailId);
+  if (!detail) return false;
+  const section = detail.closest("[data-admin-view]");
+  if (section && window.setAdminWorkspaceView) {
+    window.setAdminWorkspaceView(section.dataset.adminView, { skipScroll: true });
+  }
+  if (section) {
+    section.querySelectorAll(":scope > details").forEach((panel) => {
+      panel.open = panel === detail;
+    });
+  }
+  detail.open = true;
+  detail.scrollIntoView({ behavior: "smooth", block: "start" });
+  return true;
+}
+
+window.openAdminRecommendedAction = function openAdminRecommendedAction() {
+  const action = currentAdminRecommendedAction || {};
+  if (action.command === "refresh" && typeof refreshAdminDashboardData === "function") {
+    refreshAdminDashboardData();
+    return;
+  }
+  if (action.detailId && openAdminDetailPanel(action.detailId)) {
+    return;
+  }
+  if (window.setAdminWorkspaceView) {
+    window.setAdminWorkspaceView("overview");
+  }
+};
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-admin-detail-jump]");
+  if (!target) return;
+  const detailId = target.dataset.adminDetailJump;
+  if (detailId && openAdminDetailPanel(detailId)) {
+    event.preventDefault();
+  }
+});
+
+function dashboardMetricText(id) {
+  const element = document.getElementById(id);
+  return element ? element.textContent.replace(/\s+/g, " ").trim() : "Pending";
+}
+
+function dashboardActionDestination(action) {
+  if (!action) return "";
+  if (action.command === "refresh") return "Refresh dashboard";
+  const labels = {
+    cycleRunwayPanel: "Reports > Cycles runway",
+    siteMetricsPanel: "Reports > Site metrics",
+    goldenTestsPanel: "Providers > Golden tests",
+    feedbackDashboardPanel: "Overview > Feedback dashboard",
+    memoryHealthDashboardPanel: "Memory > Health dashboard",
+    adminDashboardHandoff: "Overview > Operator handoff",
+  };
+  return action.detailId ? labels[action.detailId] || action.detailId : "";
+}
+
+function buildAdminDashboardSummaryText() {
+  const noteInput = document.getElementById("adminDashboardNoteInput");
+  if (noteInput && noteInput.value.trim()) {
+    persistAdminDashboardNoteDraft(noteInput.value.trim());
+  }
+  if (document.getElementById("adminDashboardChecklist")) {
+    persistAdminDashboardChecklist(readAdminDashboardChecklistFromInputs());
+  }
+  const activity = loadAdminDashboardActivity().slice(0, 5);
+  const note = loadAdminDashboardNote();
+  const noteDraft = loadAdminDashboardNoteDraft();
+  const checklist = loadAdminDashboardChecklist();
+  const reviewEvidence = loadAdminReviewEvidence();
+  const reviewStatus = reviewEvidenceStatus(reviewEvidence);
+  const topUpAmount = recommendedFrontendTopUpAmount(loadCycleSnapshot());
+  const lines = [
+    "Aion Operator Dashboard",
+    `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
+    `Recommended action: ${dashboardMetricText("healthCycleAction")}`,
+    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
+    `Data refresh: ${dashboardMetricText("healthDataRefresh")}`,
+    `Freshness: ${dashboardMetricText("healthFreshness")}`,
+    `Quality: ${dashboardMetricText("adminAttentionQuality")}`,
+    `Golden tests: ${dashboardMetricText("healthGoldenTests")}`,
+    `Feedback signal: ${dashboardMetricText("healthFeedbackSignal")}`,
+    `Site metrics: ${dashboardMetricText("healthSiteMetrics")}`,
+    `Site 30 days: ${dashboardMetricText("siteMetricsMonth")}`,
+    `Site writes/day: ${dashboardMetricText("siteMetricsWrites")}`,
+    `Site storage: ${dashboardMetricText("siteMetricsStorage")}`,
+    `Deploy readiness: ${dashboardMetricText("healthDeployReadiness")}`,
+    `Deploy buffer: ${dashboardMetricText("healthDeployBuffer")}`,
+    `Pre-deploy check: ${dashboardMetricText("healthPreDeployCheck")}`,
+    `Cycle status: ${dashboardMetricText("healthCycleRunway")}`,
+    `Cycle movement: ${dashboardMetricText("healthCycleMovement")}`,
+    `Frontend cycles: ${dashboardMetricText("healthFrontendCycles")}`,
+    `Backend cycles: ${dashboardMetricText("healthBackendCycles")}`,
+    `Wallet cycles: ${dashboardMetricText("healthWalletCycles")}`,
+    `Canister state: ${dashboardMetricText("healthCanisterState")}`,
+    `Top-up plan: ${dashboardMetricText("healthTopUpPlan")}`,
+    `Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
+    `Snapshot age: ${dashboardMetricText("healthCycleSnapshotAge")}`,
+    `Last reviewed: ${dashboardMetricText("healthDashboardReviewed")}`,
+    `Review evidence: ${reviewStatus.label}`,
+    `Handoff readiness: ${dashboardMetricText("healthHandoffReadiness")}`,
+    `Local backup: ${dashboardMetricText("healthLocalBackup")}`,
+    `Memories: ${dashboardMetricText("healthMemoryCount")}`,
+    `Feedback count: ${dashboardMetricText("healthFeedbackCount")}`,
+    `Copied: ${new Date().toLocaleString()}`,
+  ];
+  lines.push("Operator checklist:");
+  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
+    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
+  });
+  if (note) {
+    lines.push("Operator note:");
+    lines.push(note);
+  } else if (noteDraft) {
+    lines.push("Operator note draft:");
+    lines.push(noteDraft);
+  }
+  if (reviewEvidence && reviewEvidence.raw) {
+    lines.push("Review evidence:");
+    lines.push(`- Saved: ${new Date(reviewEvidence.savedAt).toLocaleString()}`);
+    lines.push(`- Checks detected: ${reviewStatus.checks} of ${reviewStatus.total}`);
+  }
+  if (activity.length) {
+    lines.push("Recent activity:");
+    activity.forEach((entry) => {
+      const detail = entry.detail ? ` — ${entry.detail}` : "";
+      lines.push(`- ${entry.label || "Dashboard update"}${detail} (${formatAdminActivityTime(entry.timestamp)})`);
+    });
+  }
+  return lines.join("\n");
+}
+
+function dashboardPacketItems() {
+  const snapshots = loadCycleSnapshot();
+  const snapshotStatus = snapshotAttentionStatus(snapshots);
+  const deployStatus = deployReadinessStatus(snapshots);
+  const qualityStatus = typeof combinedQualityAttentionStatus === "function"
+    ? combinedQualityAttentionStatus()
+    : { label: "Quality pending", className: "pending" };
+  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+  const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
+  const activity = loadAdminDashboardActivity()[0] || null;
+  const note = loadAdminDashboardNote();
+  const noteDraft = loadAdminDashboardNoteDraft();
+  const refresh = dashboardRefreshStatus(loadDashboardRefresh());
+  const review = dashboardReviewStatus(loadDashboardReview());
+  return [
+    { label: "Next action", value: currentAdminRecommendedAction.label || "Pending" },
+    { label: "Readiness", value: operatorReadinessScore(snapshots).label },
+    { label: "Freshness", value: dashboardFreshnessStatus(snapshots).label },
+    { label: "Snapshots", value: snapshotStatus.label },
+    { label: "Cycle movement", value: dashboardMetricText("healthCycleMovement") },
+    { label: "Canister state", value: dashboardMetricText("healthCanisterState") },
+    { label: "Top-up plan", value: dashboardMetricText("healthTopUpPlan") },
+    { label: "Deploy", value: deployStatus.label },
+    { label: "Deploy buffer", value: frontendDeployBufferStatus(snapshots).label },
+    { label: "Pre-deploy", value: preDeployCheckStatus(snapshots).label },
+    { label: "Quality", value: qualityStatus.label },
+    { label: "Site metrics", value: siteMetricsHealthStatus().label },
+    { label: "Site 30 days", value: dashboardMetricText("siteMetricsMonth") },
+    { label: "Site writes/day", value: dashboardMetricText("siteMetricsWrites") },
+    { label: "Site storage", value: dashboardMetricText("siteMetricsStorage") },
+    { label: "Evidence", value: evidence.label },
+    { label: "Checklist", value: checklist.label },
+    { label: "Local backup", value: localBackupStatus().label },
+    { label: "Refresh", value: refresh.label },
+    { label: "Review", value: review.label },
+    { label: "Note", value: note ? "Saved" : noteDraft ? "Draft" : "Not saved" },
+    { label: "Latest activity", value: activity ? `${activity.label || "Dashboard update"} · ${formatAdminActivityTime(activity.timestamp)}` : "None yet" },
+  ];
+}
+
+function updateAdminPanelSummaries(snapshots = loadCycleSnapshot()) {
+  const detailsSummary = document.getElementById("adminDashboardDetailsSummary");
+  if (detailsSummary) {
+    const snapshotStatus = snapshotAttentionStatus(snapshots);
+    const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+    const readiness = operatorReadinessScore(snapshots);
+    detailsSummary.textContent = `${readiness.label} · ${snapshotStatus.label} · ${evidence.label}`;
+  }
+
+  const handoffSummary = document.getElementById("adminDashboardHandoffSummary");
+  if (handoffSummary) {
+    const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
+    const note = loadAdminDashboardNote() ? "Note saved" : loadAdminDashboardNoteDraft() ? "Draft note" : "No note";
+    handoffSummary.textContent = `${checklist.label} · ${note}`;
+  }
+}
+
+function buildAdminReviewPacketText() {
+  const noteInput = document.getElementById("adminDashboardNoteInput");
+  if (noteInput && noteInput.value.trim()) {
+    persistAdminDashboardNoteDraft(noteInput.value.trim());
+  }
+  if (document.getElementById("adminDashboardChecklist")) {
+    persistAdminDashboardChecklist(readAdminDashboardChecklistFromInputs());
+  }
+
+  const items = dashboardPacketItems();
+  const note = loadAdminDashboardNote();
+  const noteDraft = loadAdminDashboardNoteDraft();
+  const evidence = loadAdminReviewEvidence();
+  const evidenceStatus = reviewEvidenceStatus(evidence);
+  const activity = loadAdminDashboardActivity().slice(0, 5);
+  const lines = [
+    "Aion Operator Review Packet",
+    `Generated: ${new Date().toLocaleString()}`,
+    "",
+    "Status",
+  ];
+  items.forEach((item) => {
+    lines.push(`- ${item.label}: ${item.value}`);
+  });
+
+  lines.push("");
+  lines.push("Checklist");
+  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
+    const checklist = loadAdminDashboardChecklist();
+    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
+  });
+
+  if (note) {
+    lines.push("");
+    lines.push("Operator note");
+    lines.push(note);
+  } else if (noteDraft) {
+    lines.push("");
+    lines.push("Operator note draft");
+    lines.push(noteDraft);
+  }
+
+  if (evidence && evidence.raw) {
+    lines.push("");
+    lines.push("Review evidence");
+    lines.push(`- Status: ${evidenceStatus.label}`);
+    lines.push(`- Saved: ${new Date(evidence.savedAt).toLocaleString()}`);
+    lines.push(`- Checks detected: ${evidenceStatus.checks} of ${evidenceStatus.total}`);
+  }
+
+  if (activity.length) {
+    lines.push("");
+    lines.push("Recent activity");
+    activity.forEach((entry) => {
+      const detail = entry.detail ? ` — ${entry.detail}` : "";
+      lines.push(`- ${entry.label || "Dashboard update"}${detail} (${formatAdminActivityTime(entry.timestamp)})`);
+    });
+  }
+
+  return lines.join("\n");
+}
+
+function renderAdminReviewPacket() {
+  const list = document.getElementById("adminDashboardReviewPacketList");
+  const status = document.getElementById("adminDashboardReviewPacketStatus");
+  updateAdminPanelSummaries();
+  if (!list && !status) return;
+
+  const items = dashboardPacketItems();
+  if (list) {
+    list.innerHTML = items
+      .map((item) => `<li><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.value)}</span></li>`)
+      .join("");
+  }
+  if (status) {
+    const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
+    const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+    status.textContent = `Ready to copy · ${checklist.label} · ${evidence.label}`;
+  }
+}
+
+window.copyAdminReviewPacket = async function copyAdminReviewPacket() {
+  const button = document.getElementById("adminDashboardCopyPacketButton");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(buildAdminReviewPacketText());
+    recordAdminDashboardActivity("Review packet copied", currentAdminRecommendedAction.label || "");
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy packet";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy review packet:", err);
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy packet";
+      }, 2200);
+    }
+  }
+};
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+window.copyCycleStatusCommands = async function copyCycleStatusCommands() {
+  const status = document.getElementById("cycleSnapshotStatus");
+  const commands = [
+    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
+    "icp cycles balance -n ic",
+    "icp canister status teves_consulting_frontend -e ic",
+    "icp canister status teves_consulting_backend -e ic",
+  ].join("\n");
+  try {
+    await copyTextToClipboard(commands);
+    recordAdminDashboardActivity("Cycle status commands copied", "Frontend and backend status");
+    if (status) {
+      status.textContent = "Cycle status commands copied.";
+    }
+  } catch (err) {
+    console.error("Could not copy cycle status commands:", err);
+    if (status) {
+      status.textContent = "Could not copy cycle status commands.";
+    }
+  }
+};
+
+window.copyFrontendTopUpCommand = async function copyFrontendTopUpCommand() {
+  const status = document.getElementById("cycleSnapshotStatus");
+  const amount = recommendedFrontendTopUpAmount(loadCycleSnapshot());
+  if (!amount) {
+    if (status) {
+      status.textContent = "Paste a current wallet balance before copying the recommended frontend top-up.";
+    }
+    return;
+  }
+  const amountLabel = formatTopUpAmount(amount);
+  const command = [
+    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
+    `icp canister top-up teves_consulting_frontend --amount ${amountLabel} -e ic`,
+    "icp canister status teves_consulting_frontend -e ic",
+  ].join("\n");
+  try {
+    await copyTextToClipboard(command);
+    recordAdminDashboardActivity("Frontend top-up command copied", `${formatCycles(amount)} cycles`);
+    if (status) {
+      status.textContent = `Frontend top-up command copied for ${formatCycles(amount)} cycles.`;
+    }
+  } catch (err) {
+    console.error("Could not copy frontend top-up command:", err);
+    if (status) {
+      status.textContent = "Could not copy frontend top-up command.";
+    }
+  }
+};
+
+function buildAdminDeployPacketText() {
+  const snapshots = loadCycleSnapshot();
+  const frontend = snapshots.frontend || null;
+  const backend = snapshots.backend || null;
+  const wallet = snapshots.wallet || null;
+  const preDeploy = preDeployCheckStatus(snapshots);
+  const deployReadiness = deployReadinessStatus(snapshots);
+  const deployBuffer = frontendDeployBufferStatus(snapshots);
+  const topUpAmount = recommendedFrontendTopUpAmount(snapshots);
+  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
+  const quality = typeof combinedQualityAttentionStatus === "function"
+    ? combinedQualityAttentionStatus()
+    : { label: "Quality pending", className: "pending" };
+  const lines = [
+    "Aion Operator Deploy Packet",
+    `Generated: ${new Date().toLocaleString()}`,
+    "",
+    "Status",
+    `- Pre-deploy: ${preDeploy.label}`,
+    `- Deploy readiness: ${deployReadiness.label}`,
+    `- Deploy buffer: ${deployBuffer.label}`,
+    `- Quality: ${quality.label}`,
+    `- Site metrics: ${siteMetricsHealthStatus().label}`,
+    `- Site 30 days: ${dashboardMetricText("siteMetricsMonth")}`,
+    `- Site writes/day: ${dashboardMetricText("siteMetricsWrites")}`,
+    `- Site storage: ${dashboardMetricText("siteMetricsStorage")}`,
+    `- Review evidence: ${evidence.label}`,
+    "",
+    "Cycles",
+    `- Frontend: ${frontend ? `${formatCycles(frontend.cycles)} · ${formatSnapshotAge(frontend)} old` : "Missing snapshot"}`,
+    `- Backend: ${backend ? `${formatCycles(backend.cycles)} · ${formatSnapshotAge(backend)} old` : "Missing snapshot"}`,
+    `- Wallet: ${wallet ? formatCycles(wallet.cycles) : "Missing balance"}`,
+    `- Movement: ${dashboardMetricText("healthCycleMovement")}`,
+    `- Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
+    `- Suggested frontend deploy reserve: ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)}`,
+  ];
+  lines.push("");
+  lines.push("Deploy together");
+  lines.push("cd /Users/sandbox2/Documents/Projects/teves_consulting");
+  lines.push("git diff --check");
+  lines.push("scripts/prepare-frontend-assets.sh");
+  lines.push("mops test");
+  lines.push("mops build");
+  lines.push("icp canister start teves_consulting_backend -e ic");
+  lines.push("icp canister start teves_consulting_frontend -e ic");
+  lines.push("icp build teves_consulting_backend");
+  lines.push("icp build teves_consulting_frontend");
+  lines.push("icp deploy teves_consulting_backend -e ic --mode upgrade");
+  lines.push("icp deploy teves_consulting_frontend -e ic --mode upgrade");
+  if (preDeploy.missing.length) {
+    lines.push("");
+    lines.push("Before deploy");
+    preDeploy.missing.forEach((item) => lines.push(`- ${item}`));
+  }
+  return lines.join("\n");
+}
+
+function buildCycleMovementHistoryText() {
+  const entries = loadCycleHistory();
+  const lines = [
+    "Aion Operator Cycle Movement",
+    `Generated: ${new Date().toLocaleString()}`,
+    "",
+  ];
+  if (!entries.length) {
+    lines.push("No cycle movement has been recorded yet.");
+    lines.push("Paste a second frontend, backend, or wallet snapshot to compare movement.");
+    return lines.join("\n");
+  }
+  entries.slice(0, 8).forEach((entry) => {
+    const status = cycleMovementStatus(entry);
+    const recorded = entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : "Unknown time";
+    lines.push(`- ${status.label} · ${formatCycles(entry.previousCycles)} to ${formatCycles(entry.cycles)} · ${recorded}`);
+  });
+  return lines.join("\n");
+}
+
+window.copyCycleMovementHistory = async function copyCycleMovementHistory() {
+  const button = document.getElementById("adminDashboardCopyMovementButton");
+  const status = document.getElementById("cycleSnapshotStatus");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(buildCycleMovementHistoryText());
+    recordAdminDashboardActivity("Cycle movement copied", cycleMovementStatus(loadCycleHistory()[0]).label);
+    if (status) {
+      status.textContent = "Cycle movement copied.";
+    }
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy movement";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy cycle movement:", err);
+    if (status) {
+      status.textContent = "Could not copy cycle movement.";
+    }
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy movement";
+      }, 2200);
+    }
+  }
+};
+
+window.copyAdminDeployPacket = async function copyAdminDeployPacket() {
+  const button = document.getElementById("adminDashboardCopyDeployPacketButton");
+  const status = document.getElementById("cycleSnapshotStatus");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(buildAdminDeployPacketText());
+    recordAdminDashboardActivity("Deploy packet copied", preDeployCheckStatus(loadCycleSnapshot()).label);
+    if (status) {
+      status.textContent = "Deploy packet copied.";
+    }
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy deploy packet";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy deploy packet:", err);
+    if (status) {
+      status.textContent = "Could not copy deploy packet.";
+    }
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy deploy packet";
+      }, 2200);
+    }
+  }
+};
+
+window.copyAdminDashboardSummary = async function copyAdminDashboardSummary() {
+  const button = document.getElementById("adminDashboardCopyButton");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(buildAdminDashboardSummaryText());
+    recordAdminDashboardActivity("Copied dashboard summary", currentAdminRecommendedAction.label || "");
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy summary";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy dashboard summary:", err);
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy summary";
+      }, 2200);
+    }
+  }
+};
+
+function buildAdminDashboardActionsText() {
+  const snapshots = loadCycleSnapshot();
+  const actions = dashboardActionQueue(snapshots);
+  const readiness = operatorReadinessScore(snapshots);
+  const lines = [
+    "Aion Operator Next Actions",
+    `Generated: ${new Date().toLocaleString()}`,
+    `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
+    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
+    `Freshness: ${dashboardMetricText("healthFreshness")}`,
+  ];
+  if (readiness.missing && readiness.missing.length) {
+    lines.push(`Missing readiness: ${readiness.missing.join(", ")}`);
+  }
+  lines.push("", "Actions");
+  actions.forEach((action, index) => {
+    const destination = dashboardActionDestination(action);
+    lines.push(`${index + 1}. ${action.label}${action.tag ? ` (${action.tag})` : ""}${destination ? ` — ${destination}` : ""}`);
+  });
+  return lines.join("\n");
+}
+
+window.copyAdminDashboardActions = async function copyAdminDashboardActions() {
+  const button = document.getElementById("adminDashboardCopyActionsButton");
+  const previousText = button ? button.textContent : "";
+  try {
+    await copyTextToClipboard(buildAdminDashboardActionsText());
+    recordAdminDashboardActivity("Copied next actions", currentAdminRecommendedAction.label || "");
+    if (button) {
+      button.textContent = "Copied";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy actions";
+      }, 1600);
+    }
+  } catch (err) {
+    console.error("Could not copy next actions:", err);
+    if (button) {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = previousText || "Copy actions";
+      }, 2200);
+    }
+  }
+};
+
 function setCycleInputValue(kind, snapshot) {
   const inputElement = document.getElementById(`${kind}CycleStatusInput`);
   if (!inputElement || inputElement.value.trim() || !snapshot) return;
+  if (kind === "wallet") {
+    inputElement.value = `Balance: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")} cycles`;
+    return;
+  }
   inputElement.value = `Canister Name: ${snapshot.canisterName || kind}\nCanister Id: ${snapshot.canisterId || ""}\nCycles: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")}\nReserved cycles limit: ${snapshot.reservedLimit ? snapshot.reservedLimit.toLocaleString().replaceAll(",", "_") : ""}\nIdle cycles burned per day: ${snapshot.burnPerDay ? snapshot.burnPerDay.toLocaleString().replaceAll(",", "_") : ""}`;
 }
 
 function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   const frontend = snapshots.frontend || null;
   const backend = snapshots.backend || null;
+  const wallet = snapshots.wallet || null;
   const frontendSummary = document.getElementById("frontendCycleSnapshotSummary");
   const backendSummary = document.getElementById("backendCycleSnapshotSummary");
+  const walletSummary = document.getElementById("walletCycleSnapshotSummary");
+  const topUpSummary = document.getElementById("frontendTopUpSummary");
   const shortest = shortestCycleRunway(snapshots);
   const oldest = oldestCycleSnapshot(snapshots);
-  const recommendedAction = cycleRecommendedAction(snapshots);
 
   if (!frontend) {
     setAdminHealthMetric("healthFrontendCycles", "Add snapshot");
@@ -11855,6 +14543,24 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
     const percent = cyclePercent(backend);
     const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
     setAdminHealthMetric("healthBackendCycles", `${formatCycles(backend.cycles)}${percentLabel}`);
+  }
+
+  if (!wallet) {
+    setAdminHealthMetric("healthWalletCycles", "Add balance");
+  } else {
+    setAdminHealthMetric("healthWalletCycles", formatCycles(wallet.cycles));
+  }
+
+  const canisterStateElement = document.getElementById("healthCanisterState");
+  if (canisterStateElement) {
+    const canisterState = canisterStateStatus(snapshots);
+    canisterStateElement.innerHTML = `<span class="admin-cycle-runway-label ${canisterState.className}">${escapeHtml(canisterState.label)}</span>`;
+  }
+
+  const topUpPlanElement = document.getElementById("healthTopUpPlan");
+  if (topUpPlanElement) {
+    const topUpPlan = topUpPlanStatus(snapshots);
+    topUpPlanElement.innerHTML = `<span class="admin-cycle-runway-label ${topUpPlan.className}">${escapeHtml(topUpPlan.label)}</span>`;
   }
 
   if (!shortest) {
@@ -11901,22 +14607,39 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   if (backendSummary) {
     backendSummary.innerHTML = cycleSnapshotSummaryHtml(backend, "Backend");
   }
-
-  const actionElement = document.getElementById("healthCycleAction");
-  if (actionElement) {
-    actionElement.innerHTML = `<span class="admin-cycle-runway-label ${recommendedAction.className}">${escapeHtml(recommendedAction.label)}</span>`;
+  if (walletSummary) {
+    walletSummary.innerHTML = walletCycleSnapshotSummaryHtml(wallet);
   }
+  renderCycleMovement();
+  if (topUpSummary) {
+    topUpSummary.innerHTML = frontendTopUpSummaryHtml(snapshots);
+  }
+
+  const topUpButton = document.getElementById("frontendTopUpButton");
+  if (topUpButton) {
+    const topUpAmount = recommendedFrontendTopUpAmount(snapshots);
+    topUpButton.textContent = topUpAmount
+      ? `Copy top-up ${formatTopUpAmount(topUpAmount)}`
+      : "Copy recommended top-up";
+  }
+
   const deployReadinessElement = document.getElementById("healthDeployReadiness");
   if (deployReadinessElement) {
     const deployReadiness = deployReadinessStatus(snapshots);
     deployReadinessElement.innerHTML = `<span class="admin-cycle-runway-label ${deployReadiness.className}">${escapeHtml(deployReadiness.label)}</span>`;
   }
-  updateDashboardCycleSummary(recommendedAction);
+  renderFrontendDeployBuffer(snapshots);
+  renderPreDeployCheck(snapshots);
+  refreshAdminRecommendedAction(snapshots);
   renderDashboardRefresh();
   renderDashboardReview();
-  renderDashboardAttention(snapshots);
   setCycleInputValue("frontend", frontend);
   setCycleInputValue("backend", backend);
+  setCycleInputValue("wallet", wallet);
+  renderAdminReviewEvidence();
+  renderAdminDashboardChecklist();
+  renderAdminDashboardNote();
+  renderAdminDashboardActivity();
 }
 
 window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "frontend") {
@@ -11926,15 +14649,103 @@ window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "
   try {
     const snapshot = parseCycleStatusSnapshot(input ? input.value : "", kind);
     const snapshots = loadCycleSnapshot();
+    recordCycleHistory({ [kind]: snapshot }, snapshots);
     snapshots[kind] = snapshot;
     persistCycleSnapshots(snapshots);
     renderCycleSnapshot(snapshots);
+    if (snapshots.frontend && snapshots.backend) {
+      updateAdminDashboardChecklist({ snapshots: true });
+    }
+    recordAdminDashboardActivity(
+      `${ADMIN_CYCLE_LABELS[kind] || "Canister"} snapshot updated`,
+      `${formatCycles(snapshot.cycles)} cycles`
+    );
     if (status) {
       status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot updated.`;
     }
   } catch (err) {
     if (status) {
       status.textContent = err.message || "Could not parse cycle snapshot.";
+    }
+  }
+};
+
+window.saveCombinedCycleSnapshotsFromInput = function saveCombinedCycleSnapshotsFromInput() {
+  const input = document.getElementById("combinedCycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+
+  try {
+    const updates = parseCombinedCycleSnapshots(input ? input.value : "");
+    const snapshots = loadCycleSnapshot();
+    recordCycleHistory(updates, snapshots);
+    Object.assign(snapshots, updates);
+    persistCycleSnapshots(snapshots);
+    renderCycleSnapshot(snapshots);
+
+    if (updates.frontend && updates.backend) {
+      updateAdminDashboardChecklist({ snapshots: true });
+    }
+    if (updates.wallet) {
+      updateAdminDashboardChecklist({ wallet: true });
+    }
+
+    const labels = Object.keys(updates).map((key) => ADMIN_CYCLE_LABELS[key] || key);
+    recordAdminDashboardActivity("Cycle snapshots updated", labels.join(", "));
+    if (status) {
+      status.textContent = `Updated ${labels.join(", ")} from combined paste.`;
+    }
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not parse combined cycles output.";
+    }
+  }
+};
+
+window.pasteCombinedCycleSnapshotsFromClipboard = async function pasteCombinedCycleSnapshotsFromClipboard() {
+  const input = document.getElementById("combinedCycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+  try {
+    const text = await readTextFromClipboardOrPrompt("Paste combined cycles output.");
+    if (!text.trim()) return;
+    if (input) {
+      input.value = text;
+    }
+    window.saveCombinedCycleSnapshotsFromInput();
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not read combined cycles output.";
+    }
+  }
+};
+
+window.clearCombinedCycleInput = function clearCombinedCycleInput() {
+  const input = document.getElementById("combinedCycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+  if (input) input.value = "";
+  if (status) {
+    status.textContent = "Combined cycles paste cleared.";
+  }
+};
+
+window.saveCycleWalletFromInput = function saveCycleWalletFromInput() {
+  const input = document.getElementById("walletCycleStatusInput");
+  const status = document.getElementById("cycleSnapshotStatus");
+
+  try {
+    const snapshot = parseCycleWalletSnapshot(input ? input.value : "");
+    const snapshots = loadCycleSnapshot();
+    recordCycleHistory({ wallet: snapshot }, snapshots);
+    snapshots.wallet = snapshot;
+    persistCycleSnapshots(snapshots);
+    renderCycleSnapshot(snapshots);
+    updateAdminDashboardChecklist({ wallet: true });
+    recordAdminDashboardActivity("Wallet balance updated", `${formatCycles(snapshot.cycles)} cycles`);
+    if (status) {
+      status.textContent = "Cycles wallet balance updated.";
+    }
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message || "Could not parse cycles wallet balance.";
     }
   }
 };
@@ -11947,8 +14758,26 @@ window.clearCycleSnapshot = function clearCycleSnapshot(kind = "frontend") {
   const status = document.getElementById("cycleSnapshotStatus");
   if (input) input.value = "";
   renderCycleSnapshot(snapshots);
+  if (kind === "frontend" || kind === "backend") {
+    updateAdminDashboardChecklist({ snapshots: false });
+  }
+  if (kind === "wallet") {
+    updateAdminDashboardChecklist({ wallet: false });
+  }
+  recordAdminDashboardActivity(`${ADMIN_CYCLE_LABELS[kind] || "Canister"} snapshot cleared`);
   if (status) {
     status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot cleared.`;
+  }
+};
+
+window.clearCycleHistory = function clearCycleHistory() {
+  const status = document.getElementById("cycleSnapshotStatus");
+  persistCycleHistory([]);
+  renderCycleMovement();
+  renderLocalBackupMetric();
+  recordAdminDashboardActivity("Cycle movement cleared");
+  if (status) {
+    status.textContent = "Cycle movement history cleared.";
   }
 };
 
@@ -11957,6 +14786,7 @@ window.markDashboardReviewed = function markDashboardReviewed() {
   persistDashboardReview(review);
   renderDashboardReview(review);
   renderCycleSnapshot(loadCycleSnapshot());
+  recordAdminDashboardActivity("Dashboard reviewed", "Operator marked current state reviewed");
 };
 
 window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
@@ -11977,11 +14807,13 @@ window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
       loadMemories(),
       loadGoldenTests(),
       loadFeedback(),
+      loadSiteMetrics(),
     ]);
     const refresh = { refreshedAt: new Date().toISOString() };
     persistDashboardRefresh(refresh);
     renderDashboardRefresh(refresh);
     renderCycleSnapshot(loadCycleSnapshot());
+    recordAdminDashboardActivity("Dashboard refreshed", "Memory, tests, feedback, and site metrics requested");
   } finally {
     if (button) {
       button.disabled = false;
@@ -11998,6 +14830,7 @@ if (savedGolden) {
 }
 initializeCandidateHarnessContext();
 initializeCandidateModelList();
+restoreCachedSiteMetrics();
 renderCycleSnapshot();
 renderGoldenDashboardSignal(loadSavedGoldenResults());
 renderFeedbackDashboardSignal(latestFeedback);
