@@ -63,7 +63,15 @@ module {
       not value.contains(#text("?")) and
       not value.contains(#text("#")) and
       value != "/admin.html" and
-      not value.startsWith(#text("/admin/"))
+      not value.startsWith(#text("/admin/")) and
+      value != "/robots.txt" and
+      value != "/favicon.ico" and
+      value != "/sitemap.xml" and
+      value != "/manifest.json" and
+      value != "/site.webmanifest" and
+      value != "/browserconfig.xml" and
+      not value.startsWith(#text("/assets/")) and
+      not value.startsWith(#text("/apple-touch-icon"))
     );
   };
 

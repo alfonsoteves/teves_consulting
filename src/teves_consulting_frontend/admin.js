@@ -1113,6 +1113,18 @@ let latestSiteMetricsSource = "none";
 const SITE_METRICS_PUBLIC_PAGE_COUNT = 164;
 const SITE_METRICS_BACKEND_ROW_LIMIT = 2000;
 const SITE_METRICS_QUERY_LIMIT = 2000;
+const SITE_METRICS_TECHNICAL_PATHS = new Set([
+  "/robots.txt",
+  "/favicon.ico",
+  "/sitemap.xml",
+  "/manifest.json",
+  "/site.webmanifest",
+  "/browserconfig.xml",
+]);
+const SITE_METRICS_TECHNICAL_PREFIXES = [
+  "/assets/",
+  "/apple-touch-icon",
+];
 
 function normalizeSiteMetricEntry(entry = {}) {
   return {
@@ -1236,7 +1248,17 @@ function safeSiteMetricHref(path = "/") {
     : "/";
 }
 
+function isTrackableSiteMetricPath(path = "") {
+  if (!path || SITE_METRICS_TECHNICAL_PATHS.has(path)) return false;
+  return !SITE_METRICS_TECHNICAL_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+function displaySiteMetrics(metrics = []) {
+  return normalizeSiteMetrics(metrics).filter((entry) => isTrackableSiteMetricPath(entry.pagePath));
+}
+
 function summarizeSiteMetrics(metrics = []) {
+  const displayMetrics = displaySiteMetrics(metrics);
   const today = siteMetricDayKey();
   const weekKeyList = recentSiteMetricDayKeyList(7);
   const weekKeys = new Set(weekKeyList);
@@ -1255,7 +1277,7 @@ function summarizeSiteMetrics(metrics = []) {
     other: 0,
   };
 
-  metrics.forEach((entry) => {
+  displayMetrics.forEach((entry) => {
     const count = metricNatToNumber(entry.count);
     const pagePath = entry.pagePath || "/";
     const locale = entry.locale || "unknown";
@@ -1364,6 +1386,7 @@ function refreshSiteMetricsDashboardSignals() {
 }
 
 function renderSiteMetrics(metrics = latestSiteMetrics) {
+  const displayMetrics = displaySiteMetrics(metrics);
   const summary = summarizeSiteMetrics(metrics);
   const todayElement = document.getElementById("siteMetricsToday");
   const weekElement = document.getElementById("siteMetricsWeek");
@@ -1394,7 +1417,7 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
   if (spanishElement) spanishElement.textContent = summary.localeTotals.es.toLocaleString();
   if (writesElement) writesElement.textContent = `${estimatedSiteMetricWritesPerDay(summary).toLocaleString()} / day`;
   if (coverageElement) coverageElement.textContent = `${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} pages`;
-  if (storageElement) storageElement.textContent = `${normalizeSiteMetrics(metrics).length.toLocaleString()} / ${SITE_METRICS_BACKEND_ROW_LIMIT.toLocaleString()}`;
+  if (storageElement) storageElement.textContent = `${displayMetrics.length.toLocaleString()} shown / ${normalizeSiteMetrics(metrics).length.toLocaleString()} raw`;
   if (boundaryElement) boundaryElement.textContent = "GA supplement";
   if (latestElement) {
     latestElement.textContent = summary.latest
@@ -1405,7 +1428,7 @@ function renderSiteMetrics(metrics = latestSiteMetrics) {
   refreshSiteMetricsDashboardSignals();
 
   if (!resultsElement) return;
-  if (!metrics.length) {
+  if (!displayMetrics.length) {
     resultsElement.innerHTML = '<p class="meta">No ICP site metrics have been recorded yet.</p>';
     return;
   }
@@ -1489,7 +1512,7 @@ function buildSiteMetricsSummaryText() {
     `Spanish, 7 days: ${summary.localeTotals.es.toLocaleString()}`,
     `Estimated writes/day: ${estimatedSiteMetricWritesPerDay(summary).toLocaleString()}`,
     `Tracker coverage: ${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} public pages`,
-    `Storage rows loaded: ${normalizeSiteMetrics(latestSiteMetrics).length.toLocaleString()} / ${SITE_METRICS_BACKEND_ROW_LIMIT.toLocaleString()}`,
+    `Storage rows shown: ${displaySiteMetrics(latestSiteMetrics).length.toLocaleString()} / ${normalizeSiteMetrics(latestSiteMetrics).length.toLocaleString()} raw`,
     "Boundary: Approximate ICP supplement; Google Analytics remains source of truth",
     "Privacy: Stores day, path, title, locale, and count; no visitor IDs, IPs, or user agents",
     `Latest view: ${summary.latest ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}` : "None"}`,
@@ -1537,7 +1560,7 @@ function buildSiteMetricsCsvText(metrics = latestSiteMetrics) {
   const lines = [
     ["dayKey", "pagePath", "pageTitle", "locale", "count", "firstSeenAt", "lastSeenAt"].map(csvCell).join(","),
   ];
-  normalizeSiteMetrics(metrics).forEach((entry) => {
+  displaySiteMetrics(metrics).forEach((entry) => {
     lines.push([
       entry.dayKey,
       entry.pagePath,

@@ -25,6 +25,11 @@ assert not WebAnalytics.validPublicPagePath("/../admin.html");
 assert not WebAnalytics.validPublicPagePath("/admin.html");
 assert not WebAnalytics.validPublicPagePath("/admin/settings");
 assert not WebAnalytics.validPublicPagePath("/insights.html?x=1");
+assert not WebAnalytics.validPublicPagePath("/robots.txt");
+assert not WebAnalytics.validPublicPagePath("/favicon.ico");
+assert not WebAnalytics.validPublicPagePath("/sitemap.xml");
+assert not WebAnalytics.validPublicPagePath("/assets/images/aion.png");
+assert not WebAnalytics.validPublicPagePath("/apple-touch-icon.png");
 
 let first = WebAnalytics.recordPageView([], 3, "2026-07-26", "/insights.html", "Insights", "en", 10);
 assert first.accepted;
@@ -54,6 +59,11 @@ let rejectedPath = WebAnalytics.recordPageView(second.counts, 3, "2026-07-26", "
 assert not rejectedPath.accepted;
 assert rejectedPath.counts.size() == 1;
 assert rejectedPath.counts[0].count == 2;
+
+let rejectedTechnicalPath = WebAnalytics.recordPageView(second.counts, 3, "2026-07-26", "/robots.txt", "Robots", "en", 30);
+assert not rejectedTechnicalPath.accepted;
+assert rejectedTechnicalPath.counts.size() == 1;
+assert rejectedTechnicalPath.counts[0].count == 2;
 
 let capped = WebAnalytics.recordPageView(
   [entry("2026-07-24", "/one.html", "en", 1), entry("2026-07-25", "/two.html", "en", 1), entry("2026-07-26", "/three.html", "en", 1)],
