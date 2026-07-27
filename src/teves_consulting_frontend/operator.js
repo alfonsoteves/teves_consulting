@@ -334,6 +334,65 @@ async function loadMockRolePipeline() {
   renderMockPipeline(result);
 }
 
+function renderLiveRolePrototypeGate(result) {
+  const container = document.getElementById("livePrototypeGateResults");
+  if (!container) return;
+  if (!result || !result.accepted || !result.report) {
+    container.innerHTML = `<p>Live prototype gate unavailable: ${escapeHtml((result && result.reason) || "review required")}</p>`;
+    return;
+  }
+  const report = result.report;
+  const prototype = report.rolePrototype || {};
+  const route = report.providerPolicyRoute || {};
+  const boundary = report.boundary || {};
+  const approval = report.approvalEvidence || {};
+  container.innerHTML = `
+    <p class="meta">Version: ${escapeHtml(report.gateVersion || "")} | State: ${escapeHtml(report.executionState || "")} | Live call: ${boolText(report.liveCallMade)} | Provider calls: ${boolText(report.providerCallsEnabled)} | Memory writes: ${boolText(report.memoryWritesEnabled)}</p>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>${escapeHtml(prototype.roleId || "")}</h3>
+        <p>${escapeHtml(prototype.reasoningResponsibility || "")}</p>
+        <ul>
+          <li>Eligible: ${boolText(prototype.livePrototypeEligible)}</li>
+          <li>Context accepted: ${boolText(prototype.contextPacketAccepted)}</li>
+          <li>Mock pipeline accepted: ${boolText(prototype.mockPipelineAccepted)}</li>
+          <li>Provider-neutral input: ${boolText(prototype.providerNeutralRoleInput)}</li>
+          <li>Payload prepared: ${boolText(prototype.executionPayloadPrepared)}</li>
+          <li>Separate execution approval: ${boolText(prototype.requiresSeparateLiveExecutionApproval)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Provider Policy</h3>
+        <p class="meta">${escapeHtml(route.policyAuthority || "")}</p>
+        <ul>
+          <li>Operation: ${escapeHtml(route.operationId || "")}</li>
+          <li>Route: ${escapeHtml(route.routeId || "")}</li>
+          <li>Provider: ${escapeHtml(route.providerId || "")}</li>
+          <li>Selected by role: ${boolText(route.selectedByRole)}</li>
+          <li>Mutable by role: ${boolText(route.mutableByRole)}</li>
+          <li>Fallback: ${boolText(route.automaticFallbackAllowed)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Boundary</h3>
+        <ul>
+          <li>Role policy owns route: ${boolText(boundary.rolePolicyOwnsProviderRoute)}</li>
+          <li>Provider policy owns route: ${boolText(boundary.providerPolicyOwnsExecutionRoute)}</li>
+          <li>Governed transition: ${boolText(approval.governedAionWorkflowTransition)}</li>
+          <li>Autonomous transfer: ${boolText(approval.autonomousRoleTransferAllowed)}</li>
+          <li>Oracle selectable: ${boolText(boundary.oracleSelectableRole)}</li>
+          <li>Engineer live prototype: ${boolText(boundary.engineerLivePrototypeEnabled)}</li>
+        </ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadLiveRolePrototypeGate() {
+  const result = await renderFetch("/admin/live-role-prototype-gate");
+  renderLiveRolePrototypeGate(result);
+}
+
 async function loadRolesAndRules() {
   const [nativeReport, renderBridgeReport] = await Promise.all([
     actor.getAionRoleRulesOperatingAgreementStatus(),
@@ -347,6 +406,7 @@ async function loadRolesAndRules() {
   renderReport(nativeReport);
   await loadRoleContextPackets();
   await loadMockRolePipeline();
+  await loadLiveRolePrototypeGate();
 }
 
 async function refreshOperatorAccess() {
