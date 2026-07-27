@@ -853,6 +853,98 @@ async function loadApprovalBoundary() {
   renderApprovalBoundary(report);
 }
 
+function renderTrioValidation(report) {
+  const container = document.getElementById("trioValidationResults");
+  if (!container) return;
+  const acceptance = report.phase910Acceptance || {};
+  const oracle = report.oracleDeferral || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.validationVersion || "")} | Source Approval accepted: ${boolText(report.sourceApprovalBoundaryAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.10 Accepted</h2>
+        <p>${escapeHtml(acceptance.acceptedBaseline || "")}</p>
+        <ul>
+          <li>Accepted: ${boolText(acceptance.phase910Accepted)}</li>
+          <li>Approval gates separate: ${boolText(acceptance.approvalGatesSeparate)}</li>
+          <li>Execution authorized: ${boolText(acceptance.executionAuthorized)}</li>
+          <li>Oracle approved next: ${boolText(acceptance.oracleApprovedAsNext)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Oracle Deferred</h2>
+        <p>${escapeHtml(oracle.reason || "")}</p>
+        <ul>
+          <li>Definition deferred: ${boolText(oracle.oracleDefinitionDeferred)}</li>
+          <li>May proceed after validation: ${boolText(oracle.oracleMayProceedAfterValidation)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>One Aion: ${boolText(boundary.oneAionIdentityPreserved)}</li>
+          <li>Roles remain responsibilities: ${boolText(boundary.rolesRemainResponsibilities)}</li>
+          <li>Validates usefulness: ${boolText(boundary.validatesUsefulnessNotExistence)}</li>
+          <li>Execution authorization: ${boolText(boundary.executionAuthorizationGranted)}</li>
+          <li>Oracle work approved: ${boolText(boundary.oracleWorkApproved)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Validation Dimensions</h3>
+    ${table(
+      ["Dimension", "Question", "Current Evidence", "Required Evidence", "Oracle Ready"],
+      (report.dimensions || []).map((dimension) => `
+        <tr>
+          <td><strong>${escapeHtml(dimension.title || "")}</strong><br><span class="meta">${escapeHtml(dimension.dimensionId || "")}</span></td>
+          <td>${escapeHtml(dimension.question || "")}</td>
+          <td>${escapeHtml(dimension.currentEvidence || "")}</td>
+          <td>${escapeHtml(dimension.requiredEvidence || "")}</td>
+          <td>${boolText(dimension.sufficientForOracleReadiness)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Bounded Scenarios</h3>
+    ${table(
+      ["Scenario", "Prime", "Mirror", "Engineer", "Operator", "Execution Required"],
+      (report.scenarios || []).map((scenario) => `
+        <tr>
+          <td><strong>${escapeHtml(scenario.title || "")}</strong><br><span class="meta">${escapeHtml(scenario.workCategory || "")}</span></td>
+          <td>${escapeHtml(scenario.primeResponsibility || "")}</td>
+          <td>${escapeHtml(scenario.mirrorResponsibility || "")}</td>
+          <td>${escapeHtml(scenario.engineerResponsibility || "")}</td>
+          <td>${escapeHtml(scenario.operatorDecision || "")}</td>
+          <td>${boolText(scenario.executionRequiredForValidation)}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Evidence Gates</h3>
+        <ul>${(report.evidenceGates || []).map((gate) => `
+          <li><strong>${escapeHtml(gate.requirement || "")}</strong><br><span class="meta">${escapeHtml(gate.evidenceSource || "")}. Satisfied: ${boolText(gate.currentlySatisfied)}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Metrics</h3>
+        <ul>${(report.metrics || []).map((metric) => `
+          <li><strong>${escapeHtml(metric.title || "")}</strong><br><span class="meta">${escapeHtml(metric.target || "")}. Measured: ${boolText(metric.measuredInPhase911)}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Before Oracle</h3>
+        <ul>${(oracle.requiredBeforeOracle || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadTrioValidation() {
+  const report = await renderFetch("/admin/trio-workflow-validation");
+  renderTrioValidation(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1039,6 +1131,7 @@ async function loadRolesAndRules() {
   await loadEngineerWorkflow();
   await loadCoordinationLoop();
   await loadApprovalBoundary();
+  await loadTrioValidation();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
