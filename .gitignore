@@ -34,3 +34,16 @@ canister_ids.json
 .mops/
 
 site_dist/
+
+# Public repo hygiene: internal evidence and local/private state
+private/
+deployed/
+.icp/data/
+docs/
+test/
+
+# Public repo hygiene: internal implementation and operator scripts
+*.sh
+mops.toml
+mops.lock
+src/teves_consulting_backend/
