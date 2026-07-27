@@ -421,6 +421,119 @@ async function loadPrimeHome() {
   renderPrimeHome(report);
 }
 
+function renderMirrorWorkflow(report) {
+  const container = document.getElementById("mirrorWorkflowResults");
+  if (!container) return;
+  const review = report.phase97Review || {};
+  const packet = report.primePlanningPacket || {};
+  const scope = report.reviewScope || {};
+  const output = report.mirrorOutput || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.workflowVersion || "")} | Source Prime accepted: ${boolText(report.sourcePrimeAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.7 Review</h2>
+        <p>${escapeHtml(review.acceptedDirection || "")}</p>
+        <ul>
+          <li>Accepted: ${boolText(review.phase97Accepted)}</li>
+          <li>Sequence: ${escapeHtml((review.recommendedSequence || []).join(" -> "))}</li>
+          <li>Visual timing: ${escapeHtml(review.visualRefinementTiming || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Prime Packet</h2>
+        <p>${escapeHtml(packet.currentState || "")}</p>
+        <ul>
+          <li>Approved for Mirror: ${boolText(packet.operatorApprovedForMirror)}</li>
+          <li>Memory write approved: ${boolText(packet.canonicalMemoryWriteApproved)}</li>
+          <li>Recommended: ${escapeHtml(packet.recommendedNextStep || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Mirror Question</h2>
+        <p><strong>${escapeHtml(scope.reviewQuestion || "")}</strong></p>
+        <ul>
+          <li>Assumptions: ${boolText(scope.reviewsAssumptions)}</li>
+          <li>Risks: ${boolText(scope.reviewsRisks)}</li>
+          <li>Contradictions: ${boolText(scope.reviewsContradictions)}</li>
+          <li>Alternatives: ${boolText(scope.reviewsAlternatives)}</li>
+          <li>Decision quality: ${boolText(scope.reviewsDecisionQuality)}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Why Now</h3>
+        <ul>${(packet.whyNow || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Changed Since Last Session</h3>
+        <ul>${(packet.whatChangedSinceLastSession || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Waiting For Alfonso</h3>
+        <ul>${(packet.pendingHumanDecisions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Mirror Findings</h3>
+    ${table(
+      ["Finding", "Category", "Severity", "Observation", "Prime Revision", "Blocks Engineer"],
+      (report.findings || []).map((finding) => `
+        <tr>
+          <td><strong>${escapeHtml(finding.title || "")}</strong><br><span class="meta">${escapeHtml(finding.findingId || "")}</span></td>
+          <td>${escapeHtml(finding.category || "")}</td>
+          <td>${escapeHtml(finding.severity || "")}</td>
+          <td>${escapeHtml(finding.observation || "")}</td>
+          <td>${boolText(finding.requiresPrimeRevision)}</td>
+          <td>${boolText(finding.blocksEngineerHandoff)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Governed Flow</h3>
+    ${table(
+      ["Step", "Owner", "Input", "Output", "Approval", "Automatic Transfer"],
+      (report.workflowSteps || []).map((step) => `
+        <tr>
+          <td><strong>${escapeHtml(step.stepName || "")}</strong><br><span class="meta">${escapeHtml(String(step.stepIndex || ""))}</span></td>
+          <td>${escapeHtml(step.owner || "")}</td>
+          <td>${escapeHtml(step.inputArtifact || "")}</td>
+          <td>${escapeHtml(step.outputArtifact || "")}</td>
+          <td>${boolText(step.operatorApprovalRequired)}</td>
+          <td>${boolText(step.automaticTransferAllowed)}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Mirror Output</h3>
+        <p>${escapeHtml(output.summary || "")}</p>
+        <ul>
+          <li>To Prime: ${escapeHtml(output.recommendationToPrime || "")}</li>
+          <li>To Operator: ${escapeHtml(output.recommendationToOperator || "")}</li>
+          <li>Implementation authorized: ${boolText(output.implementationAuthorized)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Boundary</h3>
+        <ul>
+          <li>One Aion: ${boolText(boundary.oneAionIdentityPreserved)}</li>
+          <li>Mirror is critique responsibility: ${boolText(boundary.mirrorIsAionCritiqueResponsibility)}</li>
+          <li>Independent agent: ${boolText(boundary.mirrorIsIndependentAgent)}</li>
+          <li>Autonomous Engineer invoke: ${boolText(boundary.mirrorCanAutonomouslyInvokeEngineer)}</li>
+          <li>Provider route changes: ${boolText(boundary.providerRouteChangesEnabled)}</li>
+        </ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadMirrorWorkflow() {
+  const report = await renderFetch("/admin/mirror-workflow");
+  renderMirrorWorkflow(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -603,6 +716,7 @@ async function loadRolesAndRules() {
   }
   renderReport(nativeReport);
   await loadPrimeHome();
+  await loadMirrorWorkflow();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
