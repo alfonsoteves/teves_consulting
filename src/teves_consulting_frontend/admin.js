@@ -493,6 +493,81 @@ const idlFactory = ({ IDL }) => {
     nextMilestone: IDL.Text,
   });
 
+  const RoleRulesRoleSummary = IDL.Record({
+    roleId: IDL.Text,
+    owns: IDL.Vec(IDL.Text),
+    doesNotOwn: IDL.Vec(IDL.Text),
+    receivesContinuity: IDL.Text,
+    outputMayInfluence: IDL.Vec(IDL.Text),
+    operatorApprovalRequiredBefore: IDL.Vec(IDL.Text),
+  });
+
+  const RoleRulesRule = IDL.Record({
+    id: IDL.Text,
+    title: IDL.Text,
+    category: IDL.Text,
+    appliesTo: IDL.Vec(IDL.Text),
+    requirement: IDL.Text,
+    enforcement: IDL.Text,
+    validatorId: IDL.Text,
+    operatorVisible: IDL.Bool,
+    severity: IDL.Text,
+  });
+
+  const RoleRulesTransitionRule = IDL.Record({
+    transition: IDL.Text,
+    description: IDL.Text,
+    operatorApprovalRequired: IDL.Bool,
+    autonomousRoleTransferAllowed: IDL.Bool,
+    failClosedWithoutApproval: IDL.Bool,
+  });
+
+  const RoleRulesOutputInfluenceRule = IDL.Record({
+    artifactKind: IDL.Text,
+    producedBy: IDL.Text,
+    mayInfluenceLaterWork: IDL.Bool,
+    influenceRequiresOperatorReview: IDL.Bool,
+    canonicalMemoryWriteAllowed: IDL.Bool,
+    providerRouteChangeAllowed: IDL.Bool,
+    implementationAuthorizationAllowed: IDL.Bool,
+  });
+
+  const RoleRulesSurfaceRule = IDL.Record({
+    surfaceId: IDL.Text,
+    purpose: IDL.Text,
+    operatorSessionRequired: IDL.Bool,
+    publicSurfaceAllowed: IDL.Bool,
+    consequentialActionsAllowed: IDL.Bool,
+  });
+
+  const RoleRulesAcceptanceCheck = IDL.Record({
+    id: IDL.Text,
+    requirement: IDL.Text,
+    satisfied: IDL.Bool,
+    evidence: IDL.Text,
+  });
+
+  const RoleRulesOperatingAgreementReport = IDL.Record({
+    agreementVersion: IDL.Text,
+    milestone: IDL.Text,
+    purpose: IDL.Text,
+    rolePolicyQuestion: IDL.Text,
+    providerPolicyQuestion: IDL.Text,
+    roles: IDL.Vec(RoleRulesRoleSummary),
+    rules: IDL.Vec(RoleRulesRule),
+    transitionRules: IDL.Vec(RoleRulesTransitionRule),
+    outputInfluenceRules: IDL.Vec(RoleRulesOutputInfluenceRule),
+    surfaceRules: IDL.Vec(RoleRulesSurfaceRule),
+    acceptanceChecklist: IDL.Vec(RoleRulesAcceptanceCheck),
+    readOnly: IDL.Bool,
+    liveInferenceEnabled: IDL.Bool,
+    consequentialActionsEnabled: IDL.Bool,
+    publicBehaviorChanged: IDL.Bool,
+    canonicalContinuityOwner: IDL.Text,
+    trustedContextPreparer: IDL.Text,
+    nextMilestone: IDL.Text,
+  });
+
   const OperatorStatus = IDL.Record({
     isOperator: IDL.Bool,
     allowlistConfigured: IDL.Bool,
@@ -586,6 +661,12 @@ const idlFactory = ({ IDL }) => {
     getAionRoleBasedIntelligenceStatus: IDL.Func(
       [],
       [RoleBasedIntelligenceReport],
+      ["query"]
+    ),
+
+    getAionRoleRulesOperatingAgreementStatus: IDL.Func(
+      [],
+      [RoleRulesOperatingAgreementReport],
       ["query"]
     ),
 
@@ -11849,6 +11930,111 @@ function renderRoleBasedIntelligenceReport(data = {}, sourceLabel = "Status") {
   `;
 }
 
+function renderRoleRulesOperatingAgreementReport(data = {}, sourceLabel = "Status") {
+  const roles = Array.isArray(data.roles) ? data.roles : [];
+  const rules = Array.isArray(data.rules) ? data.rules : [];
+  const transitionRules = Array.isArray(data.transitionRules) ? data.transitionRules : [];
+  const outputInfluenceRules = Array.isArray(data.outputInfluenceRules) ? data.outputInfluenceRules : [];
+  const surfaceRules = Array.isArray(data.surfaceRules) ? data.surfaceRules : [];
+  const acceptanceChecklist = Array.isArray(data.acceptanceChecklist) ? data.acceptanceChecklist : [];
+  const roleRows = roles.map((role) => `
+    <tr>
+      <td><strong>${escapeHtml(role.roleId || "")}</strong></td>
+      <td>${escapeHtml(Array.isArray(role.owns) ? role.owns.join(", ") : "")}</td>
+      <td>${escapeHtml(Array.isArray(role.doesNotOwn) ? role.doesNotOwn.join(", ") : "")}</td>
+      <td>${escapeHtml(role.receivesContinuity || "")}</td>
+      <td>${escapeHtml(Array.isArray(role.outputMayInfluence) ? role.outputMayInfluence.join(", ") : "")}</td>
+      <td>${escapeHtml(Array.isArray(role.operatorApprovalRequiredBefore) ? role.operatorApprovalRequiredBefore.join(", ") : "")}</td>
+    </tr>
+  `).join("");
+  const ruleRows = rules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.title || rule.id || "")}</strong><br><span class="meta">${escapeHtml(rule.id || "")}</span></td>
+      <td>${escapeHtml(rule.category || "")}</td>
+      <td>${escapeHtml(rule.requirement || "")}</td>
+      <td>${escapeHtml(rule.enforcement || "")}</td>
+      <td>${escapeHtml(rule.validatorId || "")}</td>
+      <td>${escapeHtml(rule.severity || "")}</td>
+    </tr>
+  `).join("");
+  const transitionRows = transitionRules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.transition || "")}</strong></td>
+      <td>${escapeHtml(rule.description || "")}</td>
+      <td>${renderBoolean(Boolean(rule.operatorApprovalRequired))}</td>
+      <td>${renderBoolean(Boolean(rule.autonomousRoleTransferAllowed))}</td>
+      <td>${renderBoolean(Boolean(rule.failClosedWithoutApproval))}</td>
+    </tr>
+  `).join("");
+  const influenceRows = outputInfluenceRules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.artifactKind || "")}</strong></td>
+      <td>${escapeHtml(rule.producedBy || "")}</td>
+      <td>${renderBoolean(Boolean(rule.mayInfluenceLaterWork))}</td>
+      <td>${renderBoolean(Boolean(rule.influenceRequiresOperatorReview))}</td>
+      <td>${renderBoolean(Boolean(rule.canonicalMemoryWriteAllowed))}</td>
+      <td>${renderBoolean(Boolean(rule.providerRouteChangeAllowed))}</td>
+      <td>${renderBoolean(Boolean(rule.implementationAuthorizationAllowed))}</td>
+    </tr>
+  `).join("");
+  const surfaceRows = surfaceRules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.surfaceId || "")}</strong></td>
+      <td>${escapeHtml(rule.purpose || "")}</td>
+      <td>${renderBoolean(Boolean(rule.operatorSessionRequired))}</td>
+      <td>${renderBoolean(Boolean(rule.publicSurfaceAllowed))}</td>
+      <td>${renderBoolean(Boolean(rule.consequentialActionsAllowed))}</td>
+    </tr>
+  `).join("");
+  const acceptanceRows = acceptanceChecklist.map((check) => `
+    <tr>
+      <td><strong>${escapeHtml(check.id || "")}</strong></td>
+      <td>${escapeHtml(check.requirement || "")}</td>
+      <td>${renderBoolean(Boolean(check.satisfied))}</td>
+      <td>${escapeHtml(check.evidence || "")}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(sourceLabel)}</h3>
+      <p>${escapeHtml(data.purpose || "")}</p>
+      <p class="meta">Version: ${escapeHtml(data.agreementVersion || "")} | Read-only: ${data.readOnly ? "yes" : "no"} | Live inference: ${data.liveInferenceEnabled ? "enabled" : "disabled"} | Consequential actions: ${data.consequentialActionsEnabled ? "enabled" : "disabled"}</p>
+      ${renderCountMap({
+        "role policy": data.rolePolicyQuestion || "",
+        "provider policy": data.providerPolicyQuestion || "",
+        "continuity owner": data.canonicalContinuityOwner || "",
+        "trusted context preparer": data.trustedContextPreparer || "",
+        "next milestone": data.nextMilestone || "",
+      })}
+    </div>
+    <div class="memory-card">
+      <h3>Role Ownership</h3>
+      <table><thead><tr><th>Role</th><th>Owns</th><th>Does not own</th><th>Continuity received</th><th>May influence</th><th>Approval before</th></tr></thead><tbody>${roleRows || "<tr><td colspan=\"6\">No roles returned.</td></tr>"}</tbody></table>
+    </div>
+    <div class="memory-card">
+      <h3>Enforceable Rules</h3>
+      <table><thead><tr><th>Rule</th><th>Category</th><th>Requirement</th><th>Enforcement</th><th>Validator</th><th>Severity</th></tr></thead><tbody>${ruleRows || "<tr><td colspan=\"6\">No rules returned.</td></tr>"}</tbody></table>
+    </div>
+    <div class="memory-card">
+      <h3>Governed Transitions</h3>
+      <table><thead><tr><th>Transition</th><th>Description</th><th>Approval</th><th>Autonomous transfer</th><th>Fail closed</th></tr></thead><tbody>${transitionRows || "<tr><td colspan=\"5\">No transition rules returned.</td></tr>"}</tbody></table>
+    </div>
+    <div class="memory-card">
+      <h3>Output Influence</h3>
+      <table><thead><tr><th>Artifact</th><th>Role</th><th>May influence</th><th>Review required</th><th>Memory write</th><th>Provider route</th><th>Implementation auth</th></tr></thead><tbody>${influenceRows || "<tr><td colspan=\"7\">No influence rules returned.</td></tr>"}</tbody></table>
+    </div>
+    <div class="memory-card">
+      <h3>Private Surfaces</h3>
+      <table><thead><tr><th>Surface</th><th>Purpose</th><th>Operator session</th><th>Public</th><th>Consequential actions</th></tr></thead><tbody>${surfaceRows || "<tr><td colspan=\"5\">No surface rules returned.</td></tr>"}</tbody></table>
+    </div>
+    <div class="memory-card">
+      <h3>9.2 Acceptance</h3>
+      <table><thead><tr><th>Check</th><th>Requirement</th><th>Satisfied</th><th>Evidence</th></tr></thead><tbody>${acceptanceRows || "<tr><td colspan=\"4\">No acceptance checks returned.</td></tr>"}</tbody></table>
+    </div>
+  `;
+}
+
 function sortedRoleFoundationValues(items, selector) {
   return (Array.isArray(items) ? items : [])
     .map(selector)
@@ -11981,6 +12167,72 @@ window.runRoleBasedIntelligenceFoundationStatus = async function runRoleBasedInt
   } catch (err) {
     console.error("Role-based intelligence status failed:", err);
     container.innerHTML = `<p>Role-based intelligence status failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function roleRulesValuesMatch(left, right, selector) {
+  const leftValues = sortedRoleFoundationValues(left, selector);
+  const rightValues = sortedRoleFoundationValues(right, selector);
+  return leftValues.length === rightValues.length
+    && leftValues.every((value, index) => value === rightValues[index]);
+}
+
+function roleRulesReportsAligned(nativeReport = {}, renderReport = {}) {
+  const nativeChecks = Array.isArray(nativeReport.acceptanceChecklist) ? nativeReport.acceptanceChecklist : [];
+  const renderChecks = Array.isArray(renderReport.acceptanceChecklist) ? renderReport.acceptanceChecklist : [];
+  return nativeReport.agreementVersion === renderReport.agreementVersion
+    && nativeReport.readOnly === renderReport.readOnly
+    && nativeReport.liveInferenceEnabled === renderReport.liveInferenceEnabled
+    && nativeReport.consequentialActionsEnabled === renderReport.consequentialActionsEnabled
+    && nativeReport.publicBehaviorChanged === renderReport.publicBehaviorChanged
+    && nativeReport.rolePolicyQuestion === renderReport.rolePolicyQuestion
+    && nativeReport.providerPolicyQuestion === renderReport.providerPolicyQuestion
+    && roleRulesValuesMatch(nativeReport.roles, renderReport.roles, (role) => role.roleId)
+    && roleRulesValuesMatch(nativeReport.rules, renderReport.rules, (rule) => rule.id)
+    && roleRulesValuesMatch(nativeReport.transitionRules, renderReport.transitionRules, (rule) => rule.transition)
+    && roleRulesValuesMatch(nativeReport.outputInfluenceRules, renderReport.outputInfluenceRules, (rule) => rule.artifactKind)
+    && roleRulesValuesMatch(nativeReport.surfaceRules, renderReport.surfaceRules, (rule) => rule.surfaceId)
+    && roleRulesValuesMatch(nativeChecks, renderChecks, (check) => check.id)
+    && nativeChecks.length > 0
+    && renderChecks.length > 0
+    && nativeChecks.every((check) => Boolean(check.satisfied))
+    && renderChecks.every((check) => Boolean(check.satisfied));
+}
+
+window.runRoleRulesOperatingAgreementStatus = async function runRoleRulesOperatingAgreementStatus() {
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    alert("Operator access is required.");
+    return;
+  }
+
+  const container = document.getElementById("roleRulesOperatingAgreementResults");
+  container.innerHTML = "<p>Inspecting Phase 9.2 Roles & Rules...</p>";
+
+  try {
+    const [nativeReport, renderResponse] = await Promise.all([
+      window.adminActor.getAionRoleRulesOperatingAgreementStatus(),
+      fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/role-rules-operating-agreement`),
+    ]);
+    const renderReport = await renderResponse.json();
+
+    if (renderReport.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(renderReport.error)}</p>`;
+      return;
+    }
+
+    const nativeMatchesRender = roleRulesReportsAligned(nativeReport, renderReport);
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Phase 9.2 Roles & Rules</h3>
+        <p>Prime, Mirror, and Engineer are visible as bounded Aion responsibilities with typed ownership, approval, transition, surface, and output-influence rules.</p>
+        <p><span class="status-badge ${nativeMatchesRender ? "success" : "error"}">${nativeMatchesRender ? "native/render aligned" : "review alignment"}</span></p>
+      </div>
+      ${renderRoleRulesOperatingAgreementReport(nativeReport, "Native Canister Rules")}
+      ${renderRoleRulesOperatingAgreementReport(renderReport, "Render Bridge Rules")}
+    `;
+  } catch (err) {
+    console.error("Role rules operating agreement failed:", err);
+    container.innerHTML = `<p>Role rules operating agreement failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 

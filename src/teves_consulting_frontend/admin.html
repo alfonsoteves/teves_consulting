@@ -2154,6 +2154,7 @@
         <button type="button" class="admin-view-tab" data-admin-view-target="continuity" role="tab" aria-selected="false">Continuity</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Reports</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
+        <a class="admin-view-tab" href="/operator.html">Operator</a>
         <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
       </div>
       <!-- Admin view controls start -->
@@ -4130,6 +4131,13 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         <p>Inspect the read-only Role-Based Intelligence foundation without calling providers, writing memory, changing public behavior, or enabling autonomous execution.</p>
         <button onclick="runRoleBasedIntelligenceFoundationStatus()">Inspect Role Foundation</button>
         <div id="roleBasedIntelligenceFoundationResults"></div>
+      </details>
+
+      <details>
+        <summary><strong>Phase 9.2 Roles & Rules</strong></summary>
+        <p>Inspect the operator-visible role operating agreement, including ownership, continuity, approval, transition, surface, and output-influence rules.</p>
+        <button onclick="runRoleRulesOperatingAgreementStatus()">Inspect Roles & Rules</button>
+        <div id="roleRulesOperatingAgreementResults"></div>
       </details>
 
       <details>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aion Roles & Rules</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #607087;
+      --line: #d8e0ea;
+      --panel: #ffffff;
+      --soft: #f4f7fb;
+      --accent: #0f766e;
+      --warn: #9a3412;
+    }
+
+    body {
+      margin: 0;
+      background: #eef3f8;
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    .operator-shell {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .operator-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 0 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    button,
+    .nav-link {
+      border: 1px solid #0f766e;
+      border-radius: 8px;
+      background: #0f766e;
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    button.secondary,
+    .nav-link.secondary {
+      background: #ffffff;
+      color: #0f766e;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      color: var(--muted);
+    }
+
+    .status.verified {
+      border-color: #99d8cb;
+      color: #0f5f56;
+      background: #effaf7;
+    }
+
+    .status.denied {
+      border-color: #fdba74;
+      color: var(--warn);
+      background: #fff7ed;
+    }
+
+    .workspace {
+      display: none;
+    }
+
+    .workspace.is-visible {
+      display: block;
+    }
+
+    .summary-grid,
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+    }
+
+    .panel,
+    .role-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .panel {
+      margin-top: 14px;
+    }
+
+    .kicker,
+    .meta {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: #e6f6f3;
+      color: #0f5f56;
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-top: 10px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    li {
+      margin-top: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      color: #24364c;
+      background: var(--soft);
+    }
+
+    @media (max-width: 700px) {
+      .operator-header {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="operator-shell">
+    <header class="operator-header">
+      <div>
+        <p class="kicker">Aion private workspace</p>
+        <h1>Roles & Rules</h1>
+      </div>
+      <div class="actions">
+        <a class="nav-link secondary" href="/admin.html">Admin</a>
+        <button id="authButton" type="button">Sign In</button>
+      </div>
+    </header>
+
+    <div id="operatorAccess" class="status" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
+
+    <section id="operatorWorkspace" class="workspace">
+      <section class="summary-grid" aria-label="Operating agreement summary">
+        <div class="panel">
+          <h2>Operating Agreement</h2>
+          <p id="agreementPurpose" class="meta">Loading...</p>
+          <span id="agreementVersion" class="badge">Pending</span>
+        </div>
+        <div class="panel">
+          <h2>Policy Split</h2>
+          <p><strong>Role policy:</strong> <span id="rolePolicyQuestion"></span></p>
+          <p><strong>Provider policy:</strong> <span id="providerPolicyQuestion"></span></p>
+        </div>
+        <div class="panel">
+          <h2>Boundary</h2>
+          <p id="boundarySummary" class="meta">Loading...</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Role Responsibilities</h2>
+        <div id="roleCards" class="role-grid"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Enforceable Rules</h2>
+        <div id="rulesTable"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Governed Transitions</h2>
+        <div id="transitionTable"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Output Influence</h2>
+        <div id="influenceTable"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Surface Rules</h2>
+        <div id="surfaceTable"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Acceptance</h2>
+        <div id="acceptanceTable"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="/operator.js"></script>
+</body>
+</html>
