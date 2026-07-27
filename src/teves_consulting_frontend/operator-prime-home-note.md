@@ -20,4 +20,7 @@ The Phase 9.7 Prime Home surface also shows:
 - daily workflow rhythm;
 - success metrics as goals;
 - artifact handoff readiness;
+- workspace navigation;
+- role readiness;
+- evergreen backlog;
 - automatic transfer disabled.

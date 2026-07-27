@@ -297,6 +297,12 @@ function renderPrimeHome(report) {
         <span class="badge">${escapeHtml(report.milestone || "")}</span>
       </div>
       <div class="panel">
+        <h2>Workspace</h2>
+        <ul>${(report.workspaceNavigation || []).map((item) => `
+          <li><strong>${escapeHtml(item.title || "")}</strong><br><span class="meta">${item.current ? "Current" : item.enabledInPhase97 ? "Enabled" : "Readiness"} - ${escapeHtml(item.purpose || "")}</span></li>
+        `).join("")}</ul>
+      </div>
+      <div class="panel">
         <h2>Continuity</h2>
         <ul>
           <li>Canonical: ${escapeHtml(continuity.canonicalContinuityRef || "")}</li>
@@ -372,6 +378,20 @@ function renderPrimeHome(report) {
         <h3>Packet Chain</h3>
         <ul>${(report.artifactHandoffReadiness || []).map((artifact) => `
           <li><strong>${escapeHtml(artifact.artifactKind || "")}</strong><br><span class="meta">${escapeHtml(artifact.producedBy || "")} to ${escapeHtml((artifact.consumedBy || []).join(", "))}. Automatic transfer: ${boolText(artifact.automaticTransferEnabled)}</span></li>
+        `).join("")}</ul>
+      </article>
+    </div>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Role Readiness</h3>
+        <ul>${(report.roleReadiness || []).map((role) => `
+          <li><strong>${escapeHtml(role.roleName || "")}</strong><br><span class="meta">${escapeHtml(role.operationalStatus || "")}. Selectable: ${boolText(role.selectableInPhase97)}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Evergreen Backlog</h3>
+        <ul>${(report.evergreenBacklog || []).map((item) => `
+          <li><strong>${escapeHtml(item.title || "")}</strong><br><span class="meta">${escapeHtml(item.reason || "")} Execution: ${boolText(item.executionAuthorized)}</span></li>
         `).join("")}</ul>
       </article>
     </div>
