@@ -745,6 +745,114 @@ async function loadCoordinationLoop() {
   renderCoordinationLoop(report);
 }
 
+function approvalKindLabel(kind) {
+  if (kind === "recommendationAcceptance") return "Recommendation acceptance";
+  if (kind === "workAuthorization") return "Work authorization";
+  if (kind === "executionAuthorization") return "Execution authorization";
+  return kind || "";
+}
+
+function renderApprovalBoundary(report) {
+  const container = document.getElementById("approvalBoundaryResults");
+  if (!container) return;
+  const acceptance = report.phase99Acceptance || {};
+  const model = report.approvalModel || {};
+  const proposal = report.executionProposal || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.boundaryVersion || "")} | Source Coordination accepted: ${boolText(report.sourceCoordinationAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.9 Accepted</h2>
+        <p>${escapeHtml(acceptance.acceptedBaseline || "")}</p>
+        <ul>
+          <li>Accepted: ${boolText(acceptance.phase99Accepted)}</li>
+          <li>Coordination packet confirmed: ${boolText(acceptance.coordinationPacketConfirmed)}</li>
+          <li>Conversations are durable state: ${boolText(acceptance.conversationsAreDurableState)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Approval Model</h2>
+        <ul>
+          <li>Recommendation accepted: ${boolText(model.recommendationAccepted)}</li>
+          <li>Work authorized: ${boolText(model.workAuthorized)}</li>
+          <li>Execution authorized: ${boolText(model.executionAuthorized)}</li>
+          <li>Collapsed approval allowed: ${boolText(model.collapsedApprovalStateAllowed)}</li>
+          <li>Fail closed: ${boolText(model.failClosedWithoutExplicitGate)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Execution Proposal</h2>
+        <p>${escapeHtml(proposal.proposedAction || "")}</p>
+        <ul>
+          <li>Packet: ${escapeHtml(proposal.packetId || "")}</li>
+          <li>Provider policy selects route: ${boolText(proposal.providerPolicyMustSelectRoute)}</li>
+          <li>Role may select route: ${boolText(proposal.roleMaySelectProviderRoute)}</li>
+          <li>Execution authorized: ${boolText(proposal.executionAuthorized)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Separate Approval Gates</h3>
+    ${table(
+      ["Gate", "Meaning", "Recommendation", "Work", "Execution", "Cannot Imply"],
+      (report.approvalGates || []).map((gate) => `
+        <tr>
+          <td><strong>${escapeHtml(approvalKindLabel(gate.kind))}</strong><br><span class="meta">${escapeHtml(gate.gateId || "")}</span></td>
+          <td>${escapeHtml(gate.operatorMeaning || "")}</td>
+          <td>${boolText(gate.grantsRecommendationAcceptance)}</td>
+          <td>${boolText(gate.grantsWorkAuthorization)}</td>
+          <td>${boolText(gate.grantsExecutionAuthorization)}</td>
+          <td>${escapeHtml((gate.cannotImply || []).join("; "))}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Execution Status</h3>
+        <ul>
+          <li>Requires recommendation: ${boolText(proposal.requiresRecommendationAcceptance)}</li>
+          <li>Requires work authorization: ${boolText(proposal.requiresWorkAuthorization)}</li>
+          <li>Requires execution authorization: ${boolText(proposal.requiresExecutionAuthorization)}</li>
+          <li>Execution performed: ${boolText(proposal.executionPerformed)}</li>
+          <li>Commit performed: ${boolText(proposal.commitPerformed)}</li>
+          <li>Deploy performed: ${boolText(proposal.deployPerformed)}</li>
+          <li>Production mutated: ${boolText(proposal.productionMutated)}</li>
+          <li>Memory written: ${boolText(proposal.canonicalMemoryWritten)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Boundary</h3>
+        <ul>
+          <li>Operator authority: ${boolText(boundary.operatorRemainsAuthority)}</li>
+          <li>Recommendation separate: ${boolText(boundary.recommendationAcceptanceSeparate)}</li>
+          <li>Work separate: ${boolText(boundary.workAuthorizationSeparate)}</li>
+          <li>Execution separate: ${boolText(boundary.executionAuthorizationSeparate)}</li>
+          <li>Live execution: ${boolText(boundary.liveExecutionEnabled)}</li>
+          <li>Provider route changes: ${boolText(boundary.providerRouteChangesEnabled)}</li>
+        </ul>
+      </article>
+    </div>
+    <h3>Proposal Review</h3>
+    ${table(
+      ["Item", "Evidence", "Required Before Execution", "Satisfied in 9.10"],
+      (report.proposalReviewChecklist || []).map((item) => `
+        <tr>
+          <td><strong>${escapeHtml(item.title || "")}</strong><br><span class="meta">${escapeHtml(item.itemId || "")}</span></td>
+          <td>${escapeHtml(item.evidence || "")}</td>
+          <td>${boolText(item.requiredBeforeExecutionAuthorization)}</td>
+          <td>${boolText(item.satisfiedInPhase910)}</td>
+        </tr>
+      `)
+    )}
+  `;
+}
+
+async function loadApprovalBoundary() {
+  const report = await renderFetch("/admin/approval-execution-boundary");
+  renderApprovalBoundary(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -930,6 +1038,7 @@ async function loadRolesAndRules() {
   await loadMirrorWorkflow();
   await loadEngineerWorkflow();
   await loadCoordinationLoop();
+  await loadApprovalBoundary();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
