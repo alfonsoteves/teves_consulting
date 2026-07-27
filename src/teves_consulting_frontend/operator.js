@@ -654,6 +654,97 @@ async function loadEngineerWorkflow() {
   renderEngineerWorkflow(report);
 }
 
+function renderCoordinationLoop(report) {
+  const container = document.getElementById("coordinationLoopResults");
+  if (!container) return;
+  const acceptance = report.phase98BAcceptance || {};
+  const packet = report.coordinationPacket || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.loopVersion || "")} | Source Engineer accepted: ${boolText(report.sourceEngineerAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.8B Accepted</h2>
+        <p>${escapeHtml(acceptance.acceptedBaseline || "")}</p>
+        <ul>
+          <li>Accepted: ${boolText(acceptance.phase98BAccepted)}</li>
+          <li>Engineer boundary: ${boolText(acceptance.engineerBoundaryConfirmed)}</li>
+          <li>Engineer is execution provider: ${boolText(acceptance.engineerIsExecutionProvider)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Coordination Packet</h2>
+        <p>${escapeHtml(packet.objective || "")}</p>
+        <ul>
+          <li>Packet: ${escapeHtml(packet.packetId || "")}</li>
+          <li>Approval: ${escapeHtml(packet.approvalState || "")}</li>
+          <li>Durable artifact: ${boolText(packet.durableArtifact)}</li>
+          <li>Transcript required: ${boolText(packet.conversationTranscriptRequired)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>One Aion: ${boolText(boundary.oneAionIdentityPreserved)}</li>
+          <li>Roles are responsibilities: ${boolText(boundary.rolesAreResponsibilities)}</li>
+          <li>Autonomous workflow engine: ${boolText(boundary.autonomousWorkflowEngineEnabled)}</li>
+          <li>Operator authority: ${boolText(boundary.operatorRemainsAuthority)}</li>
+          <li>Manual transport required: ${boolText(boundary.manualTransportLayerRequired)}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Context</h3>
+        <ul>${(packet.context || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Evidence</h3>
+        <ul>${(packet.evidence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Unresolved Questions</h3>
+        <ul>${(packet.unresolvedQuestions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Governed Handoffs</h3>
+    ${table(
+      ["Step", "From", "To", "Artifact", "Approval", "Automatic", "Manual Transfer"],
+      (report.coordinationSteps || []).map((step) => `
+        <tr>
+          <td><strong>${escapeHtml(String(step.stepIndex || ""))}</strong><br><span class="meta">${escapeHtml(step.purpose || "")}</span></td>
+          <td>${escapeHtml(step.fromRole || "Operator")}</td>
+          <td>${escapeHtml(step.toRole || "")}</td>
+          <td>${escapeHtml(step.artifact || "")}<br><span class="meta">${escapeHtml(step.approvalState || "")}</span></td>
+          <td>${boolText(step.operatorApprovalRequiredBefore)}</td>
+          <td>${boolText(step.autonomousTransferAllowed)}</td>
+          <td>${boolText(step.manualContextTransferRequired)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Cost Awareness</h3>
+    ${table(
+      ["Option", "Sequence", "Passes", "Use", "Quality Gain", "Review Cost"],
+      (report.costOptions || []).map((option) => `
+        <tr>
+          <td><strong>${escapeHtml(option.optionId || "")}</strong></td>
+          <td>${escapeHtml((option.sequence || []).join(" -> "))}</td>
+          <td>${escapeHtml(String(option.estimatedReasoningPasses || ""))}</td>
+          <td>${escapeHtml(option.expectedUse || "")}</td>
+          <td>${escapeHtml(option.qualityGain || "")}</td>
+          <td>${boolText(option.costWorthReviewing)}</td>
+        </tr>
+      `)
+    )}
+  `;
+}
+
+async function loadCoordinationLoop() {
+  const report = await renderFetch("/admin/coordination-loop");
+  renderCoordinationLoop(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -838,6 +929,7 @@ async function loadRolesAndRules() {
   await loadPrimeHome();
   await loadMirrorWorkflow();
   await loadEngineerWorkflow();
+  await loadCoordinationLoop();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
