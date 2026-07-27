@@ -956,6 +956,12 @@ function renderArchitectureValidationRun(report) {
   const engineer = report.engineerPacket || {};
   const assessment = report.operatorAssessment || {};
   const evidence = report.evidenceSummary || {};
+  const classification = report.validationClassification || {};
+  const executionEvidence = report.executionIdentityEvidence || [];
+  const contextEvidence = report.contextEvidence || [];
+  const costEvidence = report.costPerformanceEvidence || [];
+  const outcomeEvidence = report.roleOutcomeEvidence || [];
+  const validationSequence = report.futureOperationalValidationSequence || [];
   const boundary = report.boundary || {};
   container.innerHTML = `
     <p><strong>${escapeHtml(report.objective || "")}</strong></p>
@@ -980,6 +986,17 @@ function renderArchitectureValidationRun(report) {
         </ul>
       </div>
       <div class="panel">
+        <h2>Classification</h2>
+        <p>${escapeHtml(classification.distinction || "")}</p>
+        <ul>
+          <li>Workflow validation: ${escapeHtml(classification.workflowValidationClassification || "")}</li>
+          <li>Operational intelligence: ${escapeHtml(classification.operationalIntelligenceValidationClassification || "")}</li>
+          <li>Workflow accepted: ${boolText(classification.workflowValidationAccepted)}</li>
+          <li>Operational accepted: ${boolText(classification.operationalIntelligenceValidationAccepted)}</li>
+          <li>Execution-backed: ${boolText(classification.currentRunExecutionBackedIntelligenceValidation)}</li>
+        </ul>
+      </div>
+      <div class="panel">
         <h2>Evidence Summary</h2>
         <ul>
           <li>Workflow run: ${boolText(evidence.boundedRealWorkflowRun)}</li>
@@ -990,6 +1007,75 @@ function renderArchitectureValidationRun(report) {
         </ul>
       </div>
     </div>
+    <h3>Execution Identity</h3>
+    ${table(
+      ["Role", "Route", "Provider", "Model", "Timestamp", "Unknowns Preserved"],
+      executionEvidence.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.role || "")}</td>
+          <td>${escapeHtml(item.executionRoute || "")}</td>
+          <td>${escapeHtml(item.providerIdentity || "")}</td>
+          <td>${escapeHtml(item.modelIdentityVersion || "")}</td>
+          <td>${escapeHtml(item.executionTimestamp || "")}</td>
+          <td>${boolText(item.unknownValuesPreserved)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Context Evidence</h3>
+    ${table(
+      ["Role", "Context Packet", "Continuity", "Grounding", "Size", "Data"],
+      contextEvidence.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.role || "")}</td>
+          <td>${escapeHtml(item.contextPacketIdentity || "")}</td>
+          <td>${escapeHtml(item.continuityContextIdentity || "")}</td>
+          <td>${escapeHtml(item.groundingEvidenceIdentity || "")}</td>
+          <td>${escapeHtml(item.approximateContextSize || "")}</td>
+          <td>${escapeHtml(item.disclosedDataClassification || "")}</td>
+        </tr>
+      `)
+    )}
+    <h3>Cost And Performance</h3>
+    ${table(
+      ["Role", "Latency", "Tokens", "External Cost", "Cycles", "Estimated Cost", "Unknowns Preserved"],
+      costEvidence.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.role || "")}</td>
+          <td>${escapeHtml(item.latency || "")}</td>
+          <td>${escapeHtml(item.tokenUsage || "")}</td>
+          <td>${escapeHtml(item.externalCost || "")}</td>
+          <td>${escapeHtml(item.cycles || "")}</td>
+          <td>${escapeHtml(item.estimatedExecutionCost || "")}</td>
+          <td>${boolText(item.unknownValuesPreserved)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Role Outcome Evidence</h3>
+    ${table(
+      ["Role", "Produced", "Continuity Value", "Changed", "Material", "Readiness"],
+      outcomeEvidence.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.role || "")}</td>
+          <td>${escapeHtml(item.synthesisProduced || "")}</td>
+          <td>${escapeHtml(item.continuityValueProvided || "")}</td>
+          <td>${escapeHtml(item.changedBecauseOfRole || "")}</td>
+          <td>${boolText(item.materialImprovementObserved)}</td>
+          <td>${escapeHtml(item.implementationReadinessAdded || "")}</td>
+        </tr>
+      `)
+    )}
+    <h3>9.11 Validation Progression</h3>
+    ${table(
+      ["Milestone", "Kind", "Status", "Required Evidence"],
+      validationSequence.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.milestone || "")}</td>
+          <td>${escapeHtml(item.validationKind || "")}</td>
+          <td>${escapeHtml(item.status || "")}</td>
+          <td>${escapeHtml(item.requiredEvidence || "")}</td>
+        </tr>
+      `)
+    )}
     <div class="role-grid">
       <article class="role-card">
         <h3>Prime</h3>
