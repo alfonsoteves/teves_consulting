@@ -288,6 +288,52 @@ async function loadRoleContextPackets() {
   renderContextPackets(report);
 }
 
+function renderMockPipeline(result) {
+  const container = document.getElementById("mockPipelineResults");
+  if (!container) return;
+  if (!result || !result.accepted || !result.report) {
+    container.innerHTML = `<p>Mock pipeline unavailable: ${escapeHtml((result && result.reason) || "review required")}</p>`;
+    return;
+  }
+  const report = result.report;
+  container.innerHTML = `
+    <p class="meta">Version: ${escapeHtml(report.pipelineVersion || "")} | Mock only: ${boolText(report.mockOnly)} | Live inference: ${boolText(report.liveInferenceEnabled)} | Provider calls: ${boolText(report.providerCallsEnabled)} | Memory writes: ${boolText(report.memoryWritesEnabled)}</p>
+    ${table(
+      ["Step", "Kind", "Role", "Transition", "Approval", "Output"],
+      (report.steps || []).map((step) => `
+        <tr>
+          <td>${escapeHtml(String(step.stepIndex))}</td>
+          <td><strong>${escapeHtml(step.stepKind || "")}</strong></td>
+          <td>${escapeHtml(step.roleId || "")}</td>
+          <td>${escapeHtml(step.transitionKind || "")}</td>
+          <td>${escapeHtml(step.authorizationState || "")}</td>
+          <td>${escapeHtml(step.outputId || "")}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      ${(report.outputs || []).map((output) => `
+        <article class="role-card">
+          <h3>${escapeHtml(output.roleId || "")}</h3>
+          <p>${escapeHtml(output.summary || "")}</p>
+          <ul>
+            <li>Kind: ${escapeHtml(output.outputKind || "")}</li>
+            <li>Self promoted: ${boolText(output.selfPromoted)}</li>
+            <li>Production inference claimed: ${boolText(output.productionInferenceClaimed)}</li>
+            <li>Provider call: ${boolText(output.providerCallMade)}</li>
+            <li>Memory write: ${boolText(output.memoryWriteMade)}</li>
+          </ul>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function loadMockRolePipeline() {
+  const result = await renderFetch("/admin/mock-role-pipeline");
+  renderMockPipeline(result);
+}
+
 async function loadRolesAndRules() {
   const [nativeReport, renderBridgeReport] = await Promise.all([
     actor.getAionRoleRulesOperatingAgreementStatus(),
@@ -300,6 +346,7 @@ async function loadRolesAndRules() {
   }
   renderReport(nativeReport);
   await loadRoleContextPackets();
+  await loadMockRolePipeline();
 }
 
 async function refreshOperatorAccess() {
