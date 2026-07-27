@@ -1156,6 +1156,95 @@ async function loadArchitectureValidationRun() {
   renderArchitectureValidationRun(report);
 }
 
+function renderPrimeOperationalValidationCriteria(report) {
+  const container = document.getElementById("primeOperationalValidationCriteriaResults");
+  if (!container) return;
+  const acceptance = report.phase911AAcceptance || {};
+  const baselineA = report.baselineA || {};
+  const baselineB = report.baselineB || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.criteriaVersion || "")} | Source 9.11A accepted: ${boolText(acceptance.evidenceFrameworkUpdateAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>Baseline A</h2>
+        <p><strong>${escapeHtml(baselineA.name || "")}</strong></p>
+        <p class="meta">${escapeHtml(baselineA.description || "")}</p>
+        <ul>
+          <li>Continuity: ${escapeHtml(baselineA.continuityOwnership || "")}</li>
+          <li>Transfer: ${escapeHtml(baselineA.contextTransferMode || "")}</li>
+          <li>Grounding: ${escapeHtml(baselineA.groundingMode || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Baseline B</h2>
+        <p><strong>${escapeHtml(baselineB.name || "")}</strong></p>
+        <p class="meta">${escapeHtml(baselineB.description || "")}</p>
+        <ul>
+          <li>Continuity: ${escapeHtml(baselineB.continuityOwnership || "")}</li>
+          <li>Transfer: ${escapeHtml(baselineB.contextTransferMode || "")}</li>
+          <li>Grounding: ${escapeHtml(baselineB.groundingMode || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>Criteria only: ${boolText(boundary.criteriaOnly)}</li>
+          <li>Validation executed: ${boolText(boundary.operationalValidationExecuted)}</li>
+          <li>Validation accepted: ${boolText(boundary.operationalValidationAccepted)}</li>
+          <li>Live inference authorized: ${boolText(boundary.liveInferenceAuthorizedByCriteria)}</li>
+          <li>Provider route by Prime: ${boolText(boundary.providerRouteSelectionAuthorizedByPrime)}</li>
+          <li>Oracle work approved: ${boolText(boundary.oracleWorkApproved)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Measures</h3>
+    ${table(
+      ["Measure", "Question", "Baseline Capture", "Prime Capture", "Success Signal"],
+      (report.measures || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.measureId || "")}</td>
+          <td>${escapeHtml(item.question || "")}</td>
+          <td>${escapeHtml(item.baselineCapture || "")}</td>
+          <td>${escapeHtml(item.primeCapture || "")}</td>
+          <td>${escapeHtml(item.successSignal || "")}</td>
+        </tr>
+      `)
+    )}
+    <h3>Execution Evidence Requirements</h3>
+    ${table(
+      ["Role", "Execution", "Context", "Cost", "Outcome", "Unknowns"],
+      (report.executionEvidenceRequirements || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.role || "")}</td>
+          <td>${boolText(item.executionIdentityRequired)}</td>
+          <td>${boolText(item.contextEvidenceRequired)}</td>
+          <td>${boolText(item.costPerformanceRequired)}</td>
+          <td>${boolText(item.outcomeEvidenceRequired)}</td>
+          <td>${boolText(item.unknownValuesMustRemainUnknown)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Operator Assessment</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Questions</h3>
+        <ul>${(report.operatorAssessmentQuestions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Checklist</h3>
+        <ul>${(report.acceptanceChecklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadPrimeOperationalValidationCriteria() {
+  const report = await renderFetch("/admin/prime-operational-validation-criteria");
+  renderPrimeOperationalValidationCriteria(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1344,6 +1433,7 @@ async function loadRolesAndRules() {
   await loadApprovalBoundary();
   await loadTrioValidation();
   await loadArchitectureValidationRun();
+  await loadPrimeOperationalValidationCriteria();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
