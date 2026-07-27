@@ -945,6 +945,131 @@ async function loadTrioValidation() {
   renderTrioValidation(report);
 }
 
+function renderArchitectureValidationRun(report) {
+  const container = document.getElementById("architectureValidationRunResults");
+  if (!container) return;
+  const acceptance = report.phase911Acceptance || {};
+  const prompt = report.decisionPrompt || {};
+  const prime = report.primePacket || {};
+  const mirror = report.mirrorPacket || {};
+  const revision = report.primeRevision || {};
+  const engineer = report.engineerPacket || {};
+  const assessment = report.operatorAssessment || {};
+  const evidence = report.evidenceSummary || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.runVersion || "")} | Source Trio accepted: ${boolText(report.sourceTrioValidationAccepted)} | Next: ${escapeHtml(report.nextValidationRun || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.11 Accepted</h2>
+        <p>${escapeHtml(acceptance.acceptedBaseline || "")}</p>
+        <ul>
+          <li>Scenario: ${escapeHtml(acceptance.selectedFirstScenario || "")}</li>
+          <li>Oracle deferred: ${boolText(acceptance.oracleStillDeferred)}</li>
+          <li>Reason: ${escapeHtml(acceptance.selectionReason || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Decision Prompt</h2>
+        <p>${escapeHtml(prompt.question || "")}</p>
+        <ul>
+          <li>Category: ${escapeHtml(prompt.decisionCategory || "")}</li>
+          <li>Bounded real workflow: ${boolText(prompt.boundedRealWorkflow)}</li>
+          <li>Execution required: ${boolText(prompt.executionRequired)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Evidence Summary</h2>
+        <ul>
+          <li>Workflow run: ${boolText(evidence.boundedRealWorkflowRun)}</li>
+          <li>Mirror value: ${boolText(evidence.mirrorValueObserved)}</li>
+          <li>Engineer value: ${boolText(evidence.engineerValueObserved)}</li>
+          <li>Operator reviewed: ${boolText(evidence.operatorExperienceReviewed)}</li>
+          <li>Oracle ready: ${boolText(evidence.sufficientForOracleDefinition)}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Prime</h3>
+        <p>${escapeHtml(prime.recommendation || "")}</p>
+        <ul>${(prime.rationale || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Mirror</h3>
+        <p>Meaningful contribution: ${boolText(mirror.meaningfulContributionObserved)}</p>
+        <ul>${(mirror.recommendedChanges || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Prime Revision</h3>
+        <p>${escapeHtml(revision.revisedRecommendation || "")}</p>
+        <ul>${(revision.acceptedMirrorChanges || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Mirror Review Detail</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Assumptions</h3>
+        <ul>${(mirror.assumptionsChallenged || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Risks</h3>
+        <ul>${(mirror.risksIdentified || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Alternatives</h3>
+        <ul>${(mirror.alternativesAdded || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Engineer Readiness</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Affected Components</h3>
+        <ul>${(engineer.affectedComponents || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Validation Plan</h3>
+        <ul>${(engineer.validationPlan || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Rollback</h3>
+        <ul>${(engineer.rollbackConsiderations || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Operator Assessment</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Questions</h3>
+        <ul>${(assessment.questions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Status</h3>
+        <ul>
+          <li>Required: ${boolText(assessment.assessmentRequired)}</li>
+          <li>Completed: ${boolText(assessment.assessmentCompleted)}</li>
+          <li>Required before Oracle: ${boolText(assessment.requiredBeforeOracle)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Boundary</h3>
+        <ul>
+          <li>One Aion: ${boolText(boundary.oneAionIdentityPreserved)}</li>
+          <li>Real workflow validation: ${boolText(boundary.realWorkflowValidation)}</li>
+          <li>Execution authorized: ${boolText(boundary.executionAuthorized)}</li>
+          <li>Oracle work approved: ${boolText(boundary.oracleWorkApproved)}</li>
+          <li>Provider route changes: ${boolText(boundary.providerRouteChangesEnabled)}</li>
+        </ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadArchitectureValidationRun() {
+  const report = await renderFetch("/admin/architecture-decision-validation-run");
+  renderArchitectureValidationRun(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1132,6 +1257,7 @@ async function loadRolesAndRules() {
   await loadCoordinationLoop();
   await loadApprovalBoundary();
   await loadTrioValidation();
+  await loadArchitectureValidationRun();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
