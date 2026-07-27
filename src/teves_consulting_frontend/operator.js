@@ -283,6 +283,79 @@ function renderContextPackets(report) {
   `;
 }
 
+function renderPrimeHome(report) {
+  const container = document.getElementById("primeHomeResults");
+  if (!container) return;
+  const boundary = report.boundary || {};
+  const brief = report.morningBrief || {};
+  const continuity = report.continuityRestoration || {};
+  container.innerHTML = `
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>${escapeHtml(brief.headline || "Prime Home")}</h2>
+        <p>${escapeHtml(brief.summary || "")}</p>
+        <span class="badge">${escapeHtml(report.milestone || "")}</span>
+      </div>
+      <div class="panel">
+        <h2>Continuity</h2>
+        <ul>
+          <li>Canonical: ${escapeHtml(continuity.canonicalContinuityRef || "")}</li>
+          <li>Current phase: ${boolText(continuity.includesCurrentPhase)}</li>
+          <li>Accepted baseline: ${boolText(continuity.includesAcceptedBaseline)}</li>
+          <li>Approved packets: ${boolText(continuity.includesApprovedWorkPackets)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>Prime primary: ${boolText(boundary.primeIsPrimaryInternalExperience)}</li>
+          <li>Operator authority: ${boolText(boundary.operatorRemainsAuthority)}</li>
+          <li>Autonomous execution: ${boolText(boundary.autonomousExecutionEnabled)}</li>
+          <li>Memory writes: ${boolText(boundary.memoryWritesEnabled)}</li>
+          <li>Provider route changes: ${boolText(boundary.providerRouteChangesEnabled)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Current Projects</h3>
+    ${table(
+      ["Project", "Repo", "Status", "Next Step"],
+      (report.currentProjects || []).map((project) => `
+        <tr>
+          <td><strong>${escapeHtml(project.displayName || "")}</strong><br><span class="meta">${escapeHtml(project.currentPhase || "")}</span></td>
+          <td>${escapeHtml(project.repoName || "")}</td>
+          <td>${escapeHtml(project.status || "")}</td>
+          <td>${escapeHtml(project.nextUsefulStep || "")}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Priorities</h3>
+        <ul>${(report.activePriorities || []).map((priority) => `
+          <li><strong>${escapeHtml(priority.title || "")}</strong><br><span class="meta">${escapeHtml(priority.reason || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Pending Decisions</h3>
+        <ul>${(report.pendingDecisions || []).map((decision) => `
+          <li><strong>${escapeHtml(decision.question || "")}</strong><br><span class="meta">${escapeHtml(decision.recommendedDefault || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Next Actions</h3>
+        <ul>${(report.recommendedNextActions || []).map((action) => `
+          <li><strong>${escapeHtml(action.title || "")}</strong><br><span class="meta">${escapeHtml(action.rationale || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+    </div>
+  `;
+}
+
+async function loadPrimeHome() {
+  const report = await renderFetch("/admin/prime-operational-experience");
+  renderPrimeHome(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -464,6 +537,7 @@ async function loadRolesAndRules() {
     setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
   }
   renderReport(nativeReport);
+  await loadPrimeHome();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
