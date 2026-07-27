@@ -395,6 +395,24 @@ function renderPrimeHome(report) {
         `).join("")}</ul>
       </article>
     </div>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Context Sources</h3>
+        <ul>${(report.contextSources || []).map((source) => `
+          <li><strong>${escapeHtml(source.title || "")}</strong><br><span class="meta">${escapeHtml(source.sourceKind || "")}: ${escapeHtml(source.provenance || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Continuity Updates</h3>
+        <ul>
+          <li>Prime may propose: ${boolText((report.continuityProposalBoundary || {}).primeMayProposeContinuityUpdates)}</li>
+          <li>Automatic memory write: ${boolText((report.continuityProposalBoundary || {}).automaticCanonicalMemoryWriteEnabled)}</li>
+          <li>Operator approval: ${boolText((report.continuityProposalBoundary || {}).operatorApprovalRequired)}</li>
+          <li>Governed process: ${boolText((report.continuityProposalBoundary || {}).governedMemoryProcessRequired)}</li>
+          <li>Artifact: ${escapeHtml((report.continuityProposalBoundary || {}).proposedUpdateArtifact || "")}</li>
+        </ul>
+      </article>
+    </div>
   `;
 }
 

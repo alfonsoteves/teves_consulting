@@ -23,4 +23,6 @@ The Phase 9.7 Prime Home surface also shows:
 - workspace navigation;
 - role readiness;
 - evergreen backlog;
+- context source provenance;
+- continuity proposal boundary;
 - automatic transfer disabled.
