@@ -34,3 +34,10 @@ canister_ids.json
 .mops/
 
 site_dist/
+
+# Public repo hygiene: internal evidence and local/private state
+private/
+deployed/
+.icp/data/
+docs/
+test/
