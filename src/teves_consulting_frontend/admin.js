@@ -325,6 +325,174 @@ const idlFactory = ({ IDL }) => {
     automaticFallback: IDL.Bool,
   });
 
+  const RoleDefinition = IDL.Record({
+    id: IDL.Text,
+    name: IDL.Text,
+    responsibility: IDL.Text,
+    capabilities: IDL.Vec(IDL.Text),
+    constraints: IDL.Vec(IDL.Text),
+    doesNotOwn: IDL.Vec(IDL.Text),
+    lifecycleState: IDL.Text,
+    assignment: IDL.Text,
+    consumesCanonicalContinuity: IDL.Bool,
+    hasIndependentIdentity: IDL.Bool,
+    hasIndependentMemoryStore: IDL.Bool,
+  });
+
+  const DeferredIntegrationTarget = IDL.Record({
+    id: IDL.Text,
+    name: IDL.Text,
+    purpose: IDL.Text,
+    builtByRoles: IDL.Vec(IDL.Text),
+    lifecycleState: IDL.Text,
+    phase91SelectableRole: IDL.Bool,
+    executionEnabled: IDL.Bool,
+    requiresSeparateContract: IDL.Bool,
+  });
+
+  const ContractDependency = IDL.Record({
+    id: IDL.Text,
+    phase: IDL.Text,
+    name: IDL.Text,
+    obligation: IDL.Text,
+  });
+
+  const RoleArtifactContract = IDL.Record({
+    kind: IDL.Text,
+    producedBy: IDL.Text,
+    consumedBy: IDL.Vec(IDL.Text),
+    operatorApprovalRequired: IDL.Bool,
+    canonicalMemoryWriteAllowed: IDL.Bool,
+    phase91ExecutionEnabled: IDL.Bool,
+    requiredFields: IDL.Vec(IDL.Text),
+  });
+
+  const RoleContextBudgetProfile = IDL.Record({
+    roleId: IDL.Text,
+    profileName: IDL.Text,
+    maxContextChars: IDL.Nat,
+    continuityScope: IDL.Text,
+    allowedContext: IDL.Vec(IDL.Text),
+    excludedContext: IDL.Vec(IDL.Text),
+    requiresCanonicalContinuityRef: IDL.Bool,
+    preparedByAionLayerRequired: IDL.Bool,
+  });
+
+  const OperatorSurfaceBoundary = IDL.Record({
+    adminHtmlPurpose: IDL.Text,
+    operatorHtmlPurpose: IDL.Text,
+    adminHtmlRemainsGovernanceConsole: IDL.Bool,
+    operatorHtmlExpectedForPhase9: IDL.Bool,
+    operatorHtmlBuiltInPhase91: IDL.Bool,
+    sharedOperatorSessionBoundaryRequired: IDL.Bool,
+    publicAionSurfaceChanged: IDL.Bool,
+  });
+
+  const AcceptanceCheck = IDL.Record({
+    id: IDL.Text,
+    category: IDL.Text,
+    requirement: IDL.Text,
+    satisfied: IDL.Bool,
+    evidence: IDL.Text,
+  });
+
+  const RoleResultContract = IDL.Record({
+    resultVersion: IDL.Text,
+    requiredFields: IDL.Vec(IDL.Text),
+    prohibitedClaims: IDL.Vec(IDL.Text),
+    evidenceAndProvenanceRequired: IDL.Bool,
+    operatorApprovalStateRequired: IDL.Bool,
+    providerRouteDisclosureRequired: IDL.Bool,
+    canonicalMemoryWriteAllowed: IDL.Bool,
+    productionActionAllowed: IDL.Bool,
+    phase91LiveOutputAllowed: IDL.Bool,
+  });
+
+  const RoleRequestContract = IDL.Record({
+    requestVersion: IDL.Text,
+    requiredFields: IDL.Vec(IDL.Text),
+    requiredContextFields: IDL.Vec(IDL.Text),
+    prohibitedInputs: IDL.Vec(IDL.Text),
+    supportedRoles: IDL.Vec(IDL.Text),
+    trustedContextPreparer: IDL.Text,
+    operatorApprovalRequiredForConsequentialTransitions: IDL.Bool,
+    providerNeutral: IDL.Bool,
+    failClosedOnMalformedRequest: IDL.Bool,
+  });
+
+  const FailClosedRule = IDL.Record({
+    category: IDL.Text,
+    trigger: IDL.Text,
+    requiredBehavior: IDL.Text,
+    operatorRecoverable: IDL.Bool,
+  });
+
+  const RolePolicy = IDL.Record({
+    policyVersion: IDL.Text,
+    oneCanonicalIdentityRequired: IDL.Bool,
+    oneCanonicalContinuityRequired: IDL.Bool,
+    governedMemoryOnly: IDL.Bool,
+    humanAuthorityRequired: IDL.Bool,
+    executionModelIndependent: IDL.Bool,
+    providerPolicySeparated: IDL.Bool,
+    failClosedRequired: IDL.Bool,
+    hiddenRoleChainingAllowed: IDL.Bool,
+    autonomousToolExecutionAllowed: IDL.Bool,
+    liveInferenceAllowed: IDL.Bool,
+    roleDrivenMemoryWritesAllowed: IDL.Bool,
+    publicBehaviorChangesAllowed: IDL.Bool,
+    oracleIntegrationTargetExecutionEnabled: IDL.Bool,
+  });
+
+  const RoleContextPacketPreview = IDL.Record({
+    packetVersion: IDL.Text,
+    canonicalContinuityRef: IDL.Text,
+    preparedByAionLayer: IDL.Text,
+    approvalState: IDL.Text,
+    prohibitedActions: IDL.Vec(IDL.Text),
+    outputExpectations: IDL.Vec(IDL.Text),
+    separateRoleContinuityRequested: IDL.Bool,
+    rolePrivateMemoryRequested: IDL.Bool,
+    providerSpecificRoutingIncluded: IDL.Bool,
+  });
+
+  const RoleTransition = IDL.Record({
+    transitionKind: IDL.Text,
+    fromRole: IDL.Opt(IDL.Text),
+    toRole: IDL.Opt(IDL.Text),
+    approvalState: IDL.Text,
+    operatorApprovalRequired: IDL.Bool,
+    operatorApproved: IDL.Bool,
+    supportedInPhase91: IDL.Bool,
+  });
+
+  const RoleBasedIntelligenceReport = IDL.Record({
+    foundationVersion: IDL.Text,
+    phaseName: IDL.Text,
+    architecturalSubject: IDL.Text,
+    contractDependencies: IDL.Vec(ContractDependency),
+    roles: IDL.Vec(RoleDefinition),
+    deferredIntegrationTargets: IDL.Vec(DeferredIntegrationTarget),
+    artifactContracts: IDL.Vec(RoleArtifactContract),
+    contextBudgetProfiles: IDL.Vec(RoleContextBudgetProfile),
+    surfaceBoundary: OperatorSurfaceBoundary,
+    acceptanceChecklist: IDL.Vec(AcceptanceCheck),
+    requestContract: RoleRequestContract,
+    resultContract: RoleResultContract,
+    failClosedRules: IDL.Vec(FailClosedRule),
+    policy: RolePolicy,
+    transitionModel: IDL.Vec(RoleTransition),
+    contextPacketPreview: RoleContextPacketPreview,
+    lifecycleSummary: IDL.Text,
+    readOnly: IDL.Bool,
+    providerCallsEnabled: IDL.Bool,
+    roleDrivenMemoryWritesEnabled: IDL.Bool,
+    autonomousExecutionEnabled: IDL.Bool,
+    publicBehaviorChanged: IDL.Bool,
+    nonOperatorSurfaceAllowed: IDL.Bool,
+    nextMilestone: IDL.Text,
+  });
+
   const OperatorStatus = IDL.Record({
     isOperator: IDL.Bool,
     allowlistConfigured: IDL.Bool,
@@ -412,6 +580,12 @@ const idlFactory = ({ IDL }) => {
     previewAionProviderRoute: IDL.Func(
       [ProviderRouteOperation],
       [ProviderRoutePreview],
+      ["query"]
+    ),
+
+    getAionRoleBasedIntelligenceStatus: IDL.Func(
+      [],
+      [RoleBasedIntelligenceReport],
       ["query"]
     ),
 
@@ -11439,6 +11613,374 @@ window.runAionProviderRoutingPolicyDebug = async function runAionProviderRouting
   } catch (err) {
     console.error("Aion provider routing policy failed:", err);
     container.innerHTML = `<p>Aion provider routing policy failed: ${escapeHtml(err.message || err)}</p>`;
+  }
+};
+
+function renderRoleBasedIntelligenceReport(data = {}, sourceLabel = "Status") {
+  const roles = Array.isArray(data.roles) ? data.roles : [];
+  const dependencies = Array.isArray(data.contractDependencies)
+    ? data.contractDependencies
+    : [];
+  const deferredTargets = Array.isArray(data.deferredIntegrationTargets)
+    ? data.deferredIntegrationTargets
+    : [];
+  const artifactContracts = Array.isArray(data.artifactContracts)
+    ? data.artifactContracts
+    : [];
+  const contextBudgets = Array.isArray(data.contextBudgetProfiles)
+    ? data.contextBudgetProfiles
+    : [];
+  const surfaceBoundary = data.surfaceBoundary || {};
+  const acceptanceChecklist = Array.isArray(data.acceptanceChecklist)
+    ? data.acceptanceChecklist
+    : [];
+  const requestContract = data.requestContract || {};
+  const resultContract = data.resultContract || {};
+  const failClosedRules = Array.isArray(data.failClosedRules)
+    ? data.failClosedRules
+    : [];
+  const policy = data.policy || {};
+  const context = data.contextPacketPreview || {};
+  const transitions = Array.isArray(data.transitionModel) ? data.transitionModel : [];
+  const roleRows = roles.map((role) => `
+    <tr>
+      <td><strong>${escapeHtml(role.name || role.id || "")}</strong></td>
+      <td>${escapeHtml(role.responsibility || "")}</td>
+      <td>${escapeHtml(Array.isArray(role.capabilities) ? role.capabilities.join(", ") : "")}</td>
+      <td>${escapeHtml(Array.isArray(role.constraints) ? role.constraints.join(", ") : "")}</td>
+      <td>${escapeHtml(role.lifecycleState || "")}</td>
+      <td>${escapeHtml(role.assignment || "")}</td>
+      <td>${renderBoolean(Boolean(role.consumesCanonicalContinuity))}</td>
+      <td>${renderBoolean(!role.hasIndependentIdentity && !role.hasIndependentMemoryStore)}</td>
+    </tr>
+  `).join("");
+  const dependencyRows = dependencies.map((dependency) => `
+    <tr>
+      <td>${escapeHtml(dependency.phase || "")}</td>
+      <td><strong>${escapeHtml(dependency.name || dependency.id || "")}</strong></td>
+      <td>${escapeHtml(dependency.obligation || "")}</td>
+    </tr>
+  `).join("");
+  const deferredTargetRows = deferredTargets.map((target) => `
+    <tr>
+      <td><strong>${escapeHtml(target.name || target.id || "")}</strong></td>
+      <td>${escapeHtml(target.purpose || "")}</td>
+      <td>${escapeHtml(Array.isArray(target.builtByRoles) ? target.builtByRoles.join(", ") : "")}</td>
+      <td>${escapeHtml(target.lifecycleState || "")}</td>
+      <td>${renderBoolean(Boolean(target.phase91SelectableRole))}</td>
+      <td>${renderBoolean(Boolean(target.requiresSeparateContract))}</td>
+    </tr>
+  `).join("");
+  const artifactRows = artifactContracts.map((artifact) => `
+    <tr>
+      <td><strong>${escapeHtml(artifact.kind || "")}</strong></td>
+      <td>${escapeHtml(artifact.producedBy || "")}</td>
+      <td>${escapeHtml(Array.isArray(artifact.consumedBy) ? artifact.consumedBy.join(", ") : "")}</td>
+      <td>${renderBoolean(Boolean(artifact.operatorApprovalRequired))}</td>
+      <td>${renderBoolean(Boolean(artifact.phase91ExecutionEnabled))}</td>
+    </tr>
+  `).join("");
+  const budgetRows = contextBudgets.map((budget) => `
+    <tr>
+      <td><strong>${escapeHtml(budget.roleId || "")}</strong></td>
+      <td>${escapeHtml(budget.profileName || "")}</td>
+      <td>${escapeHtml(String(budget.maxContextChars || ""))}</td>
+      <td>${escapeHtml(budget.continuityScope || "")}</td>
+      <td>${renderBoolean(Boolean(budget.requiresCanonicalContinuityRef))}</td>
+    </tr>
+  `).join("");
+  const acceptanceRows = acceptanceChecklist.map((check) => `
+    <tr>
+      <td><strong>${escapeHtml(check.id || "")}</strong></td>
+      <td>${escapeHtml(check.category || "")}</td>
+      <td>${escapeHtml(check.requirement || "")}</td>
+      <td>${renderBoolean(Boolean(check.satisfied))}</td>
+      <td>${escapeHtml(check.evidence || "")}</td>
+    </tr>
+  `).join("");
+  const transitionRows = transitions.map((transition) => `
+    <tr>
+      <td><strong>${escapeHtml(transition.transitionKind || "")}</strong></td>
+      <td>${escapeHtml(Array.isArray(transition.fromRole) ? (transition.fromRole[0] || "operator objective") : (transition.fromRole || "operator objective"))}</td>
+      <td>${escapeHtml(Array.isArray(transition.toRole) ? (transition.toRole[0] || "approved action") : (transition.toRole || "approved action"))}</td>
+      <td>${escapeHtml(transition.approvalState || "")}</td>
+      <td>${renderBoolean(Boolean(transition.operatorApprovalRequired))}</td>
+      <td>${renderBoolean(Boolean(transition.supportedInPhase91))}</td>
+    </tr>
+  `).join("");
+  const failClosedRows = failClosedRules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.category || "")}</strong></td>
+      <td>${escapeHtml(rule.trigger || "")}</td>
+      <td>${escapeHtml(rule.requiredBehavior || "")}</td>
+      <td>${renderBoolean(Boolean(rule.operatorRecoverable))}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="memory-card">
+      <h3>${escapeHtml(sourceLabel)}</h3>
+      <p>${escapeHtml(data.architecturalSubject || "")}</p>
+      <p class="meta">Version: ${escapeHtml(data.foundationVersion || "")} | Read-only: ${data.readOnly ? "yes" : "no"} | Provider calls: ${data.providerCallsEnabled ? "enabled" : "disabled"} | Memory writes: ${data.roleDrivenMemoryWritesEnabled ? "enabled" : "disabled"}</p>
+      <p>${escapeHtml(data.lifecycleSummary || "")}</p>
+    </div>
+    <div class="memory-card">
+      <h3>Role Registry</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Responsibility</th><th>Capabilities</th><th>Constraints</th><th>Lifecycle</th><th>Assignment</th><th>Canonical continuity</th><th>One Aion</th></tr></thead>
+        <tbody>${roleRows || "<tr><td colspan=\"8\">No roles returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Contract Dependencies</h3>
+      <table>
+        <thead><tr><th>Phase</th><th>Contract</th><th>Phase 9.1 obligation</th></tr></thead>
+        <tbody>${dependencyRows || "<tr><td colspan=\"3\">No dependencies returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Deferred Integration Targets</h3>
+      <table>
+        <thead><tr><th>Target</th><th>Purpose</th><th>Built by</th><th>Lifecycle</th><th>Selectable role</th><th>Separate contract</th></tr></thead>
+        <tbody>${deferredTargetRows || "<tr><td colspan=\"6\">No deferred targets returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Artifact Contracts</h3>
+      <table>
+        <thead><tr><th>Artifact</th><th>Produced by</th><th>Consumed by</th><th>Approval</th><th>9.1 execution</th></tr></thead>
+        <tbody>${artifactRows || "<tr><td colspan=\"5\">No artifact contracts returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Context Budget Profiles</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Profile</th><th>Max chars</th><th>Scope</th><th>Canonical ref</th></tr></thead>
+        <tbody>${budgetRows || "<tr><td colspan=\"5\">No context budgets returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Transition Model</h3>
+      <table>
+        <thead><tr><th>Transition</th><th>From</th><th>To</th><th>Approval</th><th>Operator approval</th><th>Supported</th></tr></thead>
+        <tbody>${transitionRows || "<tr><td colspan=\"6\">No transitions returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Operator Surface Boundary</h3>
+      ${renderCountMap({
+        "admin.html purpose": surfaceBoundary.adminHtmlPurpose || "",
+        "operator.html purpose": surfaceBoundary.operatorHtmlPurpose || "",
+        "admin remains governance console": surfaceBoundary.adminHtmlRemainsGovernanceConsole,
+        "operator.html expected for Phase 9": surfaceBoundary.operatorHtmlExpectedForPhase9,
+        "operator.html built in 9.1": surfaceBoundary.operatorHtmlBuiltInPhase91,
+        "shared operator session required": surfaceBoundary.sharedOperatorSessionBoundaryRequired,
+        "public Aion changed": surfaceBoundary.publicAionSurfaceChanged,
+      })}
+    </div>
+    <div class="memory-card">
+      <h3>Phase 9.1 Acceptance Checklist</h3>
+      <table>
+        <thead><tr><th>Check</th><th>Category</th><th>Requirement</th><th>Satisfied</th><th>Evidence</th></tr></thead>
+        <tbody>${acceptanceRows || "<tr><td colspan=\"5\">No acceptance checks returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Role Request Contract</h3>
+      ${renderCountMap({
+        "request version": requestContract.requestVersion || "",
+        "required fields": Array.isArray(requestContract.requiredFields) ? requestContract.requiredFields.join(", ") : "",
+        "required context fields": Array.isArray(requestContract.requiredContextFields) ? requestContract.requiredContextFields.join(", ") : "",
+        "prohibited inputs": Array.isArray(requestContract.prohibitedInputs) ? requestContract.prohibitedInputs.join(", ") : "",
+        "supported roles": Array.isArray(requestContract.supportedRoles) ? requestContract.supportedRoles.join(", ") : "",
+        "trusted context preparer": requestContract.trustedContextPreparer || "",
+        "approval required for consequential transitions": requestContract.operatorApprovalRequiredForConsequentialTransitions,
+        "provider neutral": requestContract.providerNeutral,
+        "fail closed on malformed request": requestContract.failClosedOnMalformedRequest,
+      })}
+    </div>
+    <div class="memory-card">
+      <h3>Role Result Contract</h3>
+      ${renderCountMap({
+        "result version": resultContract.resultVersion || "",
+        "required fields": Array.isArray(resultContract.requiredFields) ? resultContract.requiredFields.join(", ") : "",
+        "prohibited claims": Array.isArray(resultContract.prohibitedClaims) ? resultContract.prohibitedClaims.join(", ") : "",
+        "evidence/provenance required": resultContract.evidenceAndProvenanceRequired,
+        "approval state required": resultContract.operatorApprovalStateRequired,
+        "provider route disclosure required": resultContract.providerRouteDisclosureRequired,
+        "canonical memory write allowed": resultContract.canonicalMemoryWriteAllowed,
+        "production action allowed": resultContract.productionActionAllowed,
+        "9.1 live output allowed": resultContract.phase91LiveOutputAllowed,
+      })}
+    </div>
+    <div class="memory-card">
+      <h3>Fail-Closed Rules</h3>
+      <table>
+        <thead><tr><th>Category</th><th>Trigger</th><th>Required behavior</th><th>Operator recoverable</th></tr></thead>
+        <tbody>${failClosedRows || "<tr><td colspan=\"4\">No fail-closed rules returned.</td></tr>"}</tbody>
+      </table>
+    </div>
+    <div class="memory-card">
+      <h3>Policy Boundary</h3>
+      ${renderCountMap({
+        "one canonical identity": policy.oneCanonicalIdentityRequired,
+        "one canonical continuity": policy.oneCanonicalContinuityRequired,
+        "human authority": policy.humanAuthorityRequired,
+        "execution-model independent": policy.executionModelIndependent,
+        "provider policy separated": policy.providerPolicySeparated,
+        "live inference allowed": policy.liveInferenceAllowed,
+        "role memory writes allowed": policy.roleDrivenMemoryWritesAllowed,
+        "autonomous execution allowed": policy.autonomousToolExecutionAllowed,
+        "oracle target execution enabled": policy.oracleIntegrationTargetExecutionEnabled,
+      })}
+    </div>
+    <div class="memory-card">
+      <h3>Context Packet Preview</h3>
+      ${renderCountMap({
+        "packet version": context.packetVersion || "",
+        "canonical continuity": context.canonicalContinuityRef || "",
+        "prepared by": context.preparedByAionLayer || "",
+        "approval state": context.approvalState || "",
+        "separate role continuity requested": context.separateRoleContinuityRequested,
+        "role private memory requested": context.rolePrivateMemoryRequested,
+        "provider routing included": context.providerSpecificRoutingIncluded,
+      })}
+    </div>
+  `;
+}
+
+function sortedRoleFoundationValues(items, selector) {
+  return (Array.isArray(items) ? items : [])
+    .map(selector)
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .map(String)
+    .sort();
+}
+
+function roleFoundationValueSetsMatch(left, right, selector) {
+  const leftValues = sortedRoleFoundationValues(left, selector);
+  const rightValues = sortedRoleFoundationValues(right, selector);
+  return leftValues.length === rightValues.length
+    && leftValues.every((value, index) => value === rightValues[index]);
+}
+
+function phase91AcceptanceSatisfied(report = {}) {
+  const checks = Array.isArray(report.acceptanceChecklist)
+    ? report.acceptanceChecklist
+    : [];
+  return checks.length > 0 && checks.every((check) => Boolean(check.satisfied));
+}
+
+function roleFoundationSurfaceFlagsMatch(nativeReport = {}, renderReport = {}) {
+  const nativeSurface = nativeReport.surfaceBoundary || {};
+  const renderSurface = renderReport.surfaceBoundary || {};
+  return nativeSurface.adminHtmlRemainsGovernanceConsole === renderSurface.adminHtmlRemainsGovernanceConsole
+    && nativeSurface.operatorHtmlExpectedForPhase9 === renderSurface.operatorHtmlExpectedForPhase9
+    && nativeSurface.operatorHtmlBuiltInPhase91 === renderSurface.operatorHtmlBuiltInPhase91
+    && nativeSurface.sharedOperatorSessionBoundaryRequired === renderSurface.sharedOperatorSessionBoundaryRequired
+    && nativeSurface.publicAionSurfaceChanged === renderSurface.publicAionSurfaceChanged;
+}
+
+function roleFoundationResultContractMatches(nativeReport = {}, renderReport = {}) {
+  const nativeContract = nativeReport.resultContract || {};
+  const renderContract = renderReport.resultContract || {};
+  return nativeContract.resultVersion === renderContract.resultVersion
+    && nativeContract.evidenceAndProvenanceRequired === renderContract.evidenceAndProvenanceRequired
+    && nativeContract.operatorApprovalStateRequired === renderContract.operatorApprovalStateRequired
+    && nativeContract.providerRouteDisclosureRequired === renderContract.providerRouteDisclosureRequired
+    && nativeContract.canonicalMemoryWriteAllowed === renderContract.canonicalMemoryWriteAllowed
+    && nativeContract.productionActionAllowed === renderContract.productionActionAllowed
+    && nativeContract.phase91LiveOutputAllowed === renderContract.phase91LiveOutputAllowed
+    && roleFoundationValueSetsMatch(nativeContract.requiredFields, renderContract.requiredFields, (value) => value)
+    && roleFoundationValueSetsMatch(nativeContract.prohibitedClaims, renderContract.prohibitedClaims, (value) => value);
+}
+
+function roleFoundationRequestContractMatches(nativeReport = {}, renderReport = {}) {
+  const nativeContract = nativeReport.requestContract || {};
+  const renderContract = renderReport.requestContract || {};
+  return nativeContract.requestVersion === renderContract.requestVersion
+    && nativeContract.trustedContextPreparer === renderContract.trustedContextPreparer
+    && nativeContract.operatorApprovalRequiredForConsequentialTransitions === renderContract.operatorApprovalRequiredForConsequentialTransitions
+    && nativeContract.providerNeutral === renderContract.providerNeutral
+    && nativeContract.failClosedOnMalformedRequest === renderContract.failClosedOnMalformedRequest
+    && roleFoundationValueSetsMatch(nativeContract.requiredFields, renderContract.requiredFields, (value) => value)
+    && roleFoundationValueSetsMatch(nativeContract.requiredContextFields, renderContract.requiredContextFields, (value) => value)
+    && roleFoundationValueSetsMatch(nativeContract.prohibitedInputs, renderContract.prohibitedInputs, (value) => value)
+    && roleFoundationValueSetsMatch(nativeContract.supportedRoles, renderContract.supportedRoles, (value) => value);
+}
+
+function roleFoundationRoleDetailsMatch(nativeReport = {}, renderReport = {}) {
+  const renderRolesById = new Map(
+    (Array.isArray(renderReport.roles) ? renderReport.roles : [])
+      .map((role) => [role.id, role])
+  );
+  return (Array.isArray(nativeReport.roles) ? nativeReport.roles : []).every((nativeRole) => {
+    const renderRole = renderRolesById.get(nativeRole.id);
+    return renderRole
+      && roleFoundationValueSetsMatch(nativeRole.capabilities, renderRole.capabilities, (value) => value)
+      && roleFoundationValueSetsMatch(nativeRole.constraints, renderRole.constraints, (value) => value)
+      && roleFoundationValueSetsMatch(nativeRole.doesNotOwn, renderRole.doesNotOwn, (value) => value);
+  });
+}
+
+function roleFoundationReportsAligned(nativeReport = {}, renderReport = {}) {
+  return nativeReport.foundationVersion === renderReport.foundationVersion
+    && nativeReport.readOnly === renderReport.readOnly
+    && nativeReport.providerCallsEnabled === renderReport.providerCallsEnabled
+    && nativeReport.roleDrivenMemoryWritesEnabled === renderReport.roleDrivenMemoryWritesEnabled
+    && nativeReport.autonomousExecutionEnabled === renderReport.autonomousExecutionEnabled
+    && nativeReport.publicBehaviorChanged === renderReport.publicBehaviorChanged
+    && nativeReport.nonOperatorSurfaceAllowed === renderReport.nonOperatorSurfaceAllowed
+    && roleFoundationValueSetsMatch(nativeReport.roles, renderReport.roles, (role) => role.id)
+    && roleFoundationRoleDetailsMatch(nativeReport, renderReport)
+    && roleFoundationValueSetsMatch(nativeReport.deferredIntegrationTargets, renderReport.deferredIntegrationTargets, (target) => target.id)
+    && roleFoundationValueSetsMatch(nativeReport.contractDependencies, renderReport.contractDependencies, (dependency) => dependency.id)
+    && roleFoundationValueSetsMatch(nativeReport.artifactContracts, renderReport.artifactContracts, (artifact) => artifact.kind)
+    && roleFoundationValueSetsMatch(nativeReport.contextBudgetProfiles, renderReport.contextBudgetProfiles, (budget) => `${budget.roleId}:${budget.profileName}`)
+    && roleFoundationValueSetsMatch(nativeReport.acceptanceChecklist, renderReport.acceptanceChecklist, (check) => check.id)
+    && roleFoundationValueSetsMatch(nativeReport.failClosedRules, renderReport.failClosedRules, (rule) => rule.category)
+    && phase91AcceptanceSatisfied(nativeReport)
+    && phase91AcceptanceSatisfied(renderReport)
+    && roleFoundationRequestContractMatches(nativeReport, renderReport)
+    && roleFoundationResultContractMatches(nativeReport, renderReport)
+    && roleFoundationSurfaceFlagsMatch(nativeReport, renderReport);
+}
+
+window.runRoleBasedIntelligenceFoundationStatus = async function runRoleBasedIntelligenceFoundationStatus() {
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    alert("Operator access is required.");
+    return;
+  }
+
+  const container = document.getElementById("roleBasedIntelligenceFoundationResults");
+  container.innerHTML = "<p>Inspecting Phase 9 role foundation...</p>";
+
+  try {
+    const [nativeReport, renderResponse] = await Promise.all([
+      window.adminActor.getAionRoleBasedIntelligenceStatus(),
+      fetch(`${AIONIC_AGENT_API_BASE_URL}/admin/role-based-intelligence-foundation`),
+    ]);
+    const renderReport = await renderResponse.json();
+
+    if (renderReport.error) {
+      container.innerHTML = `<p>Error: ${escapeHtml(renderReport.error)}</p>`;
+      return;
+    }
+
+    const nativeMatchesRender = roleFoundationReportsAligned(nativeReport, renderReport);
+
+    container.innerHTML = `
+      <div class="memory-card">
+        <h3>Phase 9.1 Role Foundation</h3>
+        <p>Role-Based Intelligence is represented as one Aion with bounded operational roles, shared canonical continuity, and explicit operator authority. Oracle is tracked only as a deferred integration target.</p>
+        <p><span class="status-badge ${nativeMatchesRender ? "success" : "error"}">${nativeMatchesRender ? "native/render aligned" : "review alignment"}</span></p>
+      </div>
+      ${renderRoleBasedIntelligenceReport(nativeReport, "Native Canister Status")}
+      ${renderRoleBasedIntelligenceReport(renderReport, "Render Bridge Status")}
+    `;
+  } catch (err) {
+    console.error("Role-based intelligence status failed:", err);
+    container.innerHTML = `<p>Role-based intelligence status failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 
