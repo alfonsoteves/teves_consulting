@@ -14,3 +14,10 @@ Prime Home does not:
 - mutate provider routes;
 - change public behavior;
 - claim frontier model superiority.
+
+The Phase 9.7 Prime Home surface also shows:
+
+- daily workflow rhythm;
+- success metrics as goals;
+- artifact handoff readiness;
+- automatic transfer disabled.

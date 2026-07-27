@@ -348,6 +348,33 @@ function renderPrimeHome(report) {
         `).join("")}</ul>
       </article>
     </div>
+    <h3>Daily Rhythm</h3>
+    ${table(
+      ["Stage", "Prime Responsibility", "Artifact", "Approval", "Enabled"],
+      (report.dailyWorkflow || []).map((stage) => `
+        <tr>
+          <td><strong>${escapeHtml(stage.stageName || "")}</strong><br><span class="meta">${escapeHtml(stage.supportingRole || "Prime")}</span></td>
+          <td>${escapeHtml(stage.primeResponsibility || "")}</td>
+          <td>${escapeHtml(stage.expectedArtifact || "")}</td>
+          <td>${boolText(stage.operatorApprovalRequired)}</td>
+          <td>${boolText(stage.enabledInPhase97)}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Success Metrics</h3>
+        <ul>${(report.successMetrics || []).map((metric) => `
+          <li><strong>${escapeHtml(metric.title || "")}</strong><br><span class="meta">${escapeHtml(metric.targetDirection || "")}: ${escapeHtml(metric.measurement || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Packet Chain</h3>
+        <ul>${(report.artifactHandoffReadiness || []).map((artifact) => `
+          <li><strong>${escapeHtml(artifact.artifactKind || "")}</strong><br><span class="meta">${escapeHtml(artifact.producedBy || "")} to ${escapeHtml((artifact.consumedBy || []).join(", "))}. Automatic transfer: ${boolText(artifact.automaticTransferEnabled)}</span></li>
+        `).join("")}</ul>
+      </article>
+    </div>
   `;
 }
 
