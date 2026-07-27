@@ -393,6 +393,66 @@ async function loadLiveRolePrototypeGate() {
   renderLiveRolePrototypeGate(result);
 }
 
+function renderRoleEvaluation(result) {
+  const container = document.getElementById("roleEvaluationResults");
+  if (!container) return;
+  if (!result || !result.accepted || !result.report) {
+    container.innerHTML = `<p>Role evaluation unavailable: ${escapeHtml((result && result.reason) || "review required")}</p>`;
+    return;
+  }
+  const report = result.report;
+  const boundary = report.boundary || {};
+  const metrics = report.metrics || {};
+  container.innerHTML = `
+    <p class="meta">Version: ${escapeHtml(report.evaluationVersion || "")} | Baseline: ${escapeHtml(report.baselineCompared || "")} | Production suitability: ${boolText(boundary.productionSuitabilityEstablished)}</p>
+    <div class="role-grid">
+      ${(report.roleFindings || []).map((finding) => `
+        <article class="role-card">
+          <h3>${escapeHtml(finding.roleName || "")}</h3>
+          <p class="meta">${escapeHtml(finding.decision || "")} | Evidence: ${escapeHtml(finding.evidenceStatus || "")}</p>
+          <p>${escapeHtml(finding.rationale || "")}</p>
+          <ul>
+            <li>Useful for: ${escapeHtml((finding.usefulFor || []).join(", "))}</li>
+            <li>Approval: ${escapeHtml(finding.approvalRule || "")}</li>
+          </ul>
+        </article>
+      `).join("")}
+    </div>
+    ${table(
+      ["Task", "Sequence", "Decision", "Approval", "Rationale"],
+      (report.taskCategoryFindings || []).map((finding) => `
+        <tr>
+          <td><strong>${escapeHtml(finding.categoryName || "")}</strong></td>
+          <td>${escapeHtml((finding.recommendedSequence || []).join(" -> "))}</td>
+          <td>${escapeHtml(finding.decision || "")}</td>
+          <td>${escapeHtml(finding.approvalRule || "")}</td>
+          <td>${escapeHtml(finding.rationale || "")}</td>
+        </tr>
+      `)
+    )}
+    ${table(
+      ["Metric", "Measured", "Verdict"],
+      [
+        ["Latency", metrics.latencyMeasured, metrics.latencyVerdict],
+        ["Cost or cycles", metrics.costOrCyclesMeasured, metrics.costOrCyclesVerdict],
+        ["Operator burden", metrics.operatorBurdenMeasured, metrics.operatorBurdenVerdict],
+        ["Execution-route differences", metrics.executionRouteDifferencesMeasured, metrics.executionRouteDifferenceVerdict],
+      ].map((row) => `
+        <tr>
+          <td><strong>${escapeHtml(row[0])}</strong></td>
+          <td>${boolText(row[1])}</td>
+          <td>${escapeHtml(row[2] || "")}</td>
+        </tr>
+      `)
+    )}
+  `;
+}
+
+async function loadRoleEvaluation() {
+  const result = await renderFetch("/admin/role-quality-suitability-evaluation");
+  renderRoleEvaluation(result);
+}
+
 async function loadRolesAndRules() {
   const [nativeReport, renderBridgeReport] = await Promise.all([
     actor.getAionRoleRulesOperatingAgreementStatus(),
@@ -407,6 +467,7 @@ async function loadRolesAndRules() {
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
+  await loadRoleEvaluation();
 }
 
 async function refreshOperatorAccess() {
