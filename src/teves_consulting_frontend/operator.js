@@ -534,6 +534,126 @@ async function loadMirrorWorkflow() {
   renderMirrorWorkflow(report);
 }
 
+function renderEngineerWorkflow(report) {
+  const container = document.getElementById("engineerWorkflowResults");
+  if (!container) return;
+  const acceptance = report.phase98AAcceptance || {};
+  const context = report.engineeringContext || {};
+  const output = report.engineerOutput || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.workflowVersion || "")} | Source Mirror accepted: ${boolText(report.sourceMirrorAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>9.8A Accepted</h2>
+        <p>${escapeHtml(acceptance.acceptedBaseline || "")}</p>
+        <ul>
+          <li>Accepted: ${boolText(acceptance.phase98AAccepted)}</li>
+          <li>Loop: ${escapeHtml(acceptance.reasoningLoopPrinciple || "")}</li>
+          <li>Sequence: ${escapeHtml((acceptance.approvedSequence || []).join(" -> "))}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Engineering Context</h2>
+        <p>${escapeHtml(context.objective || "")}</p>
+        <ul>
+          <li>Prime packet: ${escapeHtml(context.sourcePrimePacketId || "")}</li>
+          <li>Mirror packet: ${escapeHtml(context.sourceMirrorPacketId || "")}</li>
+          <li>Approved for planning: ${boolText(context.operatorApprovedForEngineerPlanning)}</li>
+          <li>Execution approved: ${boolText(context.implementationExecutionApproved)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Provider Boundary</h2>
+        <ul>
+          <li>Engineer is Aion reasoning: ${boolText(boundary.engineerIsAionReasoningResponsibility)}</li>
+          <li>Engineer is Codex: ${boolText(boundary.engineerIsCodex)}</li>
+          <li>Codex may be execution route: ${boolText(boundary.codexMayBeExecutionProvider)}</li>
+          <li>Provider policy selects route: ${boolText(boundary.providerPolicySelectsExecutionRoute)}</li>
+          <li>Engineer selects route: ${boolText(boundary.engineerSelectsProviderRoute)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Implementation Plan</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Plan</h3>
+        <ul>${(output.implementationPlan || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Constraints</h3>
+        <ul>${(report.constraints || []).map((constraint) => `
+          <li><strong>${escapeHtml(constraint.title || "")}</strong><br><span class="meta">${escapeHtml(constraint.requirement || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Execution Gate</h3>
+        <ul>
+          <li>Route selected by Engineer: ${boolText(output.executionRouteSelectedByEngineer)}</li>
+          <li>Requires operator approval: ${boolText(output.requiresOperatorApprovalBeforeExecution)}</li>
+          <li>Implementation authorized: ${boolText(output.implementationAuthorized)}</li>
+          <li>Commit authorized: ${boolText(output.commitAuthorized)}</li>
+          <li>Deploy authorized: ${boolText(output.deployAuthorized)}</li>
+          <li>Memory write approved: ${boolText(output.canonicalMemoryWriteApproved)}</li>
+        </ul>
+      </article>
+    </div>
+    <h3>Affected Components</h3>
+    ${table(
+      ["Component", "Repo", "Surface", "Expected Change", "Public Safe"],
+      (output.affectedComponents || []).map((component) => `
+        <tr>
+          <td><strong>${escapeHtml(component.componentId || "")}</strong></td>
+          <td>${escapeHtml(component.repoName || "")}</td>
+          <td>${escapeHtml(component.surface || "")}</td>
+          <td>${escapeHtml(component.expectedChange || "")}</td>
+          <td>${boolText(component.publicRepoSafe)}</td>
+        </tr>
+      `)
+    )}
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Risks</h3>
+        <ul>${(output.risks || []).map((risk) => `
+          <li><strong>${escapeHtml(risk.title || "")}</strong><br><span class="meta">${escapeHtml(risk.mitigation || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Validation</h3>
+        <ul>${(output.validationRequirements || []).map((item) => `
+          <li><strong>${escapeHtml(item.requirementId || "")}</strong><br><span class="meta">${escapeHtml(item.purpose || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+      <article class="role-card">
+        <h3>Rollback</h3>
+        <ul>${(output.rollbackConsiderations || []).map((item) => `
+          <li><strong>${escapeHtml(item.scope || "")}</strong><br><span class="meta">${escapeHtml(item.strategy || "")}</span></li>
+        `).join("")}</ul>
+      </article>
+    </div>
+    <h3>Governed Flow</h3>
+    ${table(
+      ["Step", "Owner", "Input", "Output", "Approval", "Executed"],
+      (report.workflowSteps || []).map((step) => `
+        <tr>
+          <td><strong>${escapeHtml(step.stepName || "")}</strong><br><span class="meta">${escapeHtml(String(step.stepIndex || ""))}</span></td>
+          <td>${escapeHtml(step.owner || "")}</td>
+          <td>${escapeHtml(step.inputArtifact || "")}</td>
+          <td>${escapeHtml(step.outputArtifact || "")}</td>
+          <td>${boolText(step.operatorApprovalRequired)}</td>
+          <td>${boolText(step.executionPerformed)}</td>
+        </tr>
+      `)
+    )}
+  `;
+}
+
+async function loadEngineerWorkflow() {
+  const report = await renderFetch("/admin/engineer-workflow");
+  renderEngineerWorkflow(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -717,6 +837,7 @@ async function loadRolesAndRules() {
   renderReport(nativeReport);
   await loadPrimeHome();
   await loadMirrorWorkflow();
+  await loadEngineerWorkflow();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
