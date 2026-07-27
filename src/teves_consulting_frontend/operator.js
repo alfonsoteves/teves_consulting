@@ -250,6 +250,44 @@ function renderReport(report) {
   );
 }
 
+function renderContextPackets(report) {
+  const container = document.getElementById("contextPacketResults");
+  if (!container) return;
+  const packets = Array.isArray(report.packets) ? report.packets : [];
+  const comparisons = new Map(
+    (Array.isArray(report.comparisons) ? report.comparisons : [])
+      .map((comparison) => [comparison.roleId, comparison])
+  );
+  container.innerHTML = `
+    <p class="meta">Version: ${escapeHtml(report.packetVersion || "")} | Live inference: ${boolText(report.liveInferenceEnabled)} | Provider calls: ${boolText(report.providerCallsEnabled)} | Memory writes: ${boolText(report.memoryWritesEnabled)}</p>
+    ${packets.map((packet) => {
+      const comparison = comparisons.get(packet.roleId) || {};
+      return `
+        <article class="role-card">
+          <h3>${escapeHtml(packet.roleId)}</h3>
+          <p class="meta">${escapeHtml(packet.currentOperatorObjective || "")}</p>
+          <ul>
+            <li>Canonical continuity: ${escapeHtml(packet.canonicalContinuityRef || "")}</li>
+            <li>Prepared by: ${escapeHtml(packet.preparedByAionLayer || "")}</li>
+            <li>Task context: ${escapeHtml((packet.taskSpecificContext || {}).contentPreview || "")}</li>
+            <li>Role instruction: ${escapeHtml((packet.roleSpecificInstructions || {}).contentPreview || "")}</li>
+            <li>Evidence refs: ${escapeHtml(String((packet.evidenceAndProvenance || []).length))}</li>
+            <li>Approved prior outputs: ${escapeHtml(String((packet.priorApprovedRoleOutputs || []).length))}</li>
+            <li>Within budget: ${boolText(comparison.withinBudget)}</li>
+            <li>Provider neutral: ${boolText(comparison.providerNeutral)}</li>
+            <li>Accepted: ${boolText(comparison.accepted)}</li>
+          </ul>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+async function loadRoleContextPackets() {
+  const report = await renderFetch("/admin/role-grounded-context-packets");
+  renderContextPackets(report);
+}
+
 async function loadRolesAndRules() {
   const [nativeReport, renderBridgeReport] = await Promise.all([
     actor.getAionRoleRulesOperatingAgreementStatus(),
@@ -261,6 +299,7 @@ async function loadRolesAndRules() {
     setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
   }
   renderReport(nativeReport);
+  await loadRoleContextPackets();
 }
 
 async function refreshOperatorAccess() {
