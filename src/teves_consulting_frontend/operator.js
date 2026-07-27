@@ -453,64 +453,6 @@ async function loadRoleEvaluation() {
   renderRoleEvaluation(result);
 }
 
-function renderOperatorRoleControl(report) {
-  const container = document.getElementById("operatorRoleControlResults");
-  if (!container) return;
-  const boundary = report.authorityBoundary || {};
-  container.innerHTML = `
-    <p class="meta">Version: ${escapeHtml(report.controlVersion || "")} | Local workflow only: ${boolText(report.localWorkflowStateOnly)} | Memory writes: ${boolText(report.memoryWritesEnabled)} | Provider route changes: ${boolText(report.providerRouteChangesEnabled)}</p>
-    <div class="summary-grid">
-      <div class="panel">
-        <h2>Authority</h2>
-        <ul>
-          <li>Role output equals canonical: ${boolText(boundary.roleOutputAcceptanceEqualsCanonicalAcceptance)}</li>
-          <li>Canonical acceptance requires governance: ${boolText(boundary.canonicalContinuityAcceptanceRequiresSeparateGovernance)}</li>
-          <li>Provider route by policy: ${boolText(boundary.providerRouteResolvedByProviderPolicy)}</li>
-          <li>Roles own control flow: ${boolText(boundary.rolesOwnControlFlow)}</li>
-        </ul>
-      </div>
-      <div class="panel">
-        <h2>Local Action</h2>
-        <p id="operatorRoleControlState" class="meta">No local action selected.</p>
-      </div>
-    </div>
-    <div class="actions" aria-label="Operator role controls">
-      ${(report.allowedControls || []).map((control) => `
-        <button class="secondary operator-control-button" type="button" data-action="${escapeHtml(control.actionKind || "")}" title="${escapeHtml(control.description || "")}">
-          ${escapeHtml(control.displayName || "")}
-        </button>
-      `).join("")}
-    </div>
-    ${table(
-      ["Action", "Authority", "Supported", "Reversible", "Separate Governance"],
-      (report.allowedControls || []).concat(report.blockedControls || []).map((control) => `
-        <tr>
-          <td><strong>${escapeHtml(control.displayName || "")}</strong><br><span class="meta">${escapeHtml(control.actionKind || "")}</span></td>
-          <td>${escapeHtml(control.authorityLevel || "")}</td>
-          <td>${boolText(control.initialPhase97Supported)}</td>
-          <td>${boolText(control.reversible)}</td>
-          <td>${boolText(control.requiresSeparateGovernance)}</td>
-        </tr>
-      `)
-    )}
-  `;
-  container.querySelectorAll(".operator-control-button").forEach((button) => {
-    button.addEventListener("click", () => {
-      const action = button.getAttribute("data-action") || "";
-      const control = (report.allowedControls || []).find((item) => item.actionKind === action) || {};
-      const state = document.getElementById("operatorRoleControlState");
-      if (state) {
-        state.textContent = `${control.displayName || action}: local workflow state only. No canonical continuity, memory, provider route, or public behavior changed.`;
-      }
-    });
-  });
-}
-
-async function loadOperatorRoleControl() {
-  const report = await renderFetch("/admin/operator-role-control");
-  renderOperatorRoleControl(report);
-}
-
 async function loadRolesAndRules() {
   const [nativeReport, renderBridgeReport] = await Promise.all([
     actor.getAionRoleRulesOperatingAgreementStatus(),
@@ -526,7 +468,6 @@ async function loadRolesAndRules() {
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
   await loadRoleEvaluation();
-  await loadOperatorRoleControl();
 }
 
 async function refreshOperatorAccess() {
