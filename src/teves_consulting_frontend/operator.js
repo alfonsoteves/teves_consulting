@@ -395,11 +395,9 @@ function renderPrimeHome(report) {
     </div>
   `;
   const startButton = document.getElementById("primeStartButton");
-  const workPanel = document.getElementById("primeWorkPanel");
-  if (startButton && workPanel) {
+  if (startButton) {
     startButton.addEventListener("click", () => {
-      workPanel.hidden = false;
-      workPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      setAccess("Operator access verified. Prime is ready.", "verified");
     });
   }
   /* prime minimal daily start ux end */
@@ -1844,11 +1842,11 @@ async function loadRoleEvaluation() {
 }
 
 async function loadRolesAndRules() {
-  /* prime-only operator workspace start */
+  /* prime-only final operator surface start */
   setOperatorWorkspaceWarning("");
   setAccess("Operator access verified. Prime is ready.", "verified");
   await loadPrimeHome();
-  /* prime-only operator workspace end */
+  /* prime-only final operator surface end */
 }
 
 

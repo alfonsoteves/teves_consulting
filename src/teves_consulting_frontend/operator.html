@@ -1109,19 +1109,20 @@
     }
     /* Prime minimal daily start UX end */
 
-    /* Operator Prime-only workspace start */
-    .prime-work-panel[hidden] {
+    /* Operator Prime-only final surface start */
+    body.operator-signed-in .operator-workspace-nav {
+      margin-bottom: 18px !important;
+    }
+
+    body.operator-signed-in #operatorWorkspace > section:not(#primeHomePanel) {
       display: none !important;
     }
 
-    .operator-workspace-nav {
-      margin-bottom: 18px;
+    .prime-daily-note,
+    .prime-work-panel {
+      display: none !important;
     }
-
-    .prime-daily-note {
-      display: none;
-    }
-    /* Operator Prime-only workspace end */
+    /* Operator Prime-only final surface end */
 
   </style>
 </head>
@@ -1179,7 +1180,7 @@
         <div class="operator-workspace-nav-header">
           <div>
             <p class="operator-workspace-kicker">Internal Aion</p>
-            <p class="operator-workspace-title">Prime first, then Mirror and Engineer evidence when needed.</p>
+            <p class="operator-workspace-title">Aion already has the context. Continue when ready.</p>
           </div>
           <div class="operator-workspace-status" role="status" aria-live="polite">Operator</div>
         </div>
@@ -1188,13 +1189,6 @@
       <section id="primeHomePanel" class="panel hero-panel prime-daily-home">
         <div id="primeHomeResults"></div>
       </section>
-
-      <!-- Operator Prime-only workspace start -->
-      <section id="primeWorkPanel" class="panel prime-work-panel" hidden>
-        <h2>Ready</h2>
-        <p class="meta">Prime is ready to continue the current validation task from the restored Aion context.</p>
-      </section>
-      <!-- Operator Prime-only workspace end -->
 
     </section>
   </main>
