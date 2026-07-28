@@ -586,6 +586,45 @@
     }
     /* Admin/Operator header parity final override end */
 
+    /* Header active state and mark parity start */
+    .operator-mark {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .operator-mark svg {
+      width: 30px;
+      height: 30px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.35;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .operator-header h1 {
+      text-decoration: underline;
+      text-decoration-color: #ffffff;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 5px;
+    }
+
+    .operator-header h1,
+    .operator-header .nav-link,
+    #authButton {
+      background: #151b24;
+    }
+    /* Header active state and mark parity end */
+
   </style>
 </head>
 <body class="operator-signed-out">
