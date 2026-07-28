@@ -1460,6 +1460,88 @@ async function loadPrimeOperationalValidationAcceptanceGate() {
   renderPrimeOperationalValidationAcceptanceGate(report);
 }
 
+function renderPrimeOperationalValidationSameTaskComparison(report) {
+  const container = document.getElementById("primeOperationalValidationSameTaskComparisonResults");
+  if (!container) return;
+  const source = report.sourceGateStatus || {};
+  const task = report.comparisonTask || {};
+  const control = report.completionControl || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.comparisonVersion || "")} | Gate accepted: ${boolText(source.gateAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>Comparison Task</h2>
+        <p>${escapeHtml(task.objective || "")}</p>
+        <p class="meta">${escapeHtml(task.sharedPrompt || "")}</p>
+      </div>
+      <div class="panel">
+        <h2>Completion</h2>
+        <ul>
+          <li>Same-task complete: ${boolText(control.sameTaskComparisonComplete)}</li>
+          <li>Assessment complete: ${boolText(control.operatorAssessmentComplete)}</li>
+          <li>Baseline satisfied: ${boolText(control.strongerBaselineSatisfied)}</li>
+          <li>Prime may be accepted: ${boolText(control.primeOperationalValidationMayBeAccepted)}</li>
+          <li>Mirror may start: ${boolText(control.mirrorOperationalValidationMayStart)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>Required work only: ${boolText(boundary.comparisonDefinesRequiredWorkOnly)}</li>
+          <li>Baseline executed by Aion: ${boolText(boundary.baselineTrialExecutedByAion)}</li>
+          <li>Baseline invented: ${boolText(boundary.chatGptBaselineResultInvented)}</li>
+          <li>Prime accepted: ${boolText(boundary.primeOperationalValidationAccepted)}</li>
+          <li>Mirror may start: ${boolText(boundary.mirrorOperationalValidationMayStart)}</li>
+          <li>Oracle work: ${boolText(boundary.oracleWorkApproved)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Expected Output</h3>
+    <ul>${(task.expectedOutput || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    <h3>Trial Requirements</h3>
+    ${table(
+      ["Trial", "Workflow", "Continuity", "Transfer", "Execution ID", "Status"],
+      (report.trialRequirements || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.trialId || "")}</td>
+          <td>${escapeHtml(item.workflow || "")}</td>
+          <td>${escapeHtml(item.continuityAllowed || "")}</td>
+          <td>${escapeHtml(item.contextTransferMode || "")}</td>
+          <td>${boolText(item.executionIdentityRequired)}</td>
+          <td>${escapeHtml(item.status || "")}</td>
+        </tr>
+      `)
+    )}
+    <h3>Trial Evidence Status</h3>
+    ${table(
+      ["Trial", "Evidence", "Route", "Provider", "Model", "Context Effort", "Questions", "Usefulness", "Load", "Cost"],
+      (report.trialEvidenceStatuses || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.trialId || "")}</td>
+          <td>${escapeHtml(item.evidenceStatus || "")}</td>
+          <td>${escapeHtml(item.executionRoute || "")}</td>
+          <td>${escapeHtml(item.providerIdentity || "")}</td>
+          <td>${escapeHtml(item.modelIdentityVersion || "")}</td>
+          <td>${escapeHtml(item.contextRestorationEffort || "")}</td>
+          <td>${escapeHtml(item.clarifyingExchangeCount || "")}</td>
+          <td>${escapeHtml(item.usefulnessAssessment || "")}</td>
+          <td>${escapeHtml(item.cognitiveLoadAssessment || "")}</td>
+          <td>${escapeHtml(item.externalCost || "")}</td>
+        </tr>
+      `)
+    )}
+    <h3>Checklist</h3>
+    <ul>${(report.acceptanceChecklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+  `;
+}
+
+async function loadPrimeOperationalValidationSameTaskComparison() {
+  const report = await renderFetch("/admin/prime-operational-validation-same-task-comparison");
+  renderPrimeOperationalValidationSameTaskComparison(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1651,6 +1733,7 @@ async function loadRolesAndRules() {
   await loadPrimeOperationalValidationCriteria();
   await loadPrimeOperationalValidationRun();
   await loadPrimeOperationalValidationAcceptanceGate();
+  await loadPrimeOperationalValidationSameTaskComparison();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
