@@ -212,6 +212,24 @@ function setOperatorWorkspaceWarning(message = "") {
   node.hidden = !message;
 }
 
+function setOperatorPanelUnavailable(elementId, label) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+  container.innerHTML = `<p class="meta">${escapeHtml(label)} could not refresh from the session service. Your operator access remains verified.</p>`;
+}
+
+function setOperatingAgreementUnavailable(message) {
+  const purpose = document.getElementById("agreementPurpose");
+  const version = document.getElementById("agreementVersion");
+  const boundary = document.getElementById("boundarySummary");
+  if (purpose) purpose.textContent = message;
+  if (version) version.textContent = "Unavailable";
+  if (boundary) boundary.textContent = "Operating agreement report did not refresh.";
+  ["roleCards", "rulesTable", "transitionTable", "influenceTable", "surfaceTable", "acceptanceTable"].forEach((id) => {
+    setOperatorPanelUnavailable(id, "Operating Agreement");
+  });
+}
+
 function setOperatorShellSignedIn(signedIn) {
   document.body.classList.toggle("operator-signed-in", signedIn);
   document.body.classList.toggle("operator-signed-out", !signedIn);
@@ -1918,53 +1936,74 @@ async function loadRoleEvaluation() {
 }
 
 async function loadRolesAndRules() {
+  /* operator loading placeholder guard start */
   setOperatorWorkspaceWarning("");
-  const nativeReport = await actor.getAionRoleRulesOperatingAgreementStatus();
-  let renderBridgeReport = null;
 
-  try {
-    renderBridgeReport = await renderFetch("/admin/role-rules-operating-agreement");
-  } catch (error) {
-    console.warn("Render roles and rules bridge unavailable:", error);
+  const [nativeResult, renderResult] = await Promise.allSettled([
+    actor.getAionRoleRulesOperatingAgreementStatus(),
+    renderFetch("/admin/role-rules-operating-agreement"),
+  ]);
+  const nativeReport = nativeResult.status === "fulfilled" ? nativeResult.value : null;
+  const renderBridgeReport = renderResult.status === "fulfilled" ? renderResult.value : null;
+  const report = nativeReport || renderBridgeReport;
+
+  if (!report) {
+    console.warn("Operating agreement reports unavailable:", nativeResult, renderResult);
+    setOperatingAgreementUnavailable("Operating Agreement could not refresh. Your operator access remains verified.");
+    throw new Error("Operating agreement report unavailable.");
   }
 
-  if (renderBridgeReport && nativeReport.agreementVersion !== renderBridgeReport.agreementVersion) {
+  if (nativeReport && renderBridgeReport && nativeReport.agreementVersion !== renderBridgeReport.agreementVersion) {
     setAccess("Operator access verified. Native and Render rules need review.", "denied");
-  } else if (renderBridgeReport) {
-    setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
   } else {
-    setAccess("Operator access verified. Render bridge data is temporarily unavailable.", "verified");
-    setOperatorWorkspaceWarning("Some Operator panels could not refresh from the session service. Your operator access remains verified.");
+    setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
   }
 
-  renderReport(nativeReport);
+  renderReport(report);
 
   const panelLoaders = [
-    loadPrimeHome,
-    loadMirrorWorkflow,
-    loadEngineerWorkflow,
-    loadCoordinationLoop,
-    loadApprovalBoundary,
-    loadTrioValidation,
-    loadArchitectureValidationRun,
-    loadPrimeOperationalValidationCriteria,
-    loadPrimeOperationalValidationRun,
-    loadPrimeOperationalValidationAcceptanceGate,
-    loadPrimeOperationalValidationSameTaskComparison,
-    loadPrimeOperationalValidationTrialCaptureTemplate,
-    loadRoleContextPackets,
-    loadMockRolePipeline,
-    loadLiveRolePrototypeGate,
-    loadRoleEvaluation,
+    ["Prime Home", "primeHomeResults", loadPrimeHome],
+    ["Mirror Workflow", "mirrorWorkflowResults", loadMirrorWorkflow],
+    ["Engineer Workflow", "engineerWorkflowResults", loadEngineerWorkflow],
+    ["Coordination Loop", "coordinationLoopResults", loadCoordinationLoop],
+    ["Approval Boundary", "approvalBoundaryResults", loadApprovalBoundary],
+    ["Trio Validation", "trioValidationResults", loadTrioValidation],
+    ["Architecture Validation", "architectureValidationRunResults", loadArchitectureValidationRun],
+    ["Prime Validation Criteria", "primeOperationalValidationCriteriaResults", loadPrimeOperationalValidationCriteria],
+    ["Prime Validation Run", "primeOperationalValidationRunResults", loadPrimeOperationalValidationRun],
+    ["Prime Acceptance Gate", "primeOperationalValidationAcceptanceGateResults", loadPrimeOperationalValidationAcceptanceGate],
+    ["Prime Same-Task Comparison", "primeOperationalValidationSameTaskComparisonResults", loadPrimeOperationalValidationSameTaskComparison],
+    ["Prime Trial Capture", "primeOperationalValidationTrialCaptureTemplateResults", loadPrimeOperationalValidationTrialCaptureTemplate],
+    ["Role Context Packets", "contextPacketResults", loadRoleContextPackets],
+    ["Mock Role Pipeline", "mockPipelineResults", loadMockRolePipeline],
+    ["Live Prototype Gate", "livePrototypeGateResults", loadLiveRolePrototypeGate],
+    ["Role Evaluation", "roleEvaluationResults", loadRoleEvaluation],
   ];
 
-  const results = await Promise.allSettled(panelLoaders.map((loader) => loader()));
-  const failed = results.filter((result) => result.status === "rejected");
+  const failed = [];
+  await Promise.all(panelLoaders.map(async ([label, elementId, loader]) => {
+    try {
+      await loader();
+    } catch (firstError) {
+      console.warn(`Operator panel refresh failed for ${label}; retrying once.`, firstError);
+      try {
+        await loader();
+      } catch (secondError) {
+        console.warn(`Operator panel refresh failed for ${label} after retry.`, secondError);
+        failed.push(label);
+        setOperatorPanelUnavailable(elementId, label);
+      }
+    }
+  }));
+
   if (failed.length) {
-    console.warn("Operator panel refresh incomplete:", failed);
-    setOperatorWorkspaceWarning(`${failed.length} Operator panel${failed.length === 1 ? "" : "s"} could not refresh from the session service. Your operator access remains verified.`);
+    const listed = failed.slice(0, 4).join(", ");
+    const extra = failed.length > 4 ? `, +${failed.length - 4} more` : "";
+    setOperatorWorkspaceWarning(`Some workspace panels did not refresh: ${listed}${extra}. Your operator access remains verified.`);
   }
+  /* operator loading placeholder guard end */
 }
+
 
 
 async function refreshOperatorAccess() {
