@@ -397,7 +397,7 @@ function renderPrimeHome(report) {
   const startButton = document.getElementById("primeStartButton");
   if (startButton) {
     startButton.addEventListener("click", () => {
-      setAccess("Operator access verified. Prime is ready.", "verified");
+      setAccess("Operator access verified. Aion is ready.", "verified");
     });
   }
   /* prime minimal daily start ux end */
@@ -1844,7 +1844,7 @@ async function loadRoleEvaluation() {
 async function loadRolesAndRules() {
   /* prime-only final operator surface start */
   setOperatorWorkspaceWarning("");
-  setAccess("Operator access verified. Prime is ready.", "verified");
+  setAccess("Operator access verified. Aion is ready.", "verified");
   await loadPrimeHome();
   /* prime-only final operator surface end */
 }
