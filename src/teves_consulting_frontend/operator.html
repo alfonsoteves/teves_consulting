@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aion Operator</title>
+  <title>Operator</title>
   <style>
     :root {
       color-scheme: dark;
@@ -222,19 +222,22 @@
       color: #ffffff;
     }
 
-    #authButton {
+    #authButton,
+    .operator-header .nav-link {
       min-height: 36px;
-      border: none;
-      background: #111827;
+      border: 1px solid #2f3b49;
+      background: #151b24;
       color: #ffffff;
       font-size: 0.87rem;
       font-weight: 500;
+      line-height: 1.2;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 22px rgba(0, 0, 0, 0.18);
     }
 
     button.secondary,
     .nav-link.secondary {
-      background: transparent;
-      color: #cbd5e1;
+      background: #151b24;
+      color: #ffffff;
     }
 
     .actions {
@@ -588,7 +591,7 @@
   </footer>
   <header class="operator-header">
     <div>
-      <h1>Aion Operator</h1>
+      <h1>Operator</h1>
     </div>
     <div class="actions">
       <a class="nav-link secondary" href="/admin.html">Admin</a>
