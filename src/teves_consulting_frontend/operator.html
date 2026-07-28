@@ -1008,6 +1008,117 @@
     }
     /* Operator verified warning display end */
 
+    /* Prime daily workspace UX start */
+    .prime-daily-home {
+      border-color: #365f8d;
+      background: linear-gradient(180deg, #1a2430 0%, var(--panel-strong) 100%);
+    }
+
+    .prime-daily-start {
+      display: grid;
+      gap: 20px;
+      padding: 6px 0 2px;
+    }
+
+    .prime-daily-greeting {
+      display: grid;
+      gap: 10px;
+      max-width: 760px;
+    }
+
+    .prime-daily-greeting h3 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 1.8rem;
+      line-height: 1.15;
+    }
+
+    .prime-daily-focus {
+      display: grid;
+      gap: 8px;
+      max-width: 720px;
+      padding: 14px 0 4px;
+    }
+
+    .prime-daily-label {
+      margin: 0;
+      color: var(--blue-soft);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .prime-daily-value {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 1.08rem;
+      font-weight: 700;
+    }
+
+    .prime-daily-action-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .prime-start-button {
+      min-height: 38px;
+      border-color: #60a5fa;
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .prime-secondary-link {
+      min-height: 38px;
+      border-color: #2f3b49;
+      background: #151b24;
+      color: #ffffff;
+    }
+
+    .prime-daily-details {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .prime-daily-details details {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .prime-daily-details summary {
+      color: #f8fafc;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .prime-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .prime-daily-greeting h3 {
+        font-size: 1.45rem;
+      }
+
+      .prime-daily-action-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .prime-start-button,
+      .prime-secondary-link {
+        width: 100%;
+      }
+    }
+    /* Prime daily workspace UX end */
+
   </style>
 </head>
 <body class="operator-signed-out">
@@ -1077,9 +1188,9 @@
         </div>
       </nav>
 
-      <section id="primeHomePanel" class="panel hero-panel">
+      <section id="primeHomePanel" class="panel hero-panel prime-daily-home">
         <h2>Prime Home</h2>
-        <p class="meta">Internal Aion operating context. Prime restores the current work state, priorities, decisions, and next actions without autonomous execution.</p>
+        <p class="meta">Aion restores the current focus and recommends where to continue.</p>
         <div id="primeHomeResults"></div>
       </section>
 
@@ -1137,13 +1248,13 @@
         <div id="primeOperationalValidationAcceptanceGateResults"></div>
       </section>
 
-      <section class="panel">
+      <section id="primeOperationalValidationSameTaskComparisonPanel" class="panel">
         <h2>Prime Same-Task Comparison</h2>
         <p class="meta">Phase 9.11B defines the same bounded task that must be compared across normal ChatGPT and Internal Aion Prime before Prime can be accepted.</p>
         <div id="primeOperationalValidationSameTaskComparisonResults"></div>
       </section>
 
-      <section class="panel">
+      <section id="primeOperationalValidationTrialCapturePanel" class="panel">
         <h2>Prime Trial Capture</h2>
         <p class="meta">Local-only workspace for Trial A evidence and operator assessment. It generates a review packet in your browser and does not submit or save canonical memory.</p>
         <div id="primeOperationalValidationTrialCaptureTemplateResults"></div>

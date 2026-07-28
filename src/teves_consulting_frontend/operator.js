@@ -368,137 +368,80 @@ function renderContextPackets(report) {
 }
 
 function renderPrimeHome(report) {
+  /* prime daily workspace ux start */
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
   const boundary = report.boundary || {};
   const brief = report.morningBrief || {};
   const continuity = report.continuityRestoration || {};
+  const project = (report.currentProjects || []).find((item) => String(item.projectId || "").includes("aion"))
+    || (report.currentProjects || [])[0]
+    || {};
+  const recommendedAction = (report.recommendedNextActions || [])[0] || {};
+  const pendingDecision = (report.pendingDecisions || [])[0] || {};
+  const focus = "Phase 9.11B Prime validation";
+  const nextStep = "Complete same-task comparison.";
+  const continuityValue = continuity.includesCurrentPhase && continuity.includesAcceptedBaseline
+    ? "Aion has the accepted Phase 9 context."
+    : "Aion has partial continuity context.";
+
   container.innerHTML = `
-    <div class="summary-grid">
-      <div class="panel">
-        <h2>${escapeHtml(brief.headline || "Prime Home")}</h2>
-        <p>${escapeHtml(brief.summary || "")}</p>
-        <span class="badge">${escapeHtml(report.milestone || "")}</span>
+    <div class="prime-daily-start">
+      <div class="prime-daily-greeting">
+        <h3>Good morning Alfonso</h3>
+        <p class="meta">Aion is ready to continue from the current Phase 9 work state.</p>
       </div>
-      <div class="panel">
-        <h2>Workspace</h2>
-        <ul>${(report.workspaceNavigation || []).map((item) => `
-          <li><strong>${escapeHtml(item.title || "")}</strong><br><span class="meta">${item.current ? "Current" : item.enabledInPhase97 ? "Enabled" : "Readiness"} - ${escapeHtml(item.purpose || "")}</span></li>
-        `).join("")}</ul>
+      <div class="prime-daily-focus">
+        <p class="prime-daily-label">Current focus</p>
+        <p class="prime-daily-value">${escapeHtml(focus)}</p>
+        <p class="prime-daily-label">Recommended next step</p>
+        <p class="prime-daily-value">${escapeHtml(nextStep)}</p>
       </div>
-      <div class="panel">
-        <h2>Continuity</h2>
-        <ul>
-          <li>Canonical: ${escapeHtml(continuity.canonicalContinuityRef || "")}</li>
-          <li>Current phase: ${boolText(continuity.includesCurrentPhase)}</li>
-          <li>Accepted baseline: ${boolText(continuity.includesAcceptedBaseline)}</li>
-          <li>Approved packets: ${boolText(continuity.includesApprovedWorkPackets)}</li>
-        </ul>
+      <div class="prime-daily-action-row">
+        <a class="nav-link prime-start-button" href="#primeOperationalValidationSameTaskComparisonPanel">Start working</a>
+        <a class="nav-link prime-secondary-link" href="#primeOperationalValidationTrialCapturePanel">Open trial capture</a>
       </div>
-      <div class="panel">
-        <h2>Boundary</h2>
-        <ul>
-          <li>Prime primary: ${boolText(boundary.primeIsPrimaryInternalExperience)}</li>
-          <li>Operator authority: ${boolText(boundary.operatorRemainsAuthority)}</li>
-          <li>Autonomous execution: ${boolText(boundary.autonomousExecutionEnabled)}</li>
-          <li>Memory writes: ${boolText(boundary.memoryWritesEnabled)}</li>
-          <li>Provider route changes: ${boolText(boundary.providerRouteChangesEnabled)}</li>
-        </ul>
+      <div class="prime-daily-details">
+        <details>
+          <summary>Why this is the next step</summary>
+          <div class="prime-detail-grid">
+            <div>
+              <p class="prime-daily-label">Continuity</p>
+              <p class="meta">${escapeHtml(continuityValue)}</p>
+            </div>
+            <div>
+              <p class="prime-daily-label">Decision</p>
+              <p class="meta">${escapeHtml(pendingDecision.recommendedDefault || "Prime validation needs same-task evidence before acceptance.")}</p>
+            </div>
+            <div>
+              <p class="prime-daily-label">Action</p>
+              <p class="meta">${escapeHtml(recommendedAction.rationale || "Compare normal context transfer with Internal Aion Prime on the same bounded task.")}</p>
+            </div>
+          </div>
+        </details>
+        <details>
+          <summary>Review Aion context</summary>
+          <div class="prime-detail-grid">
+            <div>
+              <p class="prime-daily-label">Project state</p>
+              <p class="meta">${escapeHtml(project.displayName || "Aion")} · ${escapeHtml(project.status || "Prime validation is active.")}</p>
+            </div>
+            <div>
+              <p class="prime-daily-label">Boundary</p>
+              <p class="meta">Operator authority: ${boolText(boundary.operatorRemainsAuthority)}. Autonomous execution: ${boolText(boundary.autonomousExecutionEnabled)}. Memory writes: ${boolText(boundary.memoryWritesEnabled)}.</p>
+            </div>
+            <div>
+              <p class="prime-daily-label">Source</p>
+              <p class="meta">${escapeHtml(report.milestone || "")} · ${escapeHtml(report.experienceVersion || "")}</p>
+            </div>
+          </div>
+        </details>
       </div>
-    </div>
-    <h3>Current Projects</h3>
-    ${table(
-      ["Project", "Repo", "Status", "Next Step"],
-      (report.currentProjects || []).map((project) => `
-        <tr>
-          <td><strong>${escapeHtml(project.displayName || "")}</strong><br><span class="meta">${escapeHtml(project.currentPhase || "")}</span></td>
-          <td>${escapeHtml(project.repoName || "")}</td>
-          <td>${escapeHtml(project.status || "")}</td>
-          <td>${escapeHtml(project.nextUsefulStep || "")}</td>
-        </tr>
-      `)
-    )}
-    <div class="role-grid">
-      <article class="role-card">
-        <h3>Priorities</h3>
-        <ul>${(report.activePriorities || []).map((priority) => `
-          <li><strong>${escapeHtml(priority.title || "")}</strong><br><span class="meta">${escapeHtml(priority.reason || "")}</span></li>
-        `).join("")}</ul>
-      </article>
-      <article class="role-card">
-        <h3>Pending Decisions</h3>
-        <ul>${(report.pendingDecisions || []).map((decision) => `
-          <li><strong>${escapeHtml(decision.question || "")}</strong><br><span class="meta">${escapeHtml(decision.recommendedDefault || "")}</span></li>
-        `).join("")}</ul>
-      </article>
-      <article class="role-card">
-        <h3>Next Actions</h3>
-        <ul>${(report.recommendedNextActions || []).map((action) => `
-          <li><strong>${escapeHtml(action.title || "")}</strong><br><span class="meta">${escapeHtml(action.rationale || "")}</span></li>
-        `).join("")}</ul>
-      </article>
-    </div>
-    <h3>Daily Rhythm</h3>
-    ${table(
-      ["Stage", "Prime Responsibility", "Artifact", "Approval", "Enabled"],
-      (report.dailyWorkflow || []).map((stage) => `
-        <tr>
-          <td><strong>${escapeHtml(stage.stageName || "")}</strong><br><span class="meta">${escapeHtml(stage.supportingRole || "Prime")}</span></td>
-          <td>${escapeHtml(stage.primeResponsibility || "")}</td>
-          <td>${escapeHtml(stage.expectedArtifact || "")}</td>
-          <td>${boolText(stage.operatorApprovalRequired)}</td>
-          <td>${boolText(stage.enabledInPhase97)}</td>
-        </tr>
-      `)
-    )}
-    <div class="role-grid">
-      <article class="role-card">
-        <h3>Success Metrics</h3>
-        <ul>${(report.successMetrics || []).map((metric) => `
-          <li><strong>${escapeHtml(metric.title || "")}</strong><br><span class="meta">${escapeHtml(metric.targetDirection || "")}: ${escapeHtml(metric.measurement || "")}</span></li>
-        `).join("")}</ul>
-      </article>
-      <article class="role-card">
-        <h3>Packet Chain</h3>
-        <ul>${(report.artifactHandoffReadiness || []).map((artifact) => `
-          <li><strong>${escapeHtml(artifact.artifactKind || "")}</strong><br><span class="meta">${escapeHtml(artifact.producedBy || "")} to ${escapeHtml((artifact.consumedBy || []).join(", "))}. Automatic transfer: ${boolText(artifact.automaticTransferEnabled)}</span></li>
-        `).join("")}</ul>
-      </article>
-    </div>
-    <div class="role-grid">
-      <article class="role-card">
-        <h3>Role Readiness</h3>
-        <ul>${(report.roleReadiness || []).map((role) => `
-          <li><strong>${escapeHtml(role.roleName || "")}</strong><br><span class="meta">${escapeHtml(role.operationalStatus || "")}. Selectable: ${boolText(role.selectableInPhase97)}</span></li>
-        `).join("")}</ul>
-      </article>
-      <article class="role-card">
-        <h3>Evergreen Backlog</h3>
-        <ul>${(report.evergreenBacklog || []).map((item) => `
-          <li><strong>${escapeHtml(item.title || "")}</strong><br><span class="meta">${escapeHtml(item.reason || "")} Execution: ${boolText(item.executionAuthorized)}</span></li>
-        `).join("")}</ul>
-      </article>
-    </div>
-    <div class="role-grid">
-      <article class="role-card">
-        <h3>Context Sources</h3>
-        <ul>${(report.contextSources || []).map((source) => `
-          <li><strong>${escapeHtml(source.title || "")}</strong><br><span class="meta">${escapeHtml(source.sourceKind || "")}: ${escapeHtml(source.provenance || "")}</span></li>
-        `).join("")}</ul>
-      </article>
-      <article class="role-card">
-        <h3>Continuity Updates</h3>
-        <ul>
-          <li>Prime may propose: ${boolText((report.continuityProposalBoundary || {}).primeMayProposeContinuityUpdates)}</li>
-          <li>Automatic memory write: ${boolText((report.continuityProposalBoundary || {}).automaticCanonicalMemoryWriteEnabled)}</li>
-          <li>Operator approval: ${boolText((report.continuityProposalBoundary || {}).operatorApprovalRequired)}</li>
-          <li>Governed process: ${boolText((report.continuityProposalBoundary || {}).governedMemoryProcessRequired)}</li>
-          <li>Artifact: ${escapeHtml((report.continuityProposalBoundary || {}).proposedUpdateArtifact || "")}</li>
-        </ul>
-      </article>
     </div>
   `;
+  /* prime daily workspace ux end */
 }
+
 
 async function loadPrimeHome() {
   const report = await renderFetch("/admin/prime-operational-experience");
