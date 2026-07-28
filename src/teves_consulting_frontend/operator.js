@@ -53,7 +53,7 @@ function clearStoredOperatorSession() {
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 const PRIME_CURRENT_FOCUS = "Phase 9.11B Prime validation";
-const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";
+const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";\nlet primeConversationHistory = [];
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
@@ -207,6 +207,29 @@ async function renderFetch(path) {
   const response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, { headers });
   if (!response.ok) throw new Error(`Render request failed: ${response.status}`);
   return response.json();
+}
+
+async function renderPost(path, payload) {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (renderOperatorSessionToken) {
+    headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
+  }
+  const response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  let data = {};
+  try {
+    data = await response.json();
+  } catch (_) {
+    data = {};
+  }
+  if (!response.ok) {
+    const detail = data && data.detail ? data.detail : `Render request failed: ${response.status}`;
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return data;
 }
 
 function setAccess(message, state = "") {
@@ -409,9 +432,9 @@ function renderPrimeHome(report) {
   /* prime minimal daily start ux end */
 }
 
-function appendPrimeMessage(role, message) {
+function appendPrimeMessage(role, message, evidenceHtml = "") {
   const conversation = document.getElementById("primeConversation");
-  if (!conversation) return;
+  if (!conversation) return null;
   const article = document.createElement("article");
   article.className = `prime-message ${role === "user" ? "user" : "assistant"}`;
   if (role === "assistant") {
@@ -423,14 +446,74 @@ function appendPrimeMessage(role, message) {
   const body = document.createElement("p");
   body.textContent = message;
   article.appendChild(body);
+  if (evidenceHtml) {
+    const evidence = document.createElement("div");
+    evidence.innerHTML = evidenceHtml;
+    article.appendChild(evidence);
+  }
   conversation.appendChild(article);
   conversation.scrollTop = conversation.scrollHeight;
+  return article;
+}
+
+function primeEvidenceHtml(packet) {
+  const execution = packet.executionIdentity || {};
+  const context = packet.contextEvidence || {};
+  const cost = packet.costPerformanceEvidence || {};
+  const size = context.approximateContextSize || {};
+  return `
+    <details class="prime-evidence">
+      <summary>Evidence</summary>
+      <dl class="prime-evidence-grid">
+        <div>
+          <dt>Execution route</dt>
+          <dd>${escapeHtml(execution.executionRoute || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Provider</dt>
+          <dd>${escapeHtml(execution.providerIdentity || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Model</dt>
+          <dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Timestamp</dt>
+          <dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Latency</dt>
+          <dd>${Number.isInteger(cost.latencyMs) ? `${cost.latencyMs} ms` : "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Context size</dt>
+          <dd>${Number.isInteger(size.value) ? `${size.value} ${escapeHtml(size.unit || "characters")}` : "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Token usage</dt>
+          <dd>${escapeHtml(cost.tokenUsage || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Cost</dt>
+          <dd>${escapeHtml(cost.externalCost || "unknown")}</dd>
+        </div>
+      </dl>
+    </details>
+  `;
+}
+
+async function sendPrimeWorkspaceMessage(message) {
+  return renderPost("/admin/prime-workspace-message", {
+    message,
+    priorMessages: primeConversationHistory.slice(-8),
+  });
 }
 
 function renderPrimeWorkingSurface() {
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
   setAccess("Operator access verified. Aion is ready.", "verified");
+  primeConversationHistory = [{ role: "prime", content: PRIME_INITIAL_MESSAGE }];
   container.innerHTML = `
     <div class="prime-working-surface">
       <div class="prime-working-header">
@@ -453,18 +536,40 @@ function renderPrimeWorkingSurface() {
   appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
   const form = document.getElementById("primeComposer");
   const input = document.getElementById("primeComposerInput");
+  const submitButton = form ? form.querySelector(".prime-send-button") : null;
   if (form && input) {
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const message = input.value.trim();
       if (!message) return;
       appendPrimeMessage("user", message);
+      primeConversationHistory.push({ role: "operator", content: message });
       input.value = "";
-      appendPrimeMessage("assistant", [
-        "Captured for Prime.",
-        "",
-        "For this Phase 9.11B UI step, the workspace is ready for the Prime conversation flow. The next implementation layer should connect this composer to a governed Prime execution route and record execution evidence before treating responses as operational intelligence validation."
-      ].join("\n"));
+      input.disabled = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Sending";
+      }
+      const pending = appendPrimeMessage("assistant", "Prime is thinking...");
+      if (pending) pending.classList.add("pending");
+      try {
+        const packet = await sendPrimeWorkspaceMessage(message);
+        if (pending) pending.remove();
+        const answer = packet.answer || "Prime did not return an answer.";
+        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet));
+        primeConversationHistory.push({ role: "prime", content: answer });
+      } catch (error) {
+        if (pending) pending.remove();
+        appendPrimeMessage("assistant", "Prime workspace route is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.");
+        console.error("Prime workspace message failed", error);
+      } finally {
+        input.disabled = false;
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Send";
+        }
+        input.focus();
+      }
     });
     input.focus();
   }

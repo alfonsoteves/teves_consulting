@@ -1262,6 +1262,52 @@
     }
     /* Prime working surface end */
 
+    /* Prime execution evidence disclosure start */
+    .prime-message.pending {
+      color: #cbd5e1;
+    }
+
+    .prime-evidence {
+      margin-top: 12px;
+      border-top: 1px solid #2c3138;
+      padding-top: 10px;
+      color: #9ca3af;
+      font-size: 0.82rem;
+    }
+
+    .prime-evidence summary {
+      cursor: pointer;
+      color: #93c5fd;
+      font-weight: 700;
+    }
+
+    .prime-evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px 12px;
+      margin-top: 10px;
+    }
+
+    .prime-evidence-grid div {
+      min-width: 0;
+    }
+
+    .prime-evidence-grid dt {
+      color: #cbd5e1;
+      font-weight: 700;
+    }
+
+    .prime-evidence-grid dd {
+      margin: 2px 0 0;
+      overflow-wrap: anywhere;
+    }
+
+    .prime-send-button[disabled] {
+      cursor: default;
+      opacity: 0.68;
+    }
+    /* Prime execution evidence disclosure end */
+
     /* Operator Prime-only final surface start */
     body.operator-signed-in .operator-workspace-nav {
       margin-bottom: 18px !important;
