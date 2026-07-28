@@ -156,6 +156,11 @@ function setAccess(message, state = "") {
   node.className = `status ${state}`.trim();
 }
 
+function setOperatorShellSignedIn(signedIn) {
+  document.body.classList.toggle("operator-signed-in", signedIn);
+  document.body.classList.toggle("operator-signed-out", !signedIn);
+}
+
 function table(headers, rows) {
   return `
     <table>
@@ -1883,6 +1888,7 @@ async function loadRolesAndRules() {
 
 async function refreshOperatorAccess() {
   if (!isAuthenticated || !actor) {
+    setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
     return;
   }
@@ -1891,15 +1897,18 @@ async function refreshOperatorAccess() {
     if (!status.allowlistConfigured || !status.isOperator) {
       isOperator = false;
       document.getElementById("operatorWorkspace").classList.remove("is-visible");
+      setOperatorShellSignedIn(false);
       setAccess("Access denied. This workspace is restricted to the Teves Consulting operator.", "denied");
       return;
     }
     await establishRenderOperatorSession();
     isOperator = true;
     document.getElementById("operatorWorkspace").classList.add("is-visible");
+    setOperatorShellSignedIn(true);
     await loadRolesAndRules();
   } catch (error) {
     console.error("Operator access failed", error);
+    setOperatorShellSignedIn(false);
     setAccess("Operator access could not be verified. Refresh after the session service is available.", "denied");
   }
 }
@@ -1914,6 +1923,7 @@ async function initAuth() {
     await refreshOperatorAccess();
   } else {
     actor = createActor();
+    setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
   }
   document.getElementById("authButton").textContent = isAuthenticated ? "Logout" : "Sign In";
@@ -1927,6 +1937,7 @@ async function handleAuth() {
     isOperator = false;
     renderOperatorSessionToken = null;
     document.getElementById("operatorWorkspace").classList.remove("is-visible");
+    setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";
     setAccess("Sign in with Internet Identity to continue.");
     return;
