@@ -933,6 +933,53 @@
     }
     /* Operator header height parity final override end */
 
+    /* Operator signed-in menu flow final override start */
+    body.operator-signed-in .operator-login-footer,
+    body.operator-signed-in .operator-login-company,
+    body.operator-signed-in .operator-login-about {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.operator-signed-in .operator-content {
+      padding-top: 0 !important;
+    }
+
+    body.operator-signed-in .operator-workspace-nav {
+      position: static !important;
+      top: auto !important;
+      z-index: auto !important;
+      margin: 0 0 38px !important;
+      padding: 14px 0 !important;
+      border-bottom: 1px solid var(--line) !important;
+      background: transparent !important;
+    }
+
+    body.operator-signed-in .operator-workspace-nav + .panel,
+    body.operator-signed-in .operator-workspace-nav + .summary-grid {
+      padding-top: 0 !important;
+    }
+
+    body.operator-signed-in .workspace {
+      padding-top: 0 !important;
+    }
+
+    @media (max-width: 820px) {
+      body.operator-signed-in .operator-workspace-nav {
+        position: static !important;
+        margin: 0 0 22px !important;
+        padding: 8px 0 12px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body.operator-signed-in .operator-content {
+        padding-top: 0 !important;
+      }
+    }
+    /* Operator signed-in menu flow final override end */
+
   </style>
 </head>
 <body class="operator-signed-out">
