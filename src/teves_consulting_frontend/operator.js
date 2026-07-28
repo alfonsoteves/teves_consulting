@@ -368,79 +368,38 @@ function renderContextPackets(report) {
 }
 
 function renderPrimeHome(report) {
-  /* prime daily workspace ux start */
+  /* prime minimal daily start ux start */
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
-  const boundary = report.boundary || {};
-  const brief = report.morningBrief || {};
-  const continuity = report.continuityRestoration || {};
-  const project = (report.currentProjects || []).find((item) => String(item.projectId || "").includes("aion"))
-    || (report.currentProjects || [])[0]
-    || {};
-  const recommendedAction = (report.recommendedNextActions || [])[0] || {};
-  const pendingDecision = (report.pendingDecisions || [])[0] || {};
   const focus = "Phase 9.11B Prime validation";
   const nextStep = "Complete same-task comparison.";
-  const continuityValue = continuity.includesCurrentPhase && continuity.includesAcceptedBaseline
-    ? "Aion has the accepted Phase 9 context."
-    : "Aion has partial continuity context.";
-
   container.innerHTML = `
     <div class="prime-daily-start">
       <div class="prime-daily-greeting">
-        <h3>Good morning Alfonso</h3>
-        <p class="meta">Aion is ready to continue from the current Phase 9 work state.</p>
+        <h2>Good morning Alfonso</h2>
+        <p class="meta">Aion already has the current work state.</p>
       </div>
       <div class="prime-daily-focus">
-        <p class="prime-daily-label">Current focus</p>
-        <p class="prime-daily-value">${escapeHtml(focus)}</p>
-        <p class="prime-daily-label">Recommended next step</p>
-        <p class="prime-daily-value">${escapeHtml(nextStep)}</p>
+        <div class="prime-daily-row">
+          <p class="prime-daily-label">Current focus</p>
+          <p class="prime-daily-value">${escapeHtml(focus)}</p>
+        </div>
+        <div class="prime-daily-row">
+          <p class="prime-daily-label">Recommended next step</p>
+          <p class="prime-daily-value">${escapeHtml(nextStep)}</p>
+        </div>
       </div>
       <div class="prime-daily-action-row">
         <a class="nav-link prime-start-button" href="#primeOperationalValidationSameTaskComparisonPanel">Start working</a>
-        <a class="nav-link prime-secondary-link" href="#primeOperationalValidationTrialCapturePanel">Open trial capture</a>
+        <a class="nav-link prime-role-button" href="#mirrorPanel">Ask Mirror</a>
+        <a class="nav-link prime-role-button" href="#engineerPanel">Ask Engineer</a>
       </div>
-      <div class="prime-daily-details">
-        <details>
-          <summary>Why this is the next step</summary>
-          <div class="prime-detail-grid">
-            <div>
-              <p class="prime-daily-label">Continuity</p>
-              <p class="meta">${escapeHtml(continuityValue)}</p>
-            </div>
-            <div>
-              <p class="prime-daily-label">Decision</p>
-              <p class="meta">${escapeHtml(pendingDecision.recommendedDefault || "Prime validation needs same-task evidence before acceptance.")}</p>
-            </div>
-            <div>
-              <p class="prime-daily-label">Action</p>
-              <p class="meta">${escapeHtml(recommendedAction.rationale || "Compare normal context transfer with Internal Aion Prime on the same bounded task.")}</p>
-            </div>
-          </div>
-        </details>
-        <details>
-          <summary>Review Aion context</summary>
-          <div class="prime-detail-grid">
-            <div>
-              <p class="prime-daily-label">Project state</p>
-              <p class="meta">${escapeHtml(project.displayName || "Aion")} · ${escapeHtml(project.status || "Prime validation is active.")}</p>
-            </div>
-            <div>
-              <p class="prime-daily-label">Boundary</p>
-              <p class="meta">Operator authority: ${boolText(boundary.operatorRemainsAuthority)}. Autonomous execution: ${boolText(boundary.autonomousExecutionEnabled)}. Memory writes: ${boolText(boundary.memoryWritesEnabled)}.</p>
-            </div>
-            <div>
-              <p class="prime-daily-label">Source</p>
-              <p class="meta">${escapeHtml(report.milestone || "")} · ${escapeHtml(report.experienceVersion || "")}</p>
-            </div>
-          </div>
-        </details>
-      </div>
+      <p class="prime-daily-note">Details remain available in the role, validation, and rules sections when review is needed.</p>
     </div>
   `;
-  /* prime daily workspace ux end */
+  /* prime minimal daily start ux end */
 }
+
 
 
 async function loadPrimeHome() {

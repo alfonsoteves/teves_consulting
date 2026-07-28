@@ -1008,42 +1008,46 @@
     }
     /* Operator verified warning display end */
 
-    /* Prime daily workspace UX start */
+    /* Prime minimal daily start UX start */
     .prime-daily-home {
       border-color: #365f8d;
       background: linear-gradient(180deg, #1a2430 0%, var(--panel-strong) 100%);
+      padding: 20px;
     }
 
     .prime-daily-start {
       display: grid;
-      gap: 20px;
-      padding: 6px 0 2px;
+      gap: 18px;
+      max-width: 760px;
     }
 
     .prime-daily-greeting {
       display: grid;
-      gap: 10px;
-      max-width: 760px;
+      gap: 8px;
     }
 
-    .prime-daily-greeting h3 {
+    .prime-daily-greeting h2 {
       margin: 0;
       color: #ffffff;
-      font-size: 1.8rem;
+      font-size: 1.85rem;
       line-height: 1.15;
     }
 
     .prime-daily-focus {
       display: grid;
-      gap: 8px;
-      max-width: 720px;
-      padding: 14px 0 4px;
+      gap: 12px;
+      padding: 8px 0 0;
+    }
+
+    .prime-daily-row {
+      display: grid;
+      gap: 4px;
     }
 
     .prime-daily-label {
       margin: 0;
       color: var(--blue-soft);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -1071,39 +1075,25 @@
       color: #ffffff;
     }
 
-    .prime-secondary-link {
+    .prime-role-button {
       min-height: 38px;
       border-color: #2f3b49;
       background: #151b24;
       color: #ffffff;
     }
 
-    .prime-daily-details {
-      display: grid;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .prime-daily-details details {
-      border-top: 1px solid var(--line);
-      padding-top: 12px;
-    }
-
-    .prime-daily-details summary {
-      color: #f8fafc;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .prime-detail-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 14px;
-      margin-top: 12px;
+    .prime-daily-note {
+      max-width: 620px;
+      color: var(--muted);
+      font-size: 0.88rem;
     }
 
     @media (max-width: 640px) {
-      .prime-daily-greeting h3 {
+      .prime-daily-home {
+        padding: 16px;
+      }
+
+      .prime-daily-greeting h2 {
         font-size: 1.45rem;
       }
 
@@ -1113,11 +1103,11 @@
       }
 
       .prime-start-button,
-      .prime-secondary-link {
+      .prime-role-button {
         width: 100%;
       }
     }
-    /* Prime daily workspace UX end */
+    /* Prime minimal daily start UX end */
 
   </style>
 </head>
@@ -1189,8 +1179,6 @@
       </nav>
 
       <section id="primeHomePanel" class="panel hero-panel prime-daily-home">
-        <h2>Prime Home</h2>
-        <p class="meta">Aion restores the current focus and recommends where to continue.</p>
         <div id="primeHomeResults"></div>
       </section>
 
