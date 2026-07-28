@@ -52,6 +52,16 @@ function clearStoredOperatorSession() {
 /* shared operator session helpers end */
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
+const PRIME_CURRENT_FOCUS = "Phase 9.11B Prime validation";
+const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";
+const PRIME_INITIAL_MESSAGE = [
+  "Good morning Alfonso.",
+  "",
+  "Current focus: Phase 9.11B Prime validation.",
+  "Recommended next step: Complete same-task comparison.",
+  "",
+  "You are talking to Prime first. I will help synthesize direction and keep the work moving from Aion's current context."
+].join("\n");
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -371,8 +381,6 @@ function renderPrimeHome(report) {
   /* prime minimal daily start ux start */
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
-  const focus = "Phase 9.11B Prime validation";
-  const nextStep = "Complete same-task comparison.";
   container.innerHTML = `
     <div class="prime-daily-start">
       <div class="prime-daily-greeting">
@@ -382,11 +390,11 @@ function renderPrimeHome(report) {
       <div class="prime-daily-focus">
         <div class="prime-daily-row">
           <p class="prime-daily-label">Current focus</p>
-          <p class="prime-daily-value">${escapeHtml(focus)}</p>
+          <p class="prime-daily-value">${escapeHtml(PRIME_CURRENT_FOCUS)}</p>
         </div>
         <div class="prime-daily-row">
           <p class="prime-daily-label">Recommended next step</p>
-          <p class="prime-daily-value">${escapeHtml(nextStep)}</p>
+          <p class="prime-daily-value">${escapeHtml(PRIME_RECOMMENDED_NEXT_STEP)}</p>
         </div>
       </div>
       <div class="prime-daily-action-row">
@@ -396,12 +404,72 @@ function renderPrimeHome(report) {
   `;
   const startButton = document.getElementById("primeStartButton");
   if (startButton) {
-    startButton.addEventListener("click", () => {
-      setAccess("Operator access verified. Aion is ready.", "verified");
-    });
+    startButton.addEventListener("click", renderPrimeWorkingSurface);
   }
   /* prime minimal daily start ux end */
 }
+
+function appendPrimeMessage(role, message) {
+  const conversation = document.getElementById("primeConversation");
+  if (!conversation) return;
+  const article = document.createElement("article");
+  article.className = `prime-message ${role === "user" ? "user" : "assistant"}`;
+  if (role === "assistant") {
+    const label = document.createElement("div");
+    label.className = "prime-message-role";
+    label.textContent = "Prime";
+    article.appendChild(label);
+  }
+  const body = document.createElement("p");
+  body.textContent = message;
+  article.appendChild(body);
+  conversation.appendChild(article);
+  conversation.scrollTop = conversation.scrollHeight;
+}
+
+function renderPrimeWorkingSurface() {
+  const container = document.getElementById("primeHomeResults");
+  if (!container) return;
+  setAccess("Operator access verified. Aion is ready.", "verified");
+  container.innerHTML = `
+    <div class="prime-working-surface">
+      <div class="prime-working-header">
+        <div class="prime-working-role">
+          <p class="prime-working-label">Talking to</p>
+          <h2>Prime</h2>
+        </div>
+        <span class="prime-role-pill">Synthesis and direction</span>
+      </div>
+      <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
+      <form id="primeComposer" class="prime-composer">
+        <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Tell Prime what you want to work on..."></textarea>
+        <div class="prime-composer-actions">
+          <span class="prime-composer-hint">Prime first. Mirror and Engineer come after approval.</span>
+          <button class="prime-send-button" type="submit">Send</button>
+        </div>
+      </form>
+    </div>
+  `;
+  appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
+  const form = document.getElementById("primeComposer");
+  const input = document.getElementById("primeComposerInput");
+  if (form && input) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      appendPrimeMessage("user", message);
+      input.value = "";
+      appendPrimeMessage("assistant", [
+        "Captured for Prime.",
+        "",
+        "For this Phase 9.11B UI step, the workspace is ready for the Prime conversation flow. The next implementation layer should connect this composer to a governed Prime execution route and record execution evidence before treating responses as operational intelligence validation."
+      ].join("\n"));
+    });
+    input.focus();
+  }
+}
+
 
 
 

@@ -1109,6 +1109,159 @@
     }
     /* Prime minimal daily start UX end */
 
+    /* Prime working surface start */
+    .prime-working-surface {
+      display: grid;
+      gap: 18px;
+      min-height: calc(100vh - var(--header-height) - 170px);
+      border-color: #2c3138;
+      background: #111315;
+      padding: 0;
+    }
+
+    .prime-working-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 0 14px;
+      border-bottom: 1px solid #2c3138;
+    }
+
+    .prime-working-role {
+      display: grid;
+      gap: 4px;
+    }
+
+    .prime-working-label,
+    .prime-message-role {
+      color: #93c5fd;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .prime-working-role h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      line-height: 1.2;
+    }
+
+    .prime-role-pill {
+      flex: 0 0 auto;
+      border: 1px solid #2f3b49;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #151b24;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .prime-conversation {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 260px;
+      padding: 8px 0 6px;
+    }
+
+    .prime-message {
+      width: min(100%, 720px);
+      border-radius: 14px;
+      padding: 14px 16px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .prime-message.assistant {
+      align-self: flex-start;
+      border: 1px solid #2c3138;
+      background: #1a1d21;
+      color: #f3f4f6;
+    }
+
+    .prime-message.user {
+      align-self: flex-end;
+      max-width: min(85%, 660px);
+      border: 1px solid #1d4ed8;
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .prime-message p {
+      margin: 8px 0 0;
+    }
+
+    .prime-message p:first-child {
+      margin-top: 0;
+    }
+
+    .prime-composer {
+      display: grid;
+      gap: 10px;
+      padding: 14px 0 0;
+      border-top: 1px solid #2c3138;
+    }
+
+    .prime-composer textarea {
+      min-height: 92px;
+      border-radius: 10px;
+      background: #1a1d21;
+    }
+
+    .prime-composer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .prime-composer-hint {
+      color: #9ca3af;
+      font-size: 0.84rem;
+    }
+
+    .prime-send-button {
+      min-width: 86px;
+      border-color: #60a5fa;
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .prime-home-button {
+      min-height: 36px;
+      border-color: #2f3b49;
+      background: #151b24;
+      color: #ffffff;
+      font-size: 0.87rem;
+    }
+
+    @media (max-width: 640px) {
+      .prime-working-surface {
+        min-height: calc(100vh - var(--header-height) - 132px);
+      }
+
+      .prime-working-header,
+      .prime-composer-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .prime-role-pill,
+      .prime-home-button,
+      .prime-send-button {
+        width: 100%;
+      }
+
+      .prime-message.user {
+        max-width: 100%;
+      }
+    }
+    /* Prime working surface end */
+
     /* Operator Prime-only final surface start */
     body.operator-signed-in .operator-workspace-nav {
       margin-bottom: 18px !important;
