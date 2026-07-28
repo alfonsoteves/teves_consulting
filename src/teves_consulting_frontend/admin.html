@@ -2155,6 +2155,35 @@
     }
     /* Header active state and mark parity end */
 
+    /* Admin signed-out access fallback final override start */
+    body.admin-signed-out .operator-access {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      z-index: 20 !important;
+      display: block !important;
+      width: min(100% - 48px, 460px) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      transform: translate(-50%, -50%) !important;
+      border: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: #d4d4d4 !important;
+      font-size: 0.95rem !important;
+      line-height: 1.6 !important;
+      text-align: center !important;
+    }
+
+    body.admin-signed-out .operator-access:empty::before {
+      content: "Sign in with Internet Identity to continue.";
+    }
+
+    body.admin-signed-in .operator-access {
+      display: none !important;
+    }
+    /* Admin signed-out access fallback final override end */
+
   </style>
 </head>
 
@@ -2205,7 +2234,7 @@
     </div>
   </header>
 
-  <div id="operatorAccess" class="operator-access" role="status" aria-live="polite"></div>
+  <div id="operatorAccess" class="operator-access" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
   <div id="adminContent" style="display:none;">
 
     <!-- Admin evergreen navigation start -->
