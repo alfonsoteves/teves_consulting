@@ -1245,6 +1245,131 @@ async function loadPrimeOperationalValidationCriteria() {
   renderPrimeOperationalValidationCriteria(report);
 }
 
+function renderPrimeOperationalValidationRun(report) {
+  const container = document.getElementById("primeOperationalValidationRunResults");
+  if (!container) return;
+  const baseline = report.baselineObservation || {};
+  const execution = report.primeExecutionIdentity || {};
+  const context = report.primeContextEvidence || {};
+  const cost = report.primeCostPerformanceEvidence || {};
+  const outcome = report.primeOutcomeEvidence || {};
+  const assessment = report.operatorAssessment || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.runVersion || "")} | Criteria accepted: ${boolText(report.sourceCriteriaAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>Baseline</h2>
+        <p>${escapeHtml(baseline.evidenceSource || "")}</p>
+        <ul>
+          <li>Continuity: ${escapeHtml(baseline.continuityOwnership || "")}</li>
+          <li>Transfer: ${escapeHtml(baseline.contextTransferObserved || "")}</li>
+          <li>Provider: ${escapeHtml(baseline.providerIdentity || "")}</li>
+          <li>Model: ${escapeHtml(baseline.modelIdentityVersion || "")}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Prime Execution</h2>
+        <ul>
+          <li>Route: ${escapeHtml(execution.executionRoute || "")}</li>
+          <li>Provider: ${escapeHtml(execution.providerIdentity || "")}</li>
+          <li>Model: ${escapeHtml(execution.modelIdentityVersion || "")}</li>
+          <li>Timestamp: ${escapeHtml(execution.executionTimestamp || "")}</li>
+          <li>Unknowns preserved: ${boolText(execution.unknownValuesPreserved)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Assessment</h2>
+        <ul>
+          <li>Required: ${boolText(assessment.assessmentRequired)}</li>
+          <li>Completed: ${boolText(assessment.assessmentCompleted)}</li>
+          <li>Accepted: ${boolText(assessment.operationalValidationAccepted)}</li>
+          <li>Candidate evidence: ${boolText(boundary.candidateEvidenceCaptured)}</li>
+          <li>Oracle work: ${boolText(boundary.oracleWorkApproved)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Context Evidence</h3>
+    ${table(
+      ["Context Packet", "Continuity", "Grounding", "Size", "Data"],
+      [`
+        <tr>
+          <td>${escapeHtml(context.contextPacketIdentity || "")}</td>
+          <td>${escapeHtml(context.continuityContextIdentity || "")}</td>
+          <td>${escapeHtml(context.groundingEvidenceIdentity || "")}</td>
+          <td>${escapeHtml(context.approximateContextSize || "")}</td>
+          <td>${escapeHtml(context.disclosedDataClassification || "")}</td>
+        </tr>
+      `]
+    )}
+    <h3>Cost And Performance</h3>
+    ${table(
+      ["Latency", "Tokens", "External Cost", "Cycles", "Estimated Cost", "Unknowns"],
+      [`
+        <tr>
+          <td>${escapeHtml(cost.latency || "")}</td>
+          <td>${escapeHtml(cost.tokenUsage || "")}</td>
+          <td>${escapeHtml(cost.externalCost || "")}</td>
+          <td>${escapeHtml(cost.cycles || "")}</td>
+          <td>${escapeHtml(cost.estimatedExecutionCost || "")}</td>
+          <td>${boolText(cost.unknownValuesPreserved)}</td>
+        </tr>
+      `]
+    )}
+    <h3>Outcome Evidence</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Synthesis</h3>
+        <p>${escapeHtml(outcome.synthesisProduced || "")}</p>
+      </article>
+      <article class="role-card">
+        <h3>Continuity Value</h3>
+        <p>${escapeHtml(outcome.continuityValueProvided || "")}</p>
+      </article>
+      <article class="role-card">
+        <h3>Compared With Baseline</h3>
+        <p>${escapeHtml(outcome.changedComparedWithBaseline || "")}</p>
+        <p class="meta">Candidate improvement: ${boolText(outcome.candidateImprovementObserved)}. Operator review: ${boolText(outcome.operatorAssessmentRequired)}.</p>
+      </article>
+    </div>
+    <h3>Measure Observations</h3>
+    ${table(
+      ["Measure", "Baseline", "Prime", "Signal", "Review"],
+      (report.measureObservations || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.measureId || "")}</td>
+          <td>${escapeHtml(item.baselineObservation || "")}</td>
+          <td>${escapeHtml(item.primeObservation || "")}</td>
+          <td>${escapeHtml(item.candidateSignal || "")}</td>
+          <td>${boolText(item.operatorAssessmentRequired)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Boundary</h3>
+    ${table(
+      ["Criteria", "Candidate", "Assessment", "Accepted", "Live Product Inference", "Route Changed", "Memory", "Oracle"],
+      [`
+        <tr>
+          <td>${boolText(boundary.criteriaAccepted)}</td>
+          <td>${boolText(boundary.candidateEvidenceCaptured)}</td>
+          <td>${boolText(boundary.operatorAssessmentCompleted)}</td>
+          <td>${boolText(boundary.operationalValidationAccepted)}</td>
+          <td>${boolText(boundary.aionProductLiveInferenceEnabled)}</td>
+          <td>${boolText(boundary.providerRouteChanged)}</td>
+          <td>${boolText(boundary.memoryWriteAuthorized)}</td>
+          <td>${boolText(boundary.oracleWorkApproved)}</td>
+        </tr>
+      `]
+    )}
+  `;
+}
+
+async function loadPrimeOperationalValidationRun() {
+  const report = await renderFetch("/admin/prime-operational-validation-run");
+  renderPrimeOperationalValidationRun(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1434,6 +1559,7 @@ async function loadRolesAndRules() {
   await loadTrioValidation();
   await loadArchitectureValidationRun();
   await loadPrimeOperationalValidationCriteria();
+  await loadPrimeOperationalValidationRun();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
