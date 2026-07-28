@@ -183,6 +183,50 @@
       background: var(--soft);
     }
 
+    .capture-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .capture-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .capture-field label {
+      color: #24364c;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      font: inherit;
+      padding: 10px 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .capture-output {
+      background: #101827;
+      border-radius: 8px;
+      color: #edf5ff;
+      overflow-x: auto;
+      padding: 14px;
+      white-space: pre-wrap;
+    }
+
     @media (max-width: 700px) {
       .operator-header {
         align-items: start;
@@ -271,6 +315,12 @@
         <h2>Prime Same-Task Comparison</h2>
         <p class="meta">Phase 9.11B defines the same bounded task that must be compared across normal ChatGPT and Internal Aion Prime before Prime can be accepted.</p>
         <div id="primeOperationalValidationSameTaskComparisonResults"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Prime Trial Capture</h2>
+        <p class="meta">Local-only workspace for Trial A evidence and operator assessment. It generates a review packet in your browser and does not submit or save canonical memory.</p>
+        <div id="primeOperationalValidationTrialCaptureTemplateResults"></div>
       </section>
 
       <section class="summary-grid" aria-label="Operating agreement summary">

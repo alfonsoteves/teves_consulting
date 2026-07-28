@@ -12,6 +12,7 @@ let isAuthenticated = false;
 let isOperator = false;
 let renderOperatorSessionToken = null;
 const browserFetch = window.fetch.bind(window);
+const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -1542,6 +1543,145 @@ async function loadPrimeOperationalValidationSameTaskComparison() {
   renderPrimeOperationalValidationSameTaskComparison(report);
 }
 
+function captureInputId(fieldId) {
+  return `primeTrialCapture_${fieldId}`;
+}
+
+function captureQuestionId(questionId) {
+  return `primeTrialAssessment_${questionId}`;
+}
+
+function loadPrimeTrialDraft() {
+  try {
+    return JSON.parse(localStorage.getItem(PRIME_TRIAL_CAPTURE_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function savePrimeTrialDraft(report) {
+  const draft = { trialA: {}, assessment: {} };
+  (report.captureFields || []).forEach((field) => {
+    const node = document.getElementById(captureInputId(field.fieldId));
+    draft.trialA[field.fieldId] = node ? node.value : "";
+  });
+  (report.assessmentQuestions || []).forEach((question) => {
+    const node = document.getElementById(captureQuestionId(question.questionId));
+    draft.assessment[question.questionId] = node ? node.value : "";
+  });
+  localStorage.setItem(PRIME_TRIAL_CAPTURE_STORAGE_KEY, JSON.stringify(draft));
+  return draft;
+}
+
+function buildPrimeTrialReviewPacket(report, draft) {
+  const requiredFields = (report.captureFields || []).filter((field) => field.required);
+  const missingFields = requiredFields
+    .filter((field) => !String((draft.trialA || {})[field.fieldId] || "").trim())
+    .map((field) => field.fieldId);
+  const missingQuestions = (report.assessmentQuestions || [])
+    .filter((question) => question.required && !String((draft.assessment || {})[question.questionId] || "").trim())
+    .map((question) => question.questionId);
+  return {
+    packetKind: "phase-9-11b-prime-trial-review-packet",
+    templateVersion: report.templateVersion || "unknown",
+    createdAt: new Date().toISOString(),
+    localOnly: true,
+    submittedToBackend: false,
+    canonicalMemoryWriteRequested: false,
+    primeOperationalValidationAccepted: false,
+    mirrorOperationalValidationMayStart: false,
+    trialA: draft.trialA || {},
+    operatorAssessment: draft.assessment || {},
+    completion: {
+      requiredTrialAFieldsPresent: missingFields.length === 0,
+      requiredAssessmentPresent: missingQuestions.length === 0,
+      missingFields,
+      missingQuestions,
+      readyForOwnerReview: missingFields.length === 0 && missingQuestions.length === 0,
+    },
+  };
+}
+
+function renderPrimeOperationalValidationTrialCaptureTemplate(report) {
+  const container = document.getElementById("primeOperationalValidationTrialCaptureTemplateResults");
+  if (!container) return;
+  const draft = loadPrimeTrialDraft();
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.templateVersion || "")} | Local only: ${boolText(boundary.localBrowserCaptureOnly)} | Backend submission: ${boolText(boundary.backendSubmissionEnabled)}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>Template only: ${boolText(boundary.templateOnly)}</li>
+          <li>Local browser capture: ${boolText(boundary.localBrowserCaptureOnly)}</li>
+          <li>Canonical memory write: ${boolText(boundary.canonicalMemoryWriteAllowed)}</li>
+          <li>Prime accepted: ${boolText(boundary.primeOperationalValidationAccepted)}</li>
+          <li>Mirror may start: ${boolText(boundary.mirrorOperationalValidationMayStart)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Completion Rules</h2>
+        <ul>${(report.completionRules || []).map((rule) => `<li><strong>${escapeHtml(rule.status || "")}</strong>: ${escapeHtml(rule.requirement || "")}</li>`).join("")}</ul>
+      </div>
+    </div>
+    <h3>Trial A Evidence</h3>
+    <div class="capture-grid">
+      ${(report.captureFields || []).map((field) => {
+        const value = ((draft.trialA || {})[field.fieldId]) || "";
+        const input = field.fieldKind === "textarea"
+          ? `<textarea id="${escapeHtml(captureInputId(field.fieldId))}" placeholder="${escapeHtml(field.placeholder || "")}">${escapeHtml(value)}</textarea>`
+          : `<input id="${escapeHtml(captureInputId(field.fieldId))}" type="text" value="${escapeHtml(value)}" placeholder="${escapeHtml(field.placeholder || "")}" />`;
+        return `
+          <div class="capture-field">
+            <label for="${escapeHtml(captureInputId(field.fieldId))}">${escapeHtml(field.label || "")}${field.required ? " *" : ""}</label>
+            ${input}
+            <span class="meta">Unknown allowed: ${boolText(field.unknownAllowed)}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    <h3>Operator Assessment</h3>
+    <div class="capture-grid">
+      ${(report.assessmentQuestions || []).map((question) => {
+        const value = ((draft.assessment || {})[question.questionId]) || "";
+        return `
+          <div class="capture-field">
+            <label for="${escapeHtml(captureQuestionId(question.questionId))}">${escapeHtml(question.prompt || "")}${question.required ? " *" : ""}</label>
+            <textarea id="${escapeHtml(captureQuestionId(question.questionId))}" placeholder="Answer for owner review.">${escapeHtml(value)}</textarea>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    <div class="actions" style="margin-top: 14px;">
+      <button id="primeTrialGeneratePacketButton" type="button">Generate Review Packet</button>
+      <button id="primeTrialClearDraftButton" type="button" class="secondary">Clear Local Draft</button>
+    </div>
+    <p id="primeTrialCaptureStatus" class="meta" style="margin-top: 10px;">Draft stays in this browser only.</p>
+    <pre id="primeTrialCaptureOutput" class="capture-output" hidden></pre>
+  `;
+  document.getElementById("primeTrialGeneratePacketButton").addEventListener("click", () => {
+    const nextDraft = savePrimeTrialDraft(report);
+    const packet = buildPrimeTrialReviewPacket(report, nextDraft);
+    const output = document.getElementById("primeTrialCaptureOutput");
+    output.hidden = false;
+    output.textContent = JSON.stringify(packet, null, 2);
+    document.getElementById("primeTrialCaptureStatus").textContent = packet.completion.readyForOwnerReview
+      ? "Review packet is locally complete. It has not been submitted or written to memory."
+      : "Review packet generated with missing required fields. It has not been submitted or written to memory.";
+  });
+  document.getElementById("primeTrialClearDraftButton").addEventListener("click", () => {
+    localStorage.removeItem(PRIME_TRIAL_CAPTURE_STORAGE_KEY);
+    renderPrimeOperationalValidationTrialCaptureTemplate(report);
+  });
+}
+
+async function loadPrimeOperationalValidationTrialCaptureTemplate() {
+  const report = await renderFetch("/admin/prime-operational-validation-trial-capture-template");
+  renderPrimeOperationalValidationTrialCaptureTemplate(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1734,6 +1874,7 @@ async function loadRolesAndRules() {
   await loadPrimeOperationalValidationRun();
   await loadPrimeOperationalValidationAcceptanceGate();
   await loadPrimeOperationalValidationSameTaskComparison();
+  await loadPrimeOperationalValidationTrialCaptureTemplate();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
