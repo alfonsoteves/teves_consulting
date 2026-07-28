@@ -552,6 +552,40 @@
         overflow-x: auto;
       }
     }
+    /* Admin/Operator header parity final override start */
+    .operator-header h1,
+    .operator-header .nav-link,
+    #authButton {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid #2f3b49;
+      border-radius: 8px;
+      background: #151b24;
+      color: #ffffff;
+      font-size: 0.87rem;
+      font-weight: 500;
+      line-height: 1.2;
+      text-decoration: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 22px rgba(0, 0, 0, 0.18);
+    }
+
+    body.operator-signed-in .operator-header > div {
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      clip: auto !important;
+      white-space: normal !important;
+      border: 0 !important;
+    }
+    /* Admin/Operator header parity final override end */
+
   </style>
 </head>
 <body class="operator-signed-out">
@@ -617,7 +651,6 @@
           <a class="operator-view-tab" href="#engineerPanel">Engineer</a>
           <a class="operator-view-tab" href="#validationPanel">Validation</a>
           <a class="operator-view-tab" href="#rulesPanel">Rules</a>
-          <a class="operator-view-tab" href="/admin.html">Admin</a>
         </div>
       </nav>
 
