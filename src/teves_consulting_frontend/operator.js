@@ -53,7 +53,8 @@ function clearStoredOperatorSession() {
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 const PRIME_CURRENT_FOCUS = "Phase 9.11B Prime validation";
-const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";\nlet primeConversationHistory = [];
+const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";
+let primeConversationHistory = [];
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
