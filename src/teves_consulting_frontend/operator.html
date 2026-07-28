@@ -1109,6 +1109,20 @@
     }
     /* Prime minimal daily start UX end */
 
+    /* Operator Prime-only workspace start */
+    .prime-work-panel[hidden] {
+      display: none !important;
+    }
+
+    .operator-workspace-nav {
+      margin-bottom: 18px;
+    }
+
+    .prime-daily-note {
+      display: none;
+    }
+    /* Operator Prime-only workspace end */
+
   </style>
 </head>
 <body class="operator-signed-out">
@@ -1169,155 +1183,19 @@
           </div>
           <div class="operator-workspace-status" role="status" aria-live="polite">Operator</div>
         </div>
-        <div class="operator-view-tabs" aria-label="Operator workspace sections">
-          <a class="operator-view-tab is-active" href="#primeHomePanel">Prime</a>
-          <a class="operator-view-tab" href="#mirrorPanel">Mirror</a>
-          <a class="operator-view-tab" href="#engineerPanel">Engineer</a>
-          <a class="operator-view-tab" href="#validationPanel">Validation</a>
-          <a class="operator-view-tab" href="#rulesPanel">Rules</a>
-        </div>
       </nav>
 
       <section id="primeHomePanel" class="panel hero-panel prime-daily-home">
         <div id="primeHomeResults"></div>
       </section>
 
-      <section id="mirrorPanel" class="panel">
-        <h2>Mirror Workflow</h2>
-        <p class="meta">Phase 9.8A critique workflow. Mirror reviews an approved Prime packet and asks whether the plan is sound before Engineer receives implementation context.</p>
-        <div id="mirrorWorkflowResults"></div>
+      <!-- Operator Prime-only workspace start -->
+      <section id="primeWorkPanel" class="panel prime-work-panel" hidden>
+        <h2>Ready</h2>
+        <p class="meta">Prime is ready to continue the current validation task from the restored Aion context.</p>
       </section>
+      <!-- Operator Prime-only workspace end -->
 
-      <section id="engineerPanel" class="panel">
-        <h2>Engineer Workflow</h2>
-        <p class="meta">Phase 9.8B implementation reasoning. Engineer turns approved Prime and Mirror context into a plan, validation strategy, and rollback considerations without selecting providers or executing changes.</p>
-        <div id="engineerWorkflowResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Coordination Loop</h2>
-        <p class="meta">Phase 9.9 governed artifact flow. Prime, Mirror, and Engineer exchange durable packets so the operator is authority, not the manual context-transfer layer.</p>
-        <div id="coordinationLoopResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Approval Boundary</h2>
-        <p class="meta">Phase 9.10 separates recommendation acceptance, work authorization, and execution authorization. It prepares an execution proposal boundary without performing actions.</p>
-        <div id="approvalBoundaryResults"></div>
-      </section>
-
-      <section id="validationPanel" class="panel">
-        <h2>Trio Validation</h2>
-        <p class="meta">Phase 9.11 validates whether Prime, Mirror, and Engineer are practically useful together before Oracle is defined or built.</p>
-        <div id="trioValidationResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Architecture Validation Run</h2>
-        <p class="meta">Phase 9.11A runs the first bounded architecture decision validation: Prime recommends, Mirror critiques, Prime revises, Engineer plans readiness, and operator assessment remains required.</p>
-        <div id="architectureValidationRunResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Prime Operational Validation</h2>
-        <p class="meta">Phase 9.11B criteria define the baseline comparison before Prime operational validation is run or accepted as intelligence evidence.</p>
-        <div id="primeOperationalValidationCriteriaResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Prime Operational Run</h2>
-        <p class="meta">Phase 9.11B candidate evidence compares normal ChatGPT context transfer with Prime using Aion continuity. Operator assessment remains pending.</p>
-        <div id="primeOperationalValidationRunResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Prime Acceptance Gate</h2>
-        <p class="meta">Phase 9.11B review accepts candidate evidence while keeping Prime operational validation incomplete until operator assessment and stronger baseline comparison are complete.</p>
-        <div id="primeOperationalValidationAcceptanceGateResults"></div>
-      </section>
-
-      <section id="primeOperationalValidationSameTaskComparisonPanel" class="panel">
-        <h2>Prime Same-Task Comparison</h2>
-        <p class="meta">Phase 9.11B defines the same bounded task that must be compared across normal ChatGPT and Internal Aion Prime before Prime can be accepted.</p>
-        <div id="primeOperationalValidationSameTaskComparisonResults"></div>
-      </section>
-
-      <section id="primeOperationalValidationTrialCapturePanel" class="panel">
-        <h2>Prime Trial Capture</h2>
-        <p class="meta">Local-only workspace for Trial A evidence and operator assessment. It generates a review packet in your browser and does not submit or save canonical memory.</p>
-        <div id="primeOperationalValidationTrialCaptureTemplateResults"></div>
-      </section>
-
-      <section id="rulesPanel" class="summary-grid" aria-label="Operating agreement summary">
-        <div class="panel">
-          <h2>Operating Agreement</h2>
-          <p id="agreementPurpose" class="meta">Loading...</p>
-          <span id="agreementVersion" class="badge">Pending</span>
-        </div>
-        <div class="panel">
-          <h2>Policy Split</h2>
-          <p><strong>Role policy:</strong> <span id="rolePolicyQuestion"></span></p>
-          <p><strong>Provider policy:</strong> <span id="providerPolicyQuestion"></span></p>
-        </div>
-        <div class="panel">
-          <h2>Boundary</h2>
-          <p id="boundarySummary" class="meta">Loading...</p>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Role Responsibilities</h2>
-        <div id="roleCards" class="role-grid"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Enforceable Rules</h2>
-        <div id="rulesTable"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Governed Transitions</h2>
-        <div id="transitionTable"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Output Influence</h2>
-        <div id="influenceTable"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Surface Rules</h2>
-        <div id="surfaceTable"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Context Packets</h2>
-        <p class="meta">Deterministic Phase 9.3 previews from the protected Render bridge. These packets do not call providers or write memory.</p>
-        <div id="contextPacketResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Mock Pipeline</h2>
-        <p class="meta">Deterministic Phase 9.4 preview from the protected Render bridge. It does not call providers, write memory, or perform actions.</p>
-        <div id="mockPipelineResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Live Prototype Gate</h2>
-        <p class="meta">Phase 9.5 readiness from the protected Render bridge. It shows eligibility and boundary evidence only; it does not execute a provider call.</p>
-        <div id="livePrototypeGateResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Role Evaluation</h2>
-        <p class="meta">Phase 9.6 suitability assessment from the protected Render bridge. It compares roles to single-pass reasoning and does not claim production readiness.</p>
-        <div id="roleEvaluationResults"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Acceptance</h2>
-        <div id="acceptanceTable"></div>
-      </section>
     </section>
   </main>
 

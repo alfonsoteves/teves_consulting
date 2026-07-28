@@ -390,15 +390,21 @@ function renderPrimeHome(report) {
         </div>
       </div>
       <div class="prime-daily-action-row">
-        <a class="nav-link prime-start-button" href="#primeOperationalValidationSameTaskComparisonPanel">Start working</a>
-        <a class="nav-link prime-role-button" href="#mirrorPanel">Ask Mirror</a>
-        <a class="nav-link prime-role-button" href="#engineerPanel">Ask Engineer</a>
+        <button id="primeStartButton" class="nav-link prime-start-button" type="button">Start working</button>
       </div>
-      <p class="prime-daily-note">Details remain available in the role, validation, and rules sections when review is needed.</p>
     </div>
   `;
+  const startButton = document.getElementById("primeStartButton");
+  const workPanel = document.getElementById("primeWorkPanel");
+  if (startButton && workPanel) {
+    startButton.addEventListener("click", () => {
+      workPanel.hidden = false;
+      workPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   /* prime minimal daily start ux end */
 }
+
 
 
 
@@ -1838,73 +1844,13 @@ async function loadRoleEvaluation() {
 }
 
 async function loadRolesAndRules() {
-  /* operator loading placeholder guard start */
+  /* prime-only operator workspace start */
   setOperatorWorkspaceWarning("");
-
-  const [nativeResult, renderResult] = await Promise.allSettled([
-    actor.getAionRoleRulesOperatingAgreementStatus(),
-    renderFetch("/admin/role-rules-operating-agreement"),
-  ]);
-  const nativeReport = nativeResult.status === "fulfilled" ? nativeResult.value : null;
-  const renderBridgeReport = renderResult.status === "fulfilled" ? renderResult.value : null;
-  const report = nativeReport || renderBridgeReport;
-
-  if (!report) {
-    console.warn("Operating agreement reports unavailable:", nativeResult, renderResult);
-    setOperatingAgreementUnavailable("Operating Agreement could not refresh. Your operator access remains verified.");
-    throw new Error("Operating agreement report unavailable.");
-  }
-
-  if (nativeReport && renderBridgeReport && nativeReport.agreementVersion !== renderBridgeReport.agreementVersion) {
-    setAccess("Operator access verified. Native and Render rules need review.", "denied");
-  } else {
-    setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
-  }
-
-  renderReport(report);
-
-  const panelLoaders = [
-    ["Prime Home", "primeHomeResults", loadPrimeHome],
-    ["Mirror Workflow", "mirrorWorkflowResults", loadMirrorWorkflow],
-    ["Engineer Workflow", "engineerWorkflowResults", loadEngineerWorkflow],
-    ["Coordination Loop", "coordinationLoopResults", loadCoordinationLoop],
-    ["Approval Boundary", "approvalBoundaryResults", loadApprovalBoundary],
-    ["Trio Validation", "trioValidationResults", loadTrioValidation],
-    ["Architecture Validation", "architectureValidationRunResults", loadArchitectureValidationRun],
-    ["Prime Validation Criteria", "primeOperationalValidationCriteriaResults", loadPrimeOperationalValidationCriteria],
-    ["Prime Validation Run", "primeOperationalValidationRunResults", loadPrimeOperationalValidationRun],
-    ["Prime Acceptance Gate", "primeOperationalValidationAcceptanceGateResults", loadPrimeOperationalValidationAcceptanceGate],
-    ["Prime Same-Task Comparison", "primeOperationalValidationSameTaskComparisonResults", loadPrimeOperationalValidationSameTaskComparison],
-    ["Prime Trial Capture", "primeOperationalValidationTrialCaptureTemplateResults", loadPrimeOperationalValidationTrialCaptureTemplate],
-    ["Role Context Packets", "contextPacketResults", loadRoleContextPackets],
-    ["Mock Role Pipeline", "mockPipelineResults", loadMockRolePipeline],
-    ["Live Prototype Gate", "livePrototypeGateResults", loadLiveRolePrototypeGate],
-    ["Role Evaluation", "roleEvaluationResults", loadRoleEvaluation],
-  ];
-
-  const failed = [];
-  await Promise.all(panelLoaders.map(async ([label, elementId, loader]) => {
-    try {
-      await loader();
-    } catch (firstError) {
-      console.warn(`Operator panel refresh failed for ${label}; retrying once.`, firstError);
-      try {
-        await loader();
-      } catch (secondError) {
-        console.warn(`Operator panel refresh failed for ${label} after retry.`, secondError);
-        failed.push(label);
-        setOperatorPanelUnavailable(elementId, label);
-      }
-    }
-  }));
-
-  if (failed.length) {
-    const listed = failed.slice(0, 4).join(", ");
-    const extra = failed.length > 4 ? `, +${failed.length - 4} more` : "";
-    setOperatorWorkspaceWarning(`Some workspace panels did not refresh: ${listed}${extra}. Your operator access remains verified.`);
-  }
-  /* operator loading placeholder guard end */
+  setAccess("Operator access verified. Prime is ready.", "verified");
+  await loadPrimeHome();
+  /* prime-only operator workspace end */
 }
+
 
 
 
