@@ -5,6 +5,7 @@ import { AuthClient } from "https://esm.sh/@dfinity/auth-client@2.1.3?deps=@dfin
 const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
+const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 let authClient = null;
 let identity = null;
 let actor = null;
@@ -12,6 +13,44 @@ let isAuthenticated = false;
 let isOperator = false;
 let renderOperatorSessionToken = null;
 const browserFetch = window.fetch.bind(window);
+/* shared operator session helpers start */
+function operatorSessionNowSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
+function readStoredOperatorSession() {
+  try {
+    const raw = sessionStorage.getItem(OPERATOR_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session || typeof session.sessionToken !== "string" || !session.sessionToken) return null;
+    if (session.expiresAt && Number(session.expiresAt) <= operatorSessionNowSeconds() + 30) return null;
+    return session;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeStoredOperatorSession(session) {
+  try {
+    sessionStorage.setItem(OPERATOR_SESSION_STORAGE_KEY, JSON.stringify({
+      sessionToken: session.sessionToken,
+      expiresAt: session.expiresAt || null,
+    }));
+  } catch (_) {
+    // Storage is best-effort; the active page can still use the in-memory token.
+  }
+}
+
+function clearStoredOperatorSession() {
+  try {
+    sessionStorage.removeItem(OPERATOR_SESSION_STORAGE_KEY);
+  } catch (_) {
+    // Ignore storage failures; clearing in-memory state is still authoritative for this page.
+  }
+}
+/* shared operator session helpers end */
+
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 
 function idlFactory({ IDL }) {
@@ -125,6 +164,12 @@ function encodeOperatorGrant(nonce) {
 }
 
 async function establishRenderOperatorSession() {
+  const storedSession = readStoredOperatorSession();
+  if (storedSession) {
+    renderOperatorSessionToken = storedSession.sessionToken;
+    return;
+  }
+
   const nonce = new Uint8Array(32);
   crypto.getRandomValues(nonce);
   const issued = await actor.issueOperatorSessionGrant(Array.from(nonce));
@@ -137,7 +182,11 @@ async function establishRenderOperatorSession() {
   });
   if (!response.ok) throw new Error("Operator session exchange was rejected.");
   const session = await response.json();
+  if (!session || typeof session.sessionToken !== "string" || !session.sessionToken) {
+    throw new Error("Operator session exchange returned an invalid session.");
+  }
   renderOperatorSessionToken = session.sessionToken;
+  writeStoredOperatorSession(session);
 }
 
 async function renderFetch(path) {
@@ -159,6 +208,10 @@ function setAccess(message, state = "") {
 function setOperatorShellSignedIn(signedIn) {
   document.body.classList.toggle("operator-signed-in", signedIn);
   document.body.classList.toggle("operator-signed-out", !signedIn);
+  const workspace = document.getElementById("operatorWorkspace");
+  if (workspace && !signedIn) {
+    workspace.classList.remove("is-visible");
+  }
 }
 
 function table(headers, rows) {
@@ -1908,6 +1961,10 @@ async function refreshOperatorAccess() {
     await loadRolesAndRules();
   } catch (error) {
     console.error("Operator access failed", error);
+    isOperator = false;
+    renderOperatorSessionToken = null;
+    clearStoredOperatorSession();
+    document.getElementById("operatorWorkspace").classList.remove("is-visible");
     setOperatorShellSignedIn(false);
     setAccess("Operator access could not be verified. Refresh after the session service is available.", "denied");
   }

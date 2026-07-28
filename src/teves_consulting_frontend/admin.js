@@ -12,6 +12,7 @@ const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
+const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const OPENAI_PRODUCTION_ROUTE_ID = "openai-production-baseline";
 const NATIVE_PRODUCTION_ROUTE_ID = "icp-admin-candidate";
 const DEFAULT_CANDIDATE_MODELS = [
@@ -240,6 +241,44 @@ let renderOperatorSessionToken = null;
 let renderOperatorSessionExpiresAt = null;
 let operatorAccessIssue = null;
 const browserFetch = window.fetch.bind(window);
+
+/* shared operator session helpers start */
+function operatorSessionNowSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
+function readStoredOperatorSession() {
+  try {
+    const raw = sessionStorage.getItem(OPERATOR_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session || typeof session.sessionToken !== "string" || !session.sessionToken) return null;
+    if (session.expiresAt && Number(session.expiresAt) <= operatorSessionNowSeconds() + 30) return null;
+    return session;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeStoredOperatorSession(session) {
+  try {
+    sessionStorage.setItem(OPERATOR_SESSION_STORAGE_KEY, JSON.stringify({
+      sessionToken: session.sessionToken,
+      expiresAt: session.expiresAt || null,
+    }));
+  } catch (_) {
+    // Storage is best-effort; the active page can still use the in-memory token.
+  }
+}
+
+function clearStoredOperatorSession() {
+  try {
+    sessionStorage.removeItem(OPERATOR_SESSION_STORAGE_KEY);
+  } catch (_) {
+    // Ignore storage failures; clearing in-memory state is still authoritative for this page.
+  }
+}
+/* shared operator session helpers end */
 
 function isRenderAdminRequest(input) {
   const rawUrl = input instanceof Request ? input.url : String(input);
@@ -884,6 +923,13 @@ function encodeOperatorGrant(nonce) {
 }
 
 async function establishRenderOperatorSession() {
+  const storedSession = readStoredOperatorSession();
+  if (storedSession) {
+    renderOperatorSessionToken = storedSession.sessionToken;
+    renderOperatorSessionExpiresAt = storedSession.expiresAt || null;
+    return;
+  }
+
   const nonce = new Uint8Array(32);
   crypto.getRandomValues(nonce);
   const issued = await window.adminActor.issueOperatorSessionGrant(Array.from(nonce));
@@ -909,6 +955,7 @@ async function establishRenderOperatorSession() {
 
   renderOperatorSessionToken = session.sessionToken;
   renderOperatorSessionExpiresAt = session.expiresAt || null;
+  writeStoredOperatorSession(session);
 }
 
 async function refreshOperatorAccess() {
@@ -936,6 +983,7 @@ async function refreshOperatorAccess() {
   } catch (err) {
     console.error("Operator access verification failed:", err);
     operatorAccessIssue = "verification_failed";
+    clearStoredOperatorSession();
     updateAdminVisibility();
     return false;
   }
@@ -1124,6 +1172,7 @@ window.handleAuth = async function handleAuth() {
     renderOperatorSessionToken = null;
     renderOperatorSessionExpiresAt = null;
     operatorAccessIssue = null;
+    clearStoredOperatorSession();
 
     window.adminActor = Actor.createActor(idlFactory, {
       agent,

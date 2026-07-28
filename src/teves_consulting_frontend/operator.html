@@ -980,6 +980,18 @@
     }
     /* Operator signed-in menu flow final override end */
 
+    /* Operator failed-access workspace isolation start */
+    body.operator-signed-out #operatorWorkspace {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.operator-signed-out .operator-content {
+      padding: 0 !important;
+    }
+    /* Operator failed-access workspace isolation end */
+
   </style>
 </head>
 <body class="operator-signed-out">
