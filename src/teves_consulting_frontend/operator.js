@@ -1370,6 +1370,96 @@ async function loadPrimeOperationalValidationRun() {
   renderPrimeOperationalValidationRun(report);
 }
 
+function renderPrimeOperationalValidationAcceptanceGate(report) {
+  const container = document.getElementById("primeOperationalValidationAcceptanceGateResults");
+  if (!container) return;
+  const review = report.candidateReview || {};
+  const baseline = report.baselineRefinement || {};
+  const assessment = report.operatorAssessmentGate || {};
+  const boundary = report.boundary || {};
+  container.innerHTML = `
+    <p><strong>${escapeHtml(report.objective || "")}</strong></p>
+    <p class="meta">Version: ${escapeHtml(report.gateVersion || "")} | Candidate accepted: ${boolText(review.candidateEvidenceCaptureAccepted)} | Next: ${escapeHtml(report.nextMilestone || "")}</p>
+    <div class="summary-grid">
+      <div class="panel">
+        <h2>Review</h2>
+        <p>${escapeHtml(review.reviewSummary || "")}</p>
+        <ul>
+          <li>Candidate evidence: ${boolText(review.candidateEvidenceCaptureAccepted)}</li>
+          <li>Prime complete: ${boolText(review.primeOperationalValidationComplete)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Baseline Refinement</h2>
+        <p>${escapeHtml(baseline.currentWeakness || "")}</p>
+        <ul>
+          <li>Strength: ${escapeHtml(baseline.currentBaselineStrength || "")}</li>
+          <li>Stronger comparison: ${boolText(baseline.strongerComparisonRequired)}</li>
+          <li>Accept without stronger comparison: ${boolText(baseline.acceptanceWithoutStrongerComparisonAllowed)}</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Boundary</h2>
+        <ul>
+          <li>Prime accepted: ${boolText(boundary.primeOperationalValidationAccepted)}</li>
+          <li>Mirror may start: ${boolText(boundary.mirrorOperationalValidationMayStart)}</li>
+          <li>Live inference: ${boolText(boundary.liveInferenceAuthorized)}</li>
+          <li>Route changed: ${boolText(boundary.providerRouteChanged)}</li>
+          <li>Memory write: ${boolText(boundary.memoryWriteAuthorized)}</li>
+          <li>Oracle work: ${boolText(boundary.oracleWorkApproved)}</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Completion Criteria</h3>
+    ${table(
+      ["Criterion", "Requirement", "Current Evidence", "Status", "Required"],
+      (report.completionCriteria || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.criterionId || "")}</td>
+          <td>${escapeHtml(item.requirement || "")}</td>
+          <td>${escapeHtml(item.currentEvidence || "")}</td>
+          <td>${escapeHtml(item.status || "")}</td>
+          <td>${boolText(item.requiredForAcceptance)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Operator Assessment Gate</h3>
+    <div class="role-grid">
+      <article class="role-card">
+        <h3>Status</h3>
+        <ul>
+          <li>Required: ${boolText(assessment.assessmentRequired)}</li>
+          <li>Completed: ${boolText(assessment.assessmentCompleted)}</li>
+          <li>Controls acceptance: ${boolText(assessment.controlsAcceptance)}</li>
+        </ul>
+      </article>
+      <article class="role-card">
+        <h3>Questions</h3>
+        <ul>${(assessment.questions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <h3>Measurement Gaps</h3>
+    ${table(
+      ["Measurement", "Current", "Handling", "Unknowns"],
+      (report.measurementGaps || []).map((item) => `
+        <tr>
+          <td>${escapeHtml(item.measurementId || "")}</td>
+          <td>${escapeHtml(item.currentValue || "")}</td>
+          <td>${escapeHtml(item.requiredHandling || "")}</td>
+          <td>${boolText(item.unknownValuesMustRemainUnknown)}</td>
+        </tr>
+      `)
+    )}
+    <h3>Checklist</h3>
+    <ul>${(report.acceptanceChecklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+  `;
+}
+
+async function loadPrimeOperationalValidationAcceptanceGate() {
+  const report = await renderFetch("/admin/prime-operational-validation-acceptance-gate");
+  renderPrimeOperationalValidationAcceptanceGate(report);
+}
+
 async function loadRoleContextPackets() {
   const report = await renderFetch("/admin/role-grounded-context-packets");
   renderContextPackets(report);
@@ -1560,6 +1650,7 @@ async function loadRolesAndRules() {
   await loadArchitectureValidationRun();
   await loadPrimeOperationalValidationCriteria();
   await loadPrimeOperationalValidationRun();
+  await loadPrimeOperationalValidationAcceptanceGate();
   await loadRoleContextPackets();
   await loadMockRolePipeline();
   await loadLiveRolePrototypeGate();
