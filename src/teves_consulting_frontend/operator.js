@@ -205,6 +205,13 @@ function setAccess(message, state = "") {
   node.className = `status ${state}`.trim();
 }
 
+function setOperatorWorkspaceWarning(message = "") {
+  const node = document.getElementById("operatorWorkspaceWarning");
+  if (!node) return;
+  node.textContent = message;
+  node.hidden = !message;
+}
+
 function setOperatorShellSignedIn(signedIn) {
   document.body.classList.toggle("operator-signed-in", signedIn);
   document.body.classList.toggle("operator-signed-out", !signedIn);
@@ -1911,64 +1918,106 @@ async function loadRoleEvaluation() {
 }
 
 async function loadRolesAndRules() {
-  const [nativeReport, renderBridgeReport] = await Promise.all([
-    actor.getAionRoleRulesOperatingAgreementStatus(),
-    renderFetch("/admin/role-rules-operating-agreement"),
-  ]);
-  if (nativeReport.agreementVersion !== renderBridgeReport.agreementVersion) {
-    setAccess("Operator access verified. Native and Render rules need review.", "denied");
-  } else {
-    setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
+  setOperatorWorkspaceWarning("");
+  const nativeReport = await actor.getAionRoleRulesOperatingAgreementStatus();
+  let renderBridgeReport = null;
+
+  try {
+    renderBridgeReport = await renderFetch("/admin/role-rules-operating-agreement");
+  } catch (error) {
+    console.warn("Render roles and rules bridge unavailable:", error);
   }
+
+  if (renderBridgeReport && nativeReport.agreementVersion !== renderBridgeReport.agreementVersion) {
+    setAccess("Operator access verified. Native and Render rules need review.", "denied");
+  } else if (renderBridgeReport) {
+    setAccess("Operator access verified. Roles & Rules are read-only.", "verified");
+  } else {
+    setAccess("Operator access verified. Render bridge data is temporarily unavailable.", "verified");
+    setOperatorWorkspaceWarning("Some Operator panels could not refresh from the session service. Your operator access remains verified.");
+  }
+
   renderReport(nativeReport);
-  await loadPrimeHome();
-  await loadMirrorWorkflow();
-  await loadEngineerWorkflow();
-  await loadCoordinationLoop();
-  await loadApprovalBoundary();
-  await loadTrioValidation();
-  await loadArchitectureValidationRun();
-  await loadPrimeOperationalValidationCriteria();
-  await loadPrimeOperationalValidationRun();
-  await loadPrimeOperationalValidationAcceptanceGate();
-  await loadPrimeOperationalValidationSameTaskComparison();
-  await loadPrimeOperationalValidationTrialCaptureTemplate();
-  await loadRoleContextPackets();
-  await loadMockRolePipeline();
-  await loadLiveRolePrototypeGate();
-  await loadRoleEvaluation();
+
+  const panelLoaders = [
+    loadPrimeHome,
+    loadMirrorWorkflow,
+    loadEngineerWorkflow,
+    loadCoordinationLoop,
+    loadApprovalBoundary,
+    loadTrioValidation,
+    loadArchitectureValidationRun,
+    loadPrimeOperationalValidationCriteria,
+    loadPrimeOperationalValidationRun,
+    loadPrimeOperationalValidationAcceptanceGate,
+    loadPrimeOperationalValidationSameTaskComparison,
+    loadPrimeOperationalValidationTrialCaptureTemplate,
+    loadRoleContextPackets,
+    loadMockRolePipeline,
+    loadLiveRolePrototypeGate,
+    loadRoleEvaluation,
+  ];
+
+  const results = await Promise.allSettled(panelLoaders.map((loader) => loader()));
+  const failed = results.filter((result) => result.status === "rejected");
+  if (failed.length) {
+    console.warn("Operator panel refresh incomplete:", failed);
+    setOperatorWorkspaceWarning(`${failed.length} Operator panel${failed.length === 1 ? "" : "s"} could not refresh from the session service. Your operator access remains verified.`);
+  }
 }
 
+
 async function refreshOperatorAccess() {
+  /* operator verified workspace load boundary start */
   if (!isAuthenticated || !actor) {
+    setOperatorWorkspaceWarning("");
     setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
     return;
   }
+
   try {
     const status = await actor.getOperatorStatus();
     if (!status.allowlistConfigured || !status.isOperator) {
       isOperator = false;
+      renderOperatorSessionToken = null;
+      clearStoredOperatorSession();
+      setOperatorWorkspaceWarning("");
       document.getElementById("operatorWorkspace").classList.remove("is-visible");
       setOperatorShellSignedIn(false);
       setAccess("Access denied. This workspace is restricted to the Teves Consulting operator.", "denied");
       return;
     }
-    await establishRenderOperatorSession();
-    isOperator = true;
-    document.getElementById("operatorWorkspace").classList.add("is-visible");
-    setOperatorShellSignedIn(true);
-    await loadRolesAndRules();
   } catch (error) {
-    console.error("Operator access failed", error);
+    console.error("Operator principal verification failed", error);
     isOperator = false;
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
+    setOperatorWorkspaceWarning("");
     document.getElementById("operatorWorkspace").classList.remove("is-visible");
     setOperatorShellSignedIn(false);
-    setAccess("Operator access could not be verified. Refresh after the session service is available.", "denied");
+    setAccess("Operator access could not be verified. Refresh after the identity service is available.", "denied");
+    return;
   }
+
+  isOperator = true;
+  document.getElementById("operatorWorkspace").classList.add("is-visible");
+  setOperatorShellSignedIn(true);
+  setAccess("Operator access verified. Loading workspace...", "verified");
+
+  try {
+    await establishRenderOperatorSession();
+    await loadRolesAndRules();
+  } catch (error) {
+    console.error("Operator workspace refresh failed", error);
+    renderOperatorSessionToken = null;
+    clearStoredOperatorSession();
+    setAccess("Operator access verified. Session service is temporarily unavailable.", "verified");
+    setOperatorWorkspaceWarning("Some Operator panels could not refresh from the session service. Your operator access remains verified.");
+  }
+  /* operator verified workspace load boundary end */
 }
+
 
 async function initAuth() {
   authClient = await AuthClient.create();
@@ -1993,6 +2042,7 @@ async function handleAuth() {
     isAuthenticated = false;
     isOperator = false;
     renderOperatorSessionToken = null;
+    clearStoredOperatorSession();
     document.getElementById("operatorWorkspace").classList.remove("is-visible");
     setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";

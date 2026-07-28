@@ -992,6 +992,22 @@
     }
     /* Operator failed-access workspace isolation end */
 
+    /* Operator verified warning display start */
+    .workspace-warning[hidden] {
+      display: none !important;
+    }
+
+    body.operator-signed-in .workspace-warning {
+      display: block;
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      border: 1px solid var(--warn-line);
+      border-radius: 8px;
+      background: rgba(180, 83, 9, 0.14);
+      color: var(--warn);
+    }
+    /* Operator verified warning display end */
+
   </style>
 </head>
 <body class="operator-signed-out">
@@ -1043,6 +1059,7 @@
     <div id="operatorAccess" class="status" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
 
     <section id="operatorWorkspace" class="workspace">
+      <div id="operatorWorkspaceWarning" class="status workspace-warning" role="status" aria-live="polite" hidden></div>
       <nav class="operator-workspace-nav" aria-label="Operator workspace views">
         <div class="operator-workspace-nav-header">
           <div>
