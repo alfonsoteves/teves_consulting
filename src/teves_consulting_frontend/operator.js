@@ -2006,6 +2006,7 @@ async function loadRolesAndRules() {
 
 
 
+
 async function refreshOperatorAccess() {
   /* operator verified workspace load boundary start */
   if (!isAuthenticated || !actor) {
