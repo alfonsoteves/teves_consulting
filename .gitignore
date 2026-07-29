@@ -47,3 +47,6 @@ test/
 mops.toml
 mops.lock
 src/teves_consulting_backend/
+
+# Public repo hygiene: no Operator evidence notes as frontend assets
+src/teves_consulting_frontend/operator-*-note.md
