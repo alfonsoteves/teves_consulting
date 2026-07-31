@@ -457,11 +457,19 @@ function appendPrimeMessage(role, message, evidenceHtml = "") {
   return article;
 }
 
+function primeEvidenceList(items) {
+  if (!Array.isArray(items) || !items.length) return "unknown";
+  return `<ul>${items.map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")}</ul>`;
+}
+
 function primeEvidenceHtml(packet) {
   const execution = packet.executionIdentity || {};
   const context = packet.contextEvidence || {};
   const cost = packet.costPerformanceEvidence || {};
   const size = context.approximateContextSize || {};
+  const artifacts = Array.isArray(context.relevantArtifactIds) ? context.relevantArtifactIds : [];
+  const exclusions = Array.isArray(context.excludedContextSummary) ? context.excludedContextSummary : [];
+  const insufficiency = Array.isArray(context.insufficiencyNotes) ? context.insufficiencyNotes : [];
   return `
     <details class="prime-evidence">
       <summary>Evidence</summary>
@@ -483,6 +491,22 @@ function primeEvidenceHtml(packet) {
           <dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd>
         </div>
         <div>
+          <dt>Prime context</dt>
+          <dd>${escapeHtml(context.contextPacketIdentity || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Context accepted</dt>
+          <dd>${context.primeContextPacketAccepted === true ? "yes" : "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Accepted decisions</dt>
+          <dd>${Number.isInteger(context.acceptedDecisionCount) ? context.acceptedDecisionCount : "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Authority tiers</dt>
+          <dd>${Number.isInteger(context.authorityTierCount) ? context.authorityTierCount : "unknown"}</dd>
+        </div>
+        <div>
           <dt>Latency</dt>
           <dd>${Number.isInteger(cost.latencyMs) ? `${cost.latencyMs} ms` : "unknown"}</dd>
         </div>
@@ -497,6 +521,18 @@ function primeEvidenceHtml(packet) {
         <div>
           <dt>Cost</dt>
           <dd>${escapeHtml(cost.externalCost || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Relevant artifacts</dt>
+          <dd>${primeEvidenceList(artifacts)}</dd>
+        </div>
+        <div>
+          <dt>Excluded context</dt>
+          <dd>${primeEvidenceList(exclusions)}</dd>
+        </div>
+        <div>
+          <dt>Insufficiency notes</dt>
+          <dd>${primeEvidenceList(insufficiency)}</dd>
         </div>
       </dl>
     </details>
