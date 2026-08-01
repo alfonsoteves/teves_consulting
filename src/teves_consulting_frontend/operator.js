@@ -63,9 +63,7 @@ const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
   "Current focus: Phase 9 flexible role activation.",
-  "Recommended next step: Choose Prime, Mirror, or Engineer based on the work.",
-  "",
-  "Prime is the default daily synthesis role. Mirror and Engineer are available when you need critique or implementation reasoning."
+  "Recommended next step: Choose Prime, Mirror, or Engineer based on the work."
 ].join("\n");
 
 function idlFactory({ IDL }) {
@@ -631,8 +629,15 @@ async function sendRoleWorkspaceMessage(role, message) {
   });
 }
 
+function removePrimeWelcomeMessage() {
+  document.querySelectorAll(".prime-welcome-message").forEach((message) => message.remove());
+}
+
 function setActiveRole(role) {
   activeRole = role;
+  if (role !== "prime") {
+    removePrimeWelcomeMessage();
+  }
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.role === role);
   });
@@ -645,9 +650,9 @@ function setActiveRole(role) {
   }
   if (input) {
     const placeholders = {
-      prime: "Ask Prime for synthesis, direction, or prioritization...",
-      mirror: "Ask Mirror for critique, assumptions, risks, or alternatives...",
-      engineer: "Ask Engineer for implementation reasoning, validation, or rollback planning...",
+      prime: "Ask Prime...",
+      mirror: "Ask Mirror...",
+      engineer: "Ask Engineer...",
     };
     input.setAttribute("aria-label", `Message ${role.charAt(0).toUpperCase()}${role.slice(1)}`);
     input.placeholder = placeholders[role] || placeholders.prime;
@@ -659,9 +664,9 @@ function setActiveRole(role) {
   }
   if (roleHint) {
     const hints = {
-      prime: "Prime is live conversation for synthesis and direction.",
-      mirror: "Mirror is live critique for assumptions, risks, contradictions, and alternatives. It cannot authorize Engineer or execution.",
-      engineer: "Engineer is live implementation reasoning for plans, validation, and rollback. It cannot commit or deploy.",
+      prime: "Prime is ready.",
+      mirror: "Mirror is ready.",
+      engineer: "Engineer is ready.",
     };
     roleHint.textContent = hints[role] || "";
   }
@@ -670,7 +675,7 @@ function setActiveRole(role) {
 function activateMirrorRole() {
   setActiveRole("mirror");
   if (!roleIntroShown.mirror) {
-    appendPrimeMessage("assistant", "Mirror is ready. Ask for critique, hidden assumptions, contradictions, risks, or alternatives. Mirror will not authorize Engineer or execution.", "", "Mirror");
+    appendPrimeMessage("assistant", "Mirror is ready.", "", "Mirror");
     roleIntroShown.mirror = true;
   }
 }
@@ -678,7 +683,7 @@ function activateMirrorRole() {
 function activateEngineerRole() {
   setActiveRole("engineer");
   if (!roleIntroShown.engineer) {
-    appendPrimeMessage("assistant", "Engineer is ready. Ask for implementation reasoning, affected components, validation strategy, or rollback considerations. Engineer will not commit or deploy.", "", "Engineer");
+    appendPrimeMessage("assistant", "Engineer is ready.", "", "Engineer");
     roleIntroShown.engineer = true;
   }
 }
@@ -703,18 +708,19 @@ function renderRoleActivationWorkspace() {
         <button class="role-activation-button" type="button" data-role="mirror">Ask Mirror</button>
         <button class="role-activation-button" type="button" data-role="engineer">Ask Engineer</button>
       </div>
-      <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is live conversation for synthesis and direction.</p>
+      <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is ready.</p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
       <form id="primeComposer" class="prime-composer">
-        <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime for synthesis, direction, or prioritization..."></textarea>
+        <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime..."></textarea>
         <div class="prime-composer-actions">
-          <span class="prime-composer-hint">Role selection is flexible. Consequential actions still require approval.</span>
+          <span class="prime-composer-hint">You are choosing how Aion should reason.</span>
           <button class="prime-send-button" type="submit">Send to Prime</button>
         </div>
       </form>
     </div>
   `;
-  appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
+  const welcomeMessage = appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
+  if (welcomeMessage) welcomeMessage.classList.add("prime-welcome-message");
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.addEventListener("click", () => {
       const role = button.dataset.role;
