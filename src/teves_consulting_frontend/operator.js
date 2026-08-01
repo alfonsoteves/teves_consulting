@@ -471,6 +471,36 @@ function primeEvidenceHtml(packet) {
   const artifacts = Array.isArray(context.relevantArtifactIds) ? context.relevantArtifactIds : [];
   const exclusions = Array.isArray(context.excludedContextSummary) ? context.excludedContextSummary : [];
   const insufficiency = Array.isArray(context.insufficiencyNotes) ? context.insufficiencyNotes : [];
+  const role = packet.role || "Prime";
+  const isMirror = role === "Mirror" || context.mirrorContextPacketIncluded === true;
+  const contextLabel = isMirror ? "Mirror context" : role === "Prime" ? "Prime context" : "Role context";
+  const contextAccepted = isMirror
+    ? context.mirrorContextPacketAccepted === true || context.roleContextPacketAccepted === true
+    : context.primeContextPacketAccepted === true || context.roleContextPacketAccepted === true;
+  const review = packet.mirrorReviewPacket || null;
+  const boundary = review && review.boundaryConfirmation ? review.boundaryConfirmation : {};
+  const reviewHtml = review ? `
+        <div>
+          <dt>Mirror review</dt>
+          <dd>${escapeHtml(review.packetId || "present")}</dd>
+        </div>
+        <div>
+          <dt>Source reviewed</dt>
+          <dd>${escapeHtml(review.sourceProposalOrClaim || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Materiality</dt>
+          <dd>${escapeHtml(review.materiality || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Confidence</dt>
+          <dd>${escapeHtml(review.confidence || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Boundary confirmed</dt>
+          <dd>${boundary.engineerAuthorized === false && boundary.memoryWritten === false && boundary.publicBehaviorChanged === false ? "yes" : "unknown"}</dd>
+        </div>
+  ` : "";
   return `
     <details class="prime-evidence">
       <summary>Evidence</summary>
@@ -492,13 +522,14 @@ function primeEvidenceHtml(packet) {
           <dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd>
         </div>
         <div>
-          <dt>Prime context</dt>
+          <dt>${contextLabel}</dt>
           <dd>${escapeHtml(context.contextPacketIdentity || "unknown")}</dd>
         </div>
         <div>
           <dt>Context accepted</dt>
-          <dd>${context.primeContextPacketAccepted === true ? "yes" : "unknown"}</dd>
+          <dd>${contextAccepted ? "yes" : "unknown"}</dd>
         </div>
+        ${reviewHtml}
         <div>
           <dt>Accepted decisions</dt>
           <dd>${Number.isInteger(context.acceptedDecisionCount) ? context.acceptedDecisionCount : "unknown"}</dd>
