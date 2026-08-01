@@ -55,7 +55,10 @@ const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 const PRIME_CURRENT_FOCUS = "Phase 9 flexible role activation";
 const PRIME_RECOMMENDED_NEXT_STEP = "Choose the reasoning role you need: Prime, Mirror, or Engineer.";
 let primeConversationHistory = [];
+let mirrorConversationHistory = [];
+let engineerConversationHistory = [];
 let activeRole = "prime";
+const roleIntroShown = { mirror: false, engineer: false };
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
@@ -611,10 +614,20 @@ async function loadEngineerPacket() {
   return renderFetch("/admin/engineer-workflow");
 }
 
-async function sendPrimeWorkspaceMessage(message) {
-  return renderPost("/admin/prime-workspace-message", {
+async function sendRoleWorkspaceMessage(role, message) {
+  const routes = {
+    prime: "/admin/prime-workspace-message",
+    mirror: "/admin/mirror-workspace-message",
+    engineer: "/admin/engineer-workspace-message",
+  };
+  const histories = {
+    prime: primeConversationHistory,
+    mirror: mirrorConversationHistory,
+    engineer: engineerConversationHistory,
+  };
+  return renderPost(routes[role] || routes.prime, {
     message,
-    priorMessages: primeConversationHistory.slice(-8),
+    priorMessages: (histories[role] || primeConversationHistory).slice(-8),
   });
 }
 
@@ -625,60 +638,48 @@ function setActiveRole(role) {
   });
   const primeComposer = document.getElementById("primeComposer");
   const roleHint = document.getElementById("roleWorkspaceHint");
+  const input = document.getElementById("primeComposerInput");
+  const sendButton = primeComposer ? primeComposer.querySelector(".prime-send-button") : null;
   if (primeComposer) {
-    primeComposer.hidden = role !== "prime";
+    primeComposer.hidden = false;
+  }
+  if (input) {
+    const placeholders = {
+      prime: "Ask Prime for synthesis, direction, or prioritization...",
+      mirror: "Ask Mirror for critique, assumptions, risks, or alternatives...",
+      engineer: "Ask Engineer for implementation reasoning, validation, or rollback planning...",
+    };
+    input.setAttribute("aria-label", `Message ${role.charAt(0).toUpperCase()}${role.slice(1)}`);
+    input.placeholder = placeholders[role] || placeholders.prime;
+    input.focus();
+  }
+  if (sendButton) {
+    const labels = { prime: "Send to Prime", mirror: "Send to Mirror", engineer: "Send to Engineer" };
+    sendButton.textContent = labels[role] || "Send";
   }
   if (roleHint) {
     const hints = {
       prime: "Prime is live conversation for synthesis and direction.",
-      mirror: "Mirror is a bounded critique packet for now. It does not authorize Engineer or execution.",
-      engineer: "Engineer is a planning packet for implementation reasoning. It does not commit or deploy.",
+      mirror: "Mirror is live critique for assumptions, risks, contradictions, and alternatives. It cannot authorize Engineer or execution.",
+      engineer: "Engineer is live implementation reasoning for plans, validation, and rollback. It cannot commit or deploy.",
     };
     roleHint.textContent = hints[role] || "";
   }
 }
 
-async function activateMirrorRole() {
+function activateMirrorRole() {
   setActiveRole("mirror");
-  const pending = appendPrimeMessage("assistant", "Mirror is preparing critique from the governed review packet...", "", "Mirror");
-  if (pending) pending.classList.add("pending");
-  try {
-    const report = await loadMirrorPacket();
-    if (pending) pending.remove();
-    const review = report.mirrorReviewPacket || {};
-    const message = [
-      review.summary || "Mirror produced a review packet.",
-      "",
-      `Recommendation: ${review.recommendationToOperator || "Review Mirror findings before continuing."}`,
-      "",
-      `Confidence: ${review.confidence || "unknown"}`,
-    ].join("\n");
-    appendPrimeMessage("assistant", message, mirrorPacketHtml(report), "Mirror");
-  } catch (error) {
-    if (pending) pending.remove();
-    appendPrimeMessage("assistant", "Mirror packet is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.", "", "Mirror");
-    console.error("Mirror packet failed", error);
+  if (!roleIntroShown.mirror) {
+    appendPrimeMessage("assistant", "Mirror is ready. Ask for critique, hidden assumptions, contradictions, risks, or alternatives. Mirror will not authorize Engineer or execution.", "", "Mirror");
+    roleIntroShown.mirror = true;
   }
 }
 
-async function activateEngineerRole() {
+function activateEngineerRole() {
   setActiveRole("engineer");
-  const pending = appendPrimeMessage("assistant", "Engineer is preparing implementation reasoning from the governed planning packet...", "", "Engineer");
-  if (pending) pending.classList.add("pending");
-  try {
-    const report = await loadEngineerPacket();
-    if (pending) pending.remove();
-    const output = report.engineerOutput || {};
-    const message = [
-      output.summary || "Engineer produced an implementation planning packet.",
-      "",
-      "Engineer is planning only. No commit, deploy, provider change, or production mutation is authorized.",
-    ].join("\n");
-    appendPrimeMessage("assistant", message, engineerPacketHtml(report), "Engineer");
-  } catch (error) {
-    if (pending) pending.remove();
-    appendPrimeMessage("assistant", "Engineer packet is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.", "", "Engineer");
-    console.error("Engineer packet failed", error);
+  if (!roleIntroShown.engineer) {
+    appendPrimeMessage("assistant", "Engineer is ready. Ask for implementation reasoning, affected components, validation strategy, or rollback considerations. Engineer will not commit or deploy.", "", "Engineer");
+    roleIntroShown.engineer = true;
   }
 }
 
@@ -708,7 +709,7 @@ function renderRoleActivationWorkspace() {
         <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime for synthesis, direction, or prioritization..."></textarea>
         <div class="prime-composer-actions">
           <span class="prime-composer-hint">Role selection is flexible. Consequential actions still require approval.</span>
-          <button class="prime-send-button" type="submit">Send</button>
+          <button class="prime-send-button" type="submit">Send to Prime</button>
         </div>
       </form>
     </div>
@@ -736,34 +737,41 @@ function renderRoleActivationWorkspace() {
   if (form && input) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      setActiveRole("prime");
+      const role = activeRole || "prime";
+      const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+      const histories = {
+        prime: primeConversationHistory,
+        mirror: mirrorConversationHistory,
+        engineer: engineerConversationHistory,
+      };
       const message = input.value.trim();
       if (!message) return;
       appendPrimeMessage("user", message);
-      primeConversationHistory.push({ role: "operator", content: message });
+      (histories[role] || primeConversationHistory).push({ role: "operator", content: message });
       input.value = "";
       input.disabled = true;
       if (submitButton) {
         submitButton.disabled = true;
         submitButton.textContent = "Sending";
       }
-      const pending = appendPrimeMessage("assistant", "Prime is thinking...");
+      const pending = appendPrimeMessage("assistant", `${roleLabel} is thinking...`, "", roleLabel);
       if (pending) pending.classList.add("pending");
       try {
-        const packet = await sendPrimeWorkspaceMessage(message);
+        const packet = await sendRoleWorkspaceMessage(role, message);
         if (pending) pending.remove();
-        const answer = packet.answer || "Prime did not return an answer.";
-        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet));
-        primeConversationHistory.push({ role: "prime", content: answer });
+        const answer = packet.answer || `${roleLabel} did not return an answer.`;
+        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel);
+        (histories[role] || primeConversationHistory).push({ role, content: answer });
       } catch (error) {
         if (pending) pending.remove();
-        appendPrimeMessage("assistant", "Prime workspace route is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.");
-        console.error("Prime workspace message failed", error);
+        appendPrimeMessage("assistant", `${roleLabel} workspace route is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.`, "", roleLabel);
+        console.error(`${roleLabel} workspace message failed`, error);
       } finally {
         input.disabled = false;
         if (submitButton) {
           submitButton.disabled = false;
-          submitButton.textContent = "Send";
+          const labels = { prime: "Send to Prime", mirror: "Send to Mirror", engineer: "Send to Engineer" };
+          submitButton.textContent = labels[activeRole] || "Send";
         }
         input.focus();
       }
