@@ -58,7 +58,6 @@ let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
 let activeRole = "prime";
-const roleIntroShown = { mirror: false, engineer: false };
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
@@ -674,18 +673,10 @@ function setActiveRole(role) {
 
 function activateMirrorRole() {
   setActiveRole("mirror");
-  if (!roleIntroShown.mirror) {
-    appendPrimeMessage("assistant", "Mirror is ready.", "", "Mirror");
-    roleIntroShown.mirror = true;
-  }
 }
 
 function activateEngineerRole() {
   setActiveRole("engineer");
-  if (!roleIntroShown.engineer) {
-    appendPrimeMessage("assistant", "Engineer is ready.", "", "Engineer");
-    roleIntroShown.engineer = true;
-  }
 }
 
 function renderRoleActivationWorkspace() {
