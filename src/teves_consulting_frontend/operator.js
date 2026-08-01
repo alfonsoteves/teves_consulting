@@ -813,8 +813,13 @@ function renderRoleActivationWorkspace() {
 
 
 async function loadPrimeHome() {
-  const report = await renderFetch("/admin/prime-operational-experience");
-  renderPrimeHome(report);
+  try {
+    const report = await renderFetch("/admin/prime-operational-experience");
+    renderPrimeHome(report);
+  } catch (error) {
+    console.warn("Prime Home report unavailable; rendering Operator workspace shell.", error);
+    renderPrimeHome({});
+  }
 }
 
 function renderMirrorWorkflow(report) {
@@ -2305,7 +2310,7 @@ async function refreshOperatorAccess() {
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
     setAccess("Operator access verified. Session service is temporarily unavailable.", "verified");
-    setOperatorWorkspaceWarning("Some Operator panels could not refresh from the session service. Your operator access remains verified.");
+    setOperatorWorkspaceWarning("Aion session service is temporarily unavailable. Messages may be unavailable until it refreshes.");
   }
   /* operator verified workspace load boundary end */
 }
