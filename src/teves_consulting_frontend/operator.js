@@ -52,16 +52,17 @@ function clearStoredOperatorSession() {
 /* shared operator session helpers end */
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
-const PRIME_CURRENT_FOCUS = "Phase 9.11B Prime validation";
-const PRIME_RECOMMENDED_NEXT_STEP = "Complete same-task comparison.";
+const PRIME_CURRENT_FOCUS = "Phase 9 flexible role activation";
+const PRIME_RECOMMENDED_NEXT_STEP = "Choose the reasoning role you need: Prime, Mirror, or Engineer.";
 let primeConversationHistory = [];
+let activeRole = "prime";
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
-  "Current focus: Phase 9.11B Prime validation.",
-  "Recommended next step: Complete same-task comparison.",
+  "Current focus: Phase 9 flexible role activation.",
+  "Recommended next step: Choose Prime, Mirror, or Engineer based on the work.",
   "",
-  "You are talking to Prime first. I will help synthesize direction and keep the work moving from Aion's current context."
+  "Prime is the default daily synthesis role. Mirror and Engineer are available when you need critique or implementation reasoning."
 ].join("\n");
 
 function idlFactory({ IDL }) {
@@ -428,12 +429,12 @@ function renderPrimeHome(report) {
   `;
   const startButton = document.getElementById("primeStartButton");
   if (startButton) {
-    startButton.addEventListener("click", renderPrimeWorkingSurface);
+    startButton.addEventListener("click", renderRoleActivationWorkspace);
   }
   /* prime minimal daily start ux end */
 }
 
-function appendPrimeMessage(role, message, evidenceHtml = "") {
+function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "Prime") {
   const conversation = document.getElementById("primeConversation");
   if (!conversation) return null;
   const article = document.createElement("article");
@@ -441,7 +442,7 @@ function appendPrimeMessage(role, message, evidenceHtml = "") {
   if (role === "assistant") {
     const label = document.createElement("div");
     label.className = "prime-message-role";
-    label.textContent = "Prime";
+    label.textContent = assistantLabel;
     article.appendChild(label);
   }
   const body = document.createElement("p");
@@ -539,6 +540,77 @@ function primeEvidenceHtml(packet) {
   `;
 }
 
+function roleList(items) {
+  if (!Array.isArray(items) || !items.length) return "unknown";
+  return `<ul>${items.map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")}</ul>`;
+}
+
+function roleFindingList(findings) {
+  if (!Array.isArray(findings) || !findings.length) return "<p>None recorded.</p>";
+  return `<ul>${findings.map((finding) => `
+    <li>
+      <strong>${escapeHtml(finding.findingId || finding.riskId || finding.constraintId || "item")}</strong>
+      <p>${escapeHtml(finding.observation || finding.requirement || finding.title || finding.impact || "")}</p>
+      <p>${escapeHtml(finding.recommendation || finding.mitigation || finding.enforcement || "")}</p>
+    </li>
+  `).join("")}</ul>`;
+}
+
+function mirrorPacketHtml(report) {
+  const execution = report.executionEvidence || {};
+  const review = report.mirrorReviewPacket || {};
+  const boundary = report.boundary || {};
+  return `
+    <details class="prime-evidence role-evidence" open>
+      <summary>Mirror evidence</summary>
+      <dl class="prime-evidence-grid">
+        <div><dt>Execution route</dt><dd>${escapeHtml(execution.executionRoute || "unknown")}</dd></div>
+        <div><dt>Provider</dt><dd>${escapeHtml(execution.providerIdentity || "unknown")}</dd></div>
+        <div><dt>Model</dt><dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd></div>
+        <div><dt>Timestamp</dt><dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd></div>
+        <div><dt>Source packet</dt><dd>${escapeHtml(review.sourcePrimePlanningPacketId || "unknown")}</dd></div>
+        <div><dt>Mirror accepted</dt><dd>${boundary.mirrorOperationalValidationAccepted === true ? "yes" : "no"}</dd></div>
+        <div><dt>Engineer allowed</dt><dd>${boundary.engineerMayStart === true ? "yes" : "no"}</dd></div>
+        <div><dt>Public behavior</dt><dd>${boundary.publicBehaviorChanged === true ? "changed" : "unchanged"}</dd></div>
+      </dl>
+      <h3>Findings</h3>
+      ${roleFindingList(review.findings)}
+      <h3>Outcome</h3>
+      ${roleList(report.outcomeEvidence || [])}
+    </details>
+  `;
+}
+
+function engineerPacketHtml(report) {
+  const output = report.engineerOutput || {};
+  const boundary = report.boundary || {};
+  return `
+    <details class="prime-evidence role-evidence" open>
+      <summary>Engineer evidence</summary>
+      <dl class="prime-evidence-grid">
+        <div><dt>Workflow</dt><dd>${escapeHtml(report.workflowVersion || "unknown")}</dd></div>
+        <div><dt>Mirror accepted</dt><dd>${report.sourceMirrorAccepted === true ? "yes" : "unknown"}</dd></div>
+        <div><dt>Engineer is Codex</dt><dd>${boundary.engineerIsCodex === true ? "yes" : "no"}</dd></div>
+        <div><dt>Can commit</dt><dd>${boundary.engineerCanCommit === true ? "yes" : "no"}</dd></div>
+        <div><dt>Can deploy</dt><dd>${boundary.engineerCanDeploy === true ? "yes" : "no"}</dd></div>
+        <div><dt>Public behavior</dt><dd>${boundary.publicBehaviorChanged === true ? "changed" : "unchanged"}</dd></div>
+      </dl>
+      <h3>Implementation plan</h3>
+      ${roleList(output.implementationPlan || [])}
+      <h3>Risks</h3>
+      ${roleFindingList(output.risks || [])}
+    </details>
+  `;
+}
+
+async function loadMirrorPacket() {
+  return renderFetch("/admin/mirror-review-packet-run");
+}
+
+async function loadEngineerPacket() {
+  return renderFetch("/admin/engineer-workflow");
+}
+
 async function sendPrimeWorkspaceMessage(message) {
   return renderPost("/admin/prime-workspace-message", {
     message,
@@ -546,37 +618,125 @@ async function sendPrimeWorkspaceMessage(message) {
   });
 }
 
-function renderPrimeWorkingSurface() {
+function setActiveRole(role) {
+  activeRole = role;
+  document.querySelectorAll(".role-activation-button").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.role === role);
+  });
+  const primeComposer = document.getElementById("primeComposer");
+  const roleHint = document.getElementById("roleWorkspaceHint");
+  if (primeComposer) {
+    primeComposer.hidden = role !== "prime";
+  }
+  if (roleHint) {
+    const hints = {
+      prime: "Prime is live conversation for synthesis and direction.",
+      mirror: "Mirror is a bounded critique packet for now. It does not authorize Engineer or execution.",
+      engineer: "Engineer is a planning packet for implementation reasoning. It does not commit or deploy.",
+    };
+    roleHint.textContent = hints[role] || "";
+  }
+}
+
+async function activateMirrorRole() {
+  setActiveRole("mirror");
+  const pending = appendPrimeMessage("assistant", "Mirror is preparing critique from the governed review packet...", "", "Mirror");
+  if (pending) pending.classList.add("pending");
+  try {
+    const report = await loadMirrorPacket();
+    if (pending) pending.remove();
+    const review = report.mirrorReviewPacket || {};
+    const message = [
+      review.summary || "Mirror produced a review packet.",
+      "",
+      `Recommendation: ${review.recommendationToOperator || "Review Mirror findings before continuing."}`,
+      "",
+      `Confidence: ${review.confidence || "unknown"}`,
+    ].join("\n");
+    appendPrimeMessage("assistant", message, mirrorPacketHtml(report), "Mirror");
+  } catch (error) {
+    if (pending) pending.remove();
+    appendPrimeMessage("assistant", "Mirror packet is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.", "", "Mirror");
+    console.error("Mirror packet failed", error);
+  }
+}
+
+async function activateEngineerRole() {
+  setActiveRole("engineer");
+  const pending = appendPrimeMessage("assistant", "Engineer is preparing implementation reasoning from the governed planning packet...", "", "Engineer");
+  if (pending) pending.classList.add("pending");
+  try {
+    const report = await loadEngineerPacket();
+    if (pending) pending.remove();
+    const output = report.engineerOutput || {};
+    const message = [
+      output.summary || "Engineer produced an implementation planning packet.",
+      "",
+      "Engineer is planning only. No commit, deploy, provider change, or production mutation is authorized.",
+    ].join("\n");
+    appendPrimeMessage("assistant", message, engineerPacketHtml(report), "Engineer");
+  } catch (error) {
+    if (pending) pending.remove();
+    appendPrimeMessage("assistant", "Engineer packet is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.", "", "Engineer");
+    console.error("Engineer packet failed", error);
+  }
+}
+
+function renderRoleActivationWorkspace() {
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
   setAccess("Operator access verified. Aion is ready.", "verified");
+  activeRole = "prime";
   primeConversationHistory = [{ role: "prime", content: PRIME_INITIAL_MESSAGE }];
   container.innerHTML = `
-    <div class="prime-working-surface">
+    <div class="prime-working-surface role-activation-surface">
       <div class="prime-working-header">
         <div class="prime-working-role">
-          <p class="prime-working-label">Talking to</p>
-          <h2>Prime</h2>
+          <p class="prime-working-label">Aion role</p>
+          <h2>Choose the reasoning you need</h2>
         </div>
-        <span class="prime-role-pill">Synthesis and direction</span>
+        <span class="prime-role-pill">Flexible activation</span>
       </div>
+      <div class="role-activation-bar" aria-label="Aion roles">
+        <button class="role-activation-button is-active" type="button" data-role="prime">Ask Prime</button>
+        <button class="role-activation-button" type="button" data-role="mirror">Ask Mirror</button>
+        <button class="role-activation-button" type="button" data-role="engineer">Ask Engineer</button>
+      </div>
+      <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is live conversation for synthesis and direction.</p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
       <form id="primeComposer" class="prime-composer">
-        <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Tell Prime what you want to work on..."></textarea>
+        <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime for synthesis, direction, or prioritization..."></textarea>
         <div class="prime-composer-actions">
-          <span class="prime-composer-hint">Prime first. Mirror and Engineer come after approval.</span>
+          <span class="prime-composer-hint">Role selection is flexible. Consequential actions still require approval.</span>
           <button class="prime-send-button" type="submit">Send</button>
         </div>
       </form>
     </div>
   `;
   appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
+  document.querySelectorAll(".role-activation-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const role = button.dataset.role;
+      if (role === "prime") {
+        setActiveRole("prime");
+        return;
+      }
+      if (role === "mirror") {
+        activateMirrorRole();
+        return;
+      }
+      if (role === "engineer") {
+        activateEngineerRole();
+      }
+    });
+  });
   const form = document.getElementById("primeComposer");
   const input = document.getElementById("primeComposerInput");
   const submitButton = form ? form.querySelector(".prime-send-button") : null;
   if (form && input) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      setActiveRole("prime");
       const message = input.value.trim();
       if (!message) return;
       appendPrimeMessage("user", message);

@@ -1302,13 +1302,55 @@
       overflow-wrap: anywhere;
     }
 
+    .role-activation-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .role-activation-button {
+      min-height: 42px;
+      border: 1px solid #2f3b49;
+      border-radius: 10px;
+      background: #151b24;
+      color: #f8fafc;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .role-activation-button.is-active {
+      border-color: #93c5fd;
+      background: #1d4ed8;
+    }
+
+    .role-evidence h3 {
+      margin: 14px 0 6px;
+      color: #c4b5fd;
+      font-size: 0.9rem;
+    }
+
+    .role-evidence ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .role-evidence li {
+      margin: 8px 0;
+    }
+
+    @media (max-width: 640px) {
+      .role-activation-bar {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .prime-send-button[disabled] {
       cursor: default;
       opacity: 0.68;
     }
     /* Prime execution evidence disclosure end */
 
-    /* Operator Prime-only final surface start */
+    /* Operator role activation surface start */
     body.operator-signed-in .operator-workspace-nav {
       margin-bottom: 18px !important;
     }
@@ -1321,7 +1363,7 @@
     .prime-work-panel {
       display: none !important;
     }
-    /* Operator Prime-only final surface end */
+    /* Operator role activation surface end */
 
   </style>
 </head>
@@ -1392,6 +1434,6 @@
     </section>
   </main>
 
-  <script type="module" src="/operator.js?v=phase-9-11b-prime-context-evidence-20260731"></script>
+  <script type="module" src="/operator.js?v=phase-9-role-activation-20260731"></script>
 </body>
 </html>
