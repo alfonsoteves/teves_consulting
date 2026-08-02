@@ -473,9 +473,12 @@ function primeEvidenceHtml(packet) {
   const insufficiency = Array.isArray(context.insufficiencyNotes) ? context.insufficiencyNotes : [];
   const role = packet.role || "Prime";
   const isMirror = role === "Mirror" || context.mirrorContextPacketIncluded === true;
-  const contextLabel = isMirror ? "Mirror context" : role === "Prime" ? "Prime context" : "Role context";
+  const isEngineer = role === "Engineer" || context.engineerContextPacketIncluded === true;
+  const contextLabel = isMirror ? "Mirror context" : isEngineer ? "Engineer context" : role === "Prime" ? "Prime context" : "Role context";
   const contextAccepted = isMirror
     ? context.mirrorContextPacketAccepted === true || context.roleContextPacketAccepted === true
+    : isEngineer
+    ? context.engineerContextPacketAccepted === true || context.roleContextPacketAccepted === true
     : context.primeContextPacketAccepted === true || context.roleContextPacketAccepted === true;
   const review = packet.mirrorReviewPacket || null;
   const boundary = review && review.boundaryConfirmation ? review.boundaryConfirmation : {};
@@ -499,6 +502,35 @@ function primeEvidenceHtml(packet) {
         <div>
           <dt>Boundary confirmed</dt>
           <dd>${boundary.engineerAuthorized === false && boundary.memoryWritten === false && boundary.publicBehaviorChanged === false ? "yes" : "unknown"}</dd>
+        </div>
+  ` : "";
+  const readiness = packet.engineerImplementationReadinessPacket || null;
+  const readinessAccess = readiness && readiness.projectAccessRequirements ? readiness.projectAccessRequirements : {};
+  const readinessBoundary = readiness && readiness.boundaryConfirmation ? readiness.boundaryConfirmation : {};
+  const readinessHtml = readiness ? `
+        <div>
+          <dt>Engineer readiness</dt>
+          <dd>${escapeHtml(readiness.packetId || "present")}</dd>
+        </div>
+        <div>
+          <dt>Source context</dt>
+          <dd>${escapeHtml(readiness.sourceEngineerContextPacketId || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Project access grant</dt>
+          <dd>${escapeHtml(readinessAccess.sourceGrantId || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Grant status</dt>
+          <dd>${escapeHtml(readinessAccess.grantStatus || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Project work done</dt>
+          <dd>${readinessBoundary.projectFilesRead === false && readinessBoundary.filesEdited === false && readinessBoundary.commandsRun === false ? "no" : "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Commit / push / deploy</dt>
+          <dd>${readinessBoundary.committed === false && readinessBoundary.pushed === false && readinessBoundary.deployed === false ? "not authorized" : "unknown"}</dd>
         </div>
   ` : "";
   return `
@@ -530,6 +562,7 @@ function primeEvidenceHtml(packet) {
           <dd>${contextAccepted ? "yes" : "unknown"}</dd>
         </div>
         ${reviewHtml}
+        ${readinessHtml}
         <div>
           <dt>Accepted decisions</dt>
           <dd>${Number.isInteger(context.acceptedDecisionCount) ? context.acceptedDecisionCount : "unknown"}</dd>
