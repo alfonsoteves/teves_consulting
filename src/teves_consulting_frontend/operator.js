@@ -546,8 +546,12 @@ function primeEvidenceHtml(packet) {
           <dd>${escapeHtml(execution.providerIdentity || "unknown")}</dd>
         </div>
         <div>
-          <dt>Model</dt>
+          <dt>Configured/requested model</dt>
           <dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd>
+        </div>
+        <div>
+          <dt>Returned runtime model</dt>
+          <dd>${escapeHtml(execution.returnedRuntimeModelIdentity || "not captured")}</dd>
         </div>
         <div>
           <dt>Timestamp</dt>
@@ -630,7 +634,8 @@ function mirrorPacketHtml(report) {
       <dl class="prime-evidence-grid">
         <div><dt>Execution route</dt><dd>${escapeHtml(execution.executionRoute || "unknown")}</dd></div>
         <div><dt>Provider</dt><dd>${escapeHtml(execution.providerIdentity || "unknown")}</dd></div>
-        <div><dt>Model</dt><dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd></div>
+        <div><dt>Configured/requested model</dt><dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd></div>
+        <div><dt>Returned runtime model</dt><dd>${escapeHtml(execution.returnedRuntimeModelIdentity || "not captured")}</dd></div>
         <div><dt>Timestamp</dt><dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd></div>
         <div><dt>Source packet</dt><dd>${escapeHtml(review.sourcePrimePlanningPacketId || "unknown")}</dd></div>
         <div><dt>Mirror accepted</dt><dd>${boundary.mirrorOperationalValidationAccepted === true ? "yes" : "no"}</dd></div>
