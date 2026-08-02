@@ -792,7 +792,8 @@ function renderRoleActivationWorkspace() {
         (histories[role] || primeConversationHistory).push({ role, content: answer });
       } catch (error) {
         if (pending) pending.remove();
-        appendPrimeMessage("assistant", `${roleLabel} workspace route is temporarily unavailable. Your Operator access remains verified; try again after the session service finishes updating.`, "", roleLabel);
+        const detail = error && error.message ? error.message : "The workspace route did not return a usable response.";
+        appendPrimeMessage("assistant", `${roleLabel} could not complete that request. ${detail}`, "", roleLabel);
         console.error(`${roleLabel} workspace message failed`, error);
       } finally {
         input.disabled = false;
