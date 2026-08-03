@@ -545,14 +545,7 @@ function primeEvidenceHtml(packet) {
           <dt>Provider</dt>
           <dd>${escapeHtml(execution.providerIdentity || "unknown")}</dd>
         </div>
-        <div>
-          <dt>Configured/requested model</dt>
-          <dd>${escapeHtml(execution.modelIdentityVersion || "unknown")}</dd>
-        </div>
-        <div>
-          <dt>Returned runtime model</dt>
-          <dd>${escapeHtml(execution.returnedRuntimeModelIdentity || "not captured")}</dd>
-        </div>
+        ${executionMetadataDetailsHtml(execution, cost)}
         <div>
           <dt>Timestamp</dt>
           <dd>${escapeHtml(execution.executionTimestamp || "unknown")}</dd>
@@ -607,6 +600,76 @@ function primeEvidenceHtml(packet) {
     </details>
   `;
 }
+
+function executionEvidenceValue(value, fallback = "unknown") {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  return String(value);
+}
+
+function executionTokenValue(value) {
+  if (Number.isInteger(value) && value >= 0) return String(value);
+  return executionEvidenceValue(value);
+}
+
+function executionUnknownFieldsList(fields) {
+  if (!Array.isArray(fields) || !fields.length) return "none";
+  return primeEvidenceList(fields);
+}
+
+function executionMetadataDetailsHtml(execution, cost) {
+  return `
+        <div>
+          <dt>Configured/requested model</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.configuredRequestedModelIdentity || execution.modelIdentityVersion))}</dd>
+        </div>
+        <div>
+          <dt>Returned runtime model</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.returnedRuntimeModelIdentity, "not captured"))}</dd>
+        </div>
+        <div>
+          <dt>Returned model captured</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.runtimeReturnedModelCaptured, "not captured"))}</dd>
+        </div>
+        <div>
+          <dt>Runtime usage captured</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.runtimeUsageCaptured, "unknown"))}</dd>
+        </div>
+        <div>
+          <dt>Input tokens</dt>
+          <dd>${escapeHtml(executionTokenValue(cost.inputTokens ?? execution.inputTokens))}</dd>
+        </div>
+        <div>
+          <dt>Cached input tokens</dt>
+          <dd>${escapeHtml(executionTokenValue(cost.cachedInputTokens ?? execution.cachedInputTokens))}</dd>
+        </div>
+        <div>
+          <dt>Output tokens</dt>
+          <dd>${escapeHtml(executionTokenValue(cost.outputTokens ?? execution.outputTokens))}</dd>
+        </div>
+        <div>
+          <dt>Reasoning tokens</dt>
+          <dd>${escapeHtml(executionTokenValue(cost.reasoningTokens ?? execution.reasoningTokens))}</dd>
+        </div>
+        <div>
+          <dt>Service tier</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.serviceTier))}</dd>
+        </div>
+        <div>
+          <dt>Service tier captured</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.serviceTierCaptured, "not captured"))}</dd>
+        </div>
+        <div>
+          <dt>Unknown fields</dt>
+          <dd>${executionUnknownFieldsList(execution.unknownFields)}</dd>
+        </div>
+        <div>
+          <dt>Raw provider metadata exposed</dt>
+          <dd>${escapeHtml(executionEvidenceValue(execution.rawProviderMetadataExposed, "unknown"))}</dd>
+        </div>
+  `;
+}
+
 
 function roleList(items) {
   if (!Array.isArray(items) || !items.length) return "unknown";
