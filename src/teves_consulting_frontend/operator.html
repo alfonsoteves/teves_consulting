@@ -1350,6 +1350,251 @@
     }
     /* Prime execution evidence disclosure end */
 
+    /* Decision Review shell F-D1 start */
+    .decision-review-shell {
+      display: grid;
+      gap: 18px;
+      color: #f8fafc;
+    }
+
+    .decision-review-setup,
+    .decision-review-main,
+    .decision-review-panel {
+      border: 1px solid #2c3138;
+      border-radius: 10px;
+      background: #151a21;
+      padding: 16px;
+    }
+
+    .decision-review-setup {
+      display: grid;
+      gap: 16px;
+      max-width: 860px;
+    }
+
+    .decision-review-heading {
+      display: grid;
+      gap: 6px;
+    }
+
+    .decision-review-heading h2,
+    .decision-review-panel h3 {
+      margin: 0;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .decision-review-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .decision-review-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .decision-review-field label {
+      color: #cbd5e1;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .decision-review-field textarea,
+    .decision-review-field select {
+      width: 100%;
+      border: 1px solid #2f3b49;
+      border-radius: 10px;
+      background: #111315;
+      color: #f8fafc;
+      font: inherit;
+    }
+
+    .decision-review-field textarea {
+      min-height: 96px;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+
+    .decision-review-field select {
+      min-height: 42px;
+      padding: 0 10px;
+    }
+
+    .decision-review-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .decision-review-primary {
+      min-height: 38px;
+      border-color: #60a5fa;
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .decision-review-secondary {
+      min-height: 38px;
+      border-color: #2f3b49;
+      background: #151b24;
+      color: #ffffff;
+    }
+
+    .decision-review-validation {
+      margin: 0;
+      color: #fde68a;
+      font-size: 0.86rem;
+    }
+
+    .decision-review-main {
+      display: grid;
+      gap: 16px;
+    }
+
+    .decision-review-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid #2c3138;
+      padding-bottom: 14px;
+    }
+
+    .decision-review-status-stack {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .decision-review-pill {
+      border: 1px solid #2f3b49;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #111827;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .decision-review-pill.is-ready {
+      border-color: #166534;
+      color: #bbf7d0;
+    }
+
+    .decision-review-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 14px;
+    }
+
+    .decision-review-timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .decision-review-stage {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      border: 1px solid #2c3138;
+      border-radius: 10px;
+      padding: 12px;
+      background: #111315;
+    }
+
+    .decision-review-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid #475569;
+      border-radius: 999px;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .decision-review-stage.is-complete .decision-review-step {
+      border-color: #166534;
+      color: #bbf7d0;
+    }
+
+    .decision-review-stage h3,
+    .decision-review-stage p {
+      margin: 0;
+    }
+
+    .decision-review-stage h3 {
+      font-size: 0.98rem;
+    }
+
+    .decision-review-stage-status {
+      color: #93c5fd;
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .decision-review-gate {
+      margin-top: 8px;
+      border-left: 3px solid #475569;
+      padding-left: 9px;
+      color: #9ca3af;
+      font-size: 0.84rem;
+    }
+
+    .decision-review-panel {
+      display: grid;
+      gap: 8px;
+    }
+
+    .decision-review-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .decision-review-evidence-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .decision-review-evidence-list li {
+      border: 1px solid #2c3138;
+      border-radius: 8px;
+      padding: 9px;
+      background: #111315;
+    }
+
+    @media (max-width: 760px) {
+      .decision-review-header,
+      .decision-review-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .decision-review-status-stack {
+        justify-content: flex-start;
+      }
+
+      .decision-review-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .decision-review-primary,
+      .decision-review-secondary {
+        width: 100%;
+      }
+    }
+    /* Decision Review shell F-D1 end */
+
     /* Operator role activation surface start */
     body.operator-signed-in .operator-workspace-nav {
       margin-bottom: 18px !important;

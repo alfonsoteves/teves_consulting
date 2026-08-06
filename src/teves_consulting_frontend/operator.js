@@ -54,10 +54,21 @@ function clearStoredOperatorSession() {
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 const PRIME_CURRENT_FOCUS = "Phase 9 flexible role activation";
 const PRIME_RECOMMENDED_NEXT_STEP = "Choose the reasoning role you need: Prime, Mirror, or Engineer.";
+const DECISION_REVIEW_STATE_KIND = "workflow_session_state_non_canonical";
+const DECISION_REVIEW_TASK_CLASSES = [
+  { id: "architecture_decision", label: "Architecture decision" },
+  { id: "workflow_decision", label: "Workflow decision" },
+  { id: "policy_decision", label: "Policy decision" },
+];
+const DECISION_REVIEW_WORKFLOW_MODES = [
+  { id: "trio_review", label: "Trio review" },
+  { id: "prime_mirror_review", label: "Prime and Mirror review" },
+];
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
 let activeRole = "prime";
+let decisionReviewShellState = createEmptyDecisionReviewShellState();
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
@@ -402,6 +413,351 @@ function renderContextPackets(report) {
   `;
 }
 
+function createEmptyDecisionReviewShellState() {
+  return {
+    stateKind: DECISION_REVIEW_STATE_KIND,
+    review: null,
+    setupDraft: {
+      objective: "",
+      taskClass: "",
+      workflowMode: "",
+      validationMessages: [],
+    },
+    stages: [],
+    approvals: [],
+    artifacts: [],
+    evidence: {
+      primary: { label: "Primary evidence", status: "not_collected" },
+      supporting: { label: "Supporting evidence", status: "not_collected" },
+      technical: { label: "Technical evidence", status: "not_collected" },
+    },
+    finalAssessment: {
+      status: "not_available_in_f_d1",
+      canonicality: "not_canonical",
+    },
+  };
+}
+
+function decisionReviewOptionLabel(options, id) {
+  const option = options.find((item) => item.id === id);
+  return option ? option.label : "Not selected";
+}
+
+function decisionReviewId() {
+  return `decision-review-${Date.now().toString(36)}`;
+}
+
+function decisionReviewStagePlan(review) {
+  const includeEngineer = !review || review.workflowMode !== "prime_mirror_review";
+  const stages = [
+    {
+      id: "decision_setup",
+      label: "Decision Setup",
+      purpose: "Define the decision, task class, and review mode.",
+      status: review ? "complete" : "active",
+      gate: "",
+    },
+    {
+      id: "prime_recommendation",
+      label: "Prime Recommendation",
+      purpose: "Future role stage for the first proposal.",
+      status: "not_available_in_f_d1",
+      gate: "Owner gate after Prime: continue, revise, or stop.",
+    },
+    {
+      id: "mirror_review",
+      label: "Mirror Review",
+      purpose: "Future role stage for critique and risk review.",
+      status: "not_available_in_f_d1",
+      gate: "Owner gate after Mirror: accept, revise, or request more review.",
+    },
+  ];
+
+  if (includeEngineer) {
+    stages.push({
+      id: "engineer_readiness",
+      label: "Engineer Readiness",
+      purpose: "Future reasoning-only readiness stage. No execution authority.",
+      status: "not_available_in_f_d1",
+      gate: "Owner gate before any implementation planning.",
+    });
+  }
+
+  stages.push({
+    id: "owner_assessment",
+    label: "Owner Assessment",
+    purpose: "Future final assessment packet for owner review.",
+    status: "not_available_in_f_d1",
+    gate: "",
+  });
+
+  return stages;
+}
+
+function decisionReviewValidationMessages(draft) {
+  const messages = [];
+  if (!String(draft.objective || "").trim()) messages.push("Add the decision objective.");
+  if (!draft.taskClass) messages.push("Choose a task class.");
+  if (!draft.workflowMode) messages.push("Choose a review mode.");
+  return messages;
+}
+
+function decisionReviewTaskClassOptionsHtml(selected) {
+  return [
+    '<option value="">Choose task class...</option>',
+    ...DECISION_REVIEW_TASK_CLASSES.map((option) => (
+      `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+    )),
+  ].join("");
+}
+
+function decisionReviewWorkflowModeOptionsHtml(selected) {
+  return [
+    '<option value="">Choose review mode...</option>',
+    ...DECISION_REVIEW_WORKFLOW_MODES.map((option) => (
+      `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+    )),
+  ].join("");
+}
+
+function decisionReviewSetupHtml() {
+  const draft = decisionReviewShellState.setupDraft;
+  const messages = draft.validationMessages || [];
+  return `
+    <div class="decision-review-shell">
+      <section class="decision-review-setup" aria-labelledby="decisionReviewSetupTitle">
+        <div class="decision-review-heading">
+          <p class="prime-daily-label">Decision Review</p>
+          <h2 id="decisionReviewSetupTitle">Start a Decision Review</h2>
+          <p class="meta">Define the decision, choose the review type, and prepare the workflow shell. No roles are invoked in this step.</p>
+        </div>
+        <form id="decisionReviewSetupForm" class="decision-review-form">
+          <div class="decision-review-field">
+            <label for="decisionReviewObjective">Decision objective</label>
+            <textarea id="decisionReviewObjective" placeholder="What decision needs governed review?">${escapeHtml(draft.objective)}</textarea>
+          </div>
+          <div class="decision-review-field">
+            <label for="decisionReviewTaskClass">Task class</label>
+            <select id="decisionReviewTaskClass">${decisionReviewTaskClassOptionsHtml(draft.taskClass)}</select>
+          </div>
+          <div class="decision-review-field">
+            <label for="decisionReviewWorkflowMode">Review mode</label>
+            <select id="decisionReviewWorkflowMode">${decisionReviewWorkflowModeOptionsHtml(draft.workflowMode)}</select>
+          </div>
+          ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
+          <div class="decision-review-actions">
+            <button class="decision-review-primary" type="submit">Create Review</button>
+            <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to Aion home</button>
+          </div>
+          <p class="meta">This shell does not write memory, call providers, or authorize execution.</p>
+        </form>
+      </section>
+    </div>
+  `;
+}
+
+function decisionReviewHeaderHtml(review) {
+  return `
+    <header class="decision-review-header">
+      <div class="decision-review-heading">
+        <p class="prime-daily-label">Decision under review</p>
+        <h2>${escapeHtml(review.objective)}</h2>
+        <p class="meta">${escapeHtml(decisionReviewOptionLabel(DECISION_REVIEW_TASK_CLASSES, review.taskClass))} | ${escapeHtml(decisionReviewOptionLabel(DECISION_REVIEW_WORKFLOW_MODES, review.workflowMode))}</p>
+      </div>
+      <div class="decision-review-status-stack">
+        <span class="decision-review-pill is-ready">Ready for role sequence</span>
+        <span class="decision-review-pill">Session only</span>
+        <span class="decision-review-pill">Not continuity</span>
+      </div>
+    </header>
+  `;
+}
+
+function decisionReviewTimelineHtml(review) {
+  const stages = decisionReviewStagePlan(review);
+  return `
+    <section class="decision-review-panel">
+      <h3>Review timeline</h3>
+      <p class="meta">Where the review is and what comes next.</p>
+      <div class="decision-review-timeline">
+        ${stages.map((stage, index) => `
+          <article class="decision-review-stage ${stage.status === "complete" ? "is-complete" : ""}">
+            <span class="decision-review-step">${index + 1}</span>
+            <div>
+              <p class="decision-review-stage-status">${stage.status === "complete" ? "Complete" : "Deferred in F-D1"}</p>
+              <h3>${escapeHtml(stage.label)}</h3>
+              <p class="meta">${escapeHtml(stage.purpose)}</p>
+              ${stage.gate ? `<p class="decision-review-gate">${escapeHtml(stage.gate)}</p>` : ""}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function decisionReviewArtifactPanelHtml() {
+  return `
+    <section class="decision-review-panel">
+      <h3>Active artifact</h3>
+      <p>No role artifact yet.</p>
+      <p class="meta">Future role outputs will appear here for review. Displaying an artifact will not make it canonical.</p>
+    </section>
+  `;
+}
+
+function decisionReviewApprovalPanelHtml() {
+  return `
+    <section class="decision-review-panel">
+      <h3>Approvals</h3>
+      <p>No approval requested.</p>
+      <p class="meta">Approvals will be explicit owner actions in later stages. This shell does not authorize execution.</p>
+    </section>
+  `;
+}
+
+function decisionReviewEvidenceHtml() {
+  return `
+    <section class="decision-review-panel">
+      <h3>Evidence</h3>
+      <p class="meta">Evidence has a place, but no evidence has been collected in this shell.</p>
+      <ul class="decision-review-evidence-list">
+        <li><strong>Primary evidence</strong><br><span class="meta">Decision-relevant role outputs will appear here later.</span></li>
+        <li><strong>Supporting evidence</strong><br><span class="meta">Lineage and artifact references will appear here later.</span></li>
+        <li><strong>Technical evidence</strong><br><span class="meta">Receipts stay secondary unless needed.</span></li>
+      </ul>
+    </section>
+  `;
+}
+
+function decisionReviewFinalAssessmentHtml() {
+  return `
+    <section class="decision-review-panel">
+      <h3>Owner assessment</h3>
+      <p>Final assessment unavailable until role stages exist.</p>
+      <p class="meta">A final assessment is not canonical memory by itself.</p>
+    </section>
+  `;
+}
+
+function decisionReviewMainHtml(review) {
+  return `
+    <div class="decision-review-shell">
+      <section class="decision-review-main" aria-label="Decision Review shell">
+        ${decisionReviewHeaderHtml(review)}
+        <div class="decision-review-grid">
+          ${decisionReviewTimelineHtml(review)}
+          <div class="decision-review-stack">
+            ${decisionReviewArtifactPanelHtml()}
+            ${decisionReviewApprovalPanelHtml()}
+            ${decisionReviewEvidenceHtml()}
+            ${decisionReviewFinalAssessmentHtml()}
+          </div>
+        </div>
+        <div class="decision-review-actions">
+          <button id="decisionReviewEditButton" class="decision-review-secondary" type="button">Edit setup</button>
+          <button id="decisionReviewDiscardButton" class="decision-review-secondary" type="button">Discard review</button>
+          <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to Aion home</button>
+        </div>
+        <p class="meta">Workflow session state, not memory. Role stages are placeholders only in F-D1.</p>
+      </section>
+    </div>
+  `;
+}
+
+function readDecisionReviewSetupDraft() {
+  const objective = document.getElementById("decisionReviewObjective");
+  const taskClass = document.getElementById("decisionReviewTaskClass");
+  const workflowMode = document.getElementById("decisionReviewWorkflowMode");
+  return {
+    objective: objective ? objective.value.trim() : "",
+    taskClass: taskClass ? taskClass.value : "",
+    workflowMode: workflowMode ? workflowMode.value : "",
+    validationMessages: [],
+  };
+}
+
+function attachDecisionReviewSetupHandlers() {
+  const form = document.getElementById("decisionReviewSetupForm");
+  const homeButton = document.getElementById("decisionReviewHomeButton");
+  if (homeButton) {
+    homeButton.addEventListener("click", () => {
+      decisionReviewShellState = createEmptyDecisionReviewShellState();
+      renderPrimeHome({});
+    });
+  }
+  if (!form) return;
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const draft = readDecisionReviewSetupDraft();
+    const validationMessages = decisionReviewValidationMessages(draft);
+    decisionReviewShellState.setupDraft = { ...draft, validationMessages };
+    if (validationMessages.length) {
+      renderDecisionReviewShell();
+      return;
+    }
+    const now = new Date().toISOString();
+    decisionReviewShellState.review = {
+      id: decisionReviewId(),
+      objective: draft.objective,
+      taskClass: draft.taskClass,
+      workflowMode: draft.workflowMode,
+      status: "ready_for_role_sequence",
+      createdAt: now,
+      updatedAt: now,
+      authorityState: "operator_managed_session_only",
+      continuityState: "not_continuity",
+      executionAuthority: "none",
+    };
+    decisionReviewShellState.stages = decisionReviewStagePlan(decisionReviewShellState.review);
+    renderDecisionReviewShell();
+  });
+}
+
+function attachDecisionReviewMainHandlers() {
+  const editButton = document.getElementById("decisionReviewEditButton");
+  const discardButton = document.getElementById("decisionReviewDiscardButton");
+  const homeButton = document.getElementById("decisionReviewHomeButton");
+  if (editButton) {
+    editButton.addEventListener("click", () => {
+      if (decisionReviewShellState.review) {
+        decisionReviewShellState.setupDraft = {
+          objective: decisionReviewShellState.review.objective,
+          taskClass: decisionReviewShellState.review.taskClass,
+          workflowMode: decisionReviewShellState.review.workflowMode,
+          validationMessages: [],
+        };
+      }
+      decisionReviewShellState.review = null;
+      renderDecisionReviewShell();
+    });
+  }
+  if (discardButton) {
+    discardButton.addEventListener("click", () => {
+      decisionReviewShellState = createEmptyDecisionReviewShellState();
+      renderDecisionReviewShell();
+    });
+  }
+  if (homeButton) {
+    homeButton.addEventListener("click", () => {
+      decisionReviewShellState = createEmptyDecisionReviewShellState();
+      renderPrimeHome({});
+    });
+  }
+}
+
+function renderDecisionReviewShell() {
+  const container = document.getElementById("primeHomeResults");
+  if (!container) return;
+  const review = decisionReviewShellState.review;
+  container.innerHTML = review ? decisionReviewMainHtml(review) : decisionReviewSetupHtml();
+  if (review) {
+    attachDecisionReviewMainHandlers();
+  } else {
+    attachDecisionReviewSetupHandlers();
+  }
+}
+
 function renderPrimeHome(report) {
   /* prime minimal daily start ux start */
   const container = document.getElementById("primeHomeResults");
@@ -424,12 +780,18 @@ function renderPrimeHome(report) {
       </div>
       <div class="prime-daily-action-row">
         <button id="primeStartButton" class="nav-link prime-start-button" type="button">Start working</button>
+        <button id="decisionReviewStartButton" class="nav-link prime-role-button" type="button">Start Decision Review</button>
       </div>
+      <p class="prime-daily-note">Decision Review creates a local workflow shell only. It does not call roles or write memory.</p>
     </div>
   `;
   const startButton = document.getElementById("primeStartButton");
   if (startButton) {
     startButton.addEventListener("click", renderRoleActivationWorkspace);
+  }
+  const decisionReviewButton = document.getElementById("decisionReviewStartButton");
+  if (decisionReviewButton) {
+    decisionReviewButton.addEventListener("click", renderDecisionReviewShell);
   }
   /* prime minimal daily start ux end */
 }
