@@ -1324,53 +1324,29 @@
     }
 
     .d1a-workspace-frame {
-      display: grid;
-      gap: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
       border: 1px solid #2c3138;
       border-radius: 10px;
       background: #151a21;
-      padding: 14px;
-    }
-
-    .d1a-frame-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .d1a-frame-head h3,
-    .d1a-field label {
-      margin: 0;
-      color: #f8fafc;
-    }
-
-    .d1a-frame-head h3 {
-      font-size: 1rem;
-      line-height: 1.2;
-    }
-
-    .d1a-frame-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .d1a-choice-group,
-    .d1a-field {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
+      padding: 10px 12px;
     }
 
     .d1a-choice-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
       border: 0;
       margin: 0;
       padding: 0;
     }
 
-    .d1a-choice-group legend,
-    .d1a-field label {
+    .d1a-choice-group legend {
       color: #cbd5e1;
       font-size: 0.8rem;
       font-weight: 800;
@@ -1408,7 +1384,6 @@
     }
 
     .d1a-helper,
-    .d1a-context-status,
     .d1a-diagnostic-summary {
       margin: 0;
       color: #9ca3af;
@@ -1416,63 +1391,8 @@
       line-height: 1.45;
     }
 
-    .d1a-context-status {
-      border-left: 3px solid #475569;
-      padding-left: 9px;
-    }
-
-    .d1a-selected-context {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .d1a-field input,
-    .d1a-field textarea {
-      width: 100%;
-      border: 1px solid #2f3b49;
-      border-radius: 8px;
-      background: #111315;
-      color: #f8fafc;
-      font: inherit;
-    }
-
-    .d1a-field input {
-      min-height: 36px;
-      padding: 0 10px;
-    }
-
-    .d1a-field textarea {
-      min-height: 68px;
-      padding: 9px 10px;
-      resize: vertical;
-    }
-
-    .d1a-governance-cue {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      border: 1px solid #2c3138;
-      border-radius: 8px;
-      padding: 10px;
-      background: #111315;
-    }
-
-    .d1a-governance-cue[hidden],
-    .d1a-role-diagnostic[hidden] {
-      display: none;
-    }
-
-    .d1a-governance-cue button {
-      flex: 0 0 auto;
-      min-height: 34px;
-      border-color: #2f3b49;
-      background: #151b24;
-      color: #ffffff;
-    }
-
     .d1a-role-diagnostic {
+      flex-basis: 100%;
       border: 1px solid #2c3138;
       border-radius: 8px;
       padding: 10px;
@@ -1527,14 +1447,12 @@
     }
 
     @media (max-width: 640px) {
-      .role-activation-bar,
-      .d1a-frame-grid,
-      .d1a-selected-context {
+      .role-activation-bar {
         grid-template-columns: 1fr;
       }
 
-      .d1a-frame-head,
-      .d1a-governance-cue {
+      .d1a-workspace-frame,
+      .d1a-choice-group {
         align-items: stretch;
         flex-direction: column;
       }

@@ -65,12 +65,8 @@ const DECISION_REVIEW_WORKFLOW_MODES = [
   { id: "prime_mirror_review", label: "Prime and Mirror review" },
 ];
 const D1A_WORKING_CONTEXT_OPTIONS = [
-  { id: "aion_program", label: "Aion Program" },
+  { id: "program", label: "Program" },
   { id: "general", label: "General" },
-];
-const D1A_GOVERNANCE_OPTIONS = [
-  { id: "ordinary", label: "Ordinary flexible work" },
-  { id: "decision_review", label: "Decision Review" },
 ];
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
@@ -466,11 +462,7 @@ function createEmptyDecisionReviewShellState() {
 function createEmptyD1AWorkspaceState() {
   return {
     stateKind: DECISION_REVIEW_STATE_KIND,
-    workingContext: "aion_program",
-    governanceMode: "ordinary",
-    activeArtifactSummary: "",
-    selectedContextSummary: "",
-    immediateTaskContextNote: "",
+    workingContext: "program",
     lastRoleSendDiagnostic: null,
   };
 }
@@ -508,48 +500,14 @@ function d1aRoleEndpoint(role) {
 function d1aWorkspaceFrameHtml() {
   const state = d1aWorkspaceState;
   return `
-    <section class="d1a-workspace-frame" aria-label="Workspace context">
-      <div class="d1a-frame-head">
-        <div>
-          <p class="prime-daily-label">Context -> Governance -> Role</p>
-          <h3>Frame this work</h3>
-        </div>
-        <p class="d1a-helper">Working context: ${escapeHtml(d1aOptionLabel(D1A_WORKING_CONTEXT_OPTIONS, state.workingContext))}</p>
-      </div>
-      <div class="d1a-frame-grid">
-        ${d1aChoiceGroupHtml({
-          name: "d1aWorkingContext",
-          legend: "Working context",
-          options: D1A_WORKING_CONTEXT_OPTIONS,
-          selected: state.workingContext,
-        })}
-        ${d1aChoiceGroupHtml({
-          name: "d1aGovernanceMode",
-          legend: "Governance",
-          options: D1A_GOVERNANCE_OPTIONS,
-          selected: state.governanceMode,
-        })}
-      </div>
-      <p class="d1a-context-status">Applies to this workspace. Role-context integration is not yet active.</p>
-      <div id="d1aGovernanceCue" class="d1a-governance-cue"${state.governanceMode === "decision_review" ? "" : " hidden"}>
-        <p class="d1a-helper">Decision Review selected for orientation. Use the existing shell for formal setup; role behavior here is unchanged.</p>
-        <button id="d1aOpenDecisionReviewButton" type="button">Open Decision Review shell</button>
-      </div>
-      <div class="d1a-selected-context">
-        <div class="d1a-field">
-          <label for="d1aActiveArtifactSummary">Active artifact or reference</label>
-          <input id="d1aActiveArtifactSummary" type="text" value="${escapeHtml(state.activeArtifactSummary)}" placeholder="Optional artifact, output, or reference">
-        </div>
-        <div class="d1a-field">
-          <label for="d1aSelectedContextSummary">Selected context</label>
-          <textarea id="d1aSelectedContextSummary" placeholder="Optional context selected for this workspace">${escapeHtml(state.selectedContextSummary)}</textarea>
-        </div>
-        <div class="d1a-field">
-          <label for="d1aImmediateTaskContextNote">Immediate task note</label>
-          <textarea id="d1aImmediateTaskContextNote" placeholder="Paste exact text into the message when a role should receive it">${escapeHtml(state.immediateTaskContextNote)}</textarea>
-        </div>
-      </div>
-      <p class="d1a-helper">Visible workspace notes stay here unless you include them in the message you send.</p>
+    <section class="d1a-workspace-frame" aria-label="Working context">
+      ${d1aChoiceGroupHtml({
+        name: "d1aWorkingContext",
+        legend: "Working context",
+        options: D1A_WORKING_CONTEXT_OPTIONS,
+        selected: state.workingContext,
+      })}
+      <p class="d1a-helper">Choose how to frame this workspace.</p>
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
   `;
@@ -584,52 +542,17 @@ function d1aRoleDiagnosticHtml(diagnostic) {
   `;
 }
 
-function d1aRefreshGovernanceCue() {
-  const cue = document.getElementById("d1aGovernanceCue");
-  if (cue) cue.hidden = d1aWorkspaceState.governanceMode !== "decision_review";
-}
-
 function d1aRefreshDiagnosticDisplay() {
   const container = document.getElementById("d1aRoleDiagnostic");
   if (container) container.innerHTML = d1aRoleDiagnosticHtml(d1aWorkspaceState.lastRoleSendDiagnostic);
-}
-
-function d1aCaptureSelectedContextInputs() {
-  const artifact = document.getElementById("d1aActiveArtifactSummary");
-  const selected = document.getElementById("d1aSelectedContextSummary");
-  const immediate = document.getElementById("d1aImmediateTaskContextNote");
-  d1aWorkspaceState.activeArtifactSummary = artifact ? artifact.value : d1aWorkspaceState.activeArtifactSummary;
-  d1aWorkspaceState.selectedContextSummary = selected ? selected.value : d1aWorkspaceState.selectedContextSummary;
-  d1aWorkspaceState.immediateTaskContextNote = immediate ? immediate.value : d1aWorkspaceState.immediateTaskContextNote;
 }
 
 function d1aAttachWorkspaceHandlers() {
   document.querySelectorAll('input[name="d1aWorkingContext"]').forEach((input) => {
     input.addEventListener("change", () => {
       if (input.checked) d1aWorkspaceState.workingContext = input.value;
-      const helper = document.querySelector(".d1a-frame-head .d1a-helper");
-      if (helper) {
-        helper.textContent = `Working context: ${d1aOptionLabel(D1A_WORKING_CONTEXT_OPTIONS, d1aWorkspaceState.workingContext)}`;
-      }
     });
   });
-  document.querySelectorAll('input[name="d1aGovernanceMode"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      if (input.checked) d1aWorkspaceState.governanceMode = input.value;
-      d1aRefreshGovernanceCue();
-    });
-  });
-  ["d1aActiveArtifactSummary", "d1aSelectedContextSummary", "d1aImmediateTaskContextNote"].forEach((id) => {
-    const field = document.getElementById(id);
-    if (field) field.addEventListener("input", d1aCaptureSelectedContextInputs);
-  });
-  const decisionReviewButton = document.getElementById("d1aOpenDecisionReviewButton");
-  if (decisionReviewButton) {
-    decisionReviewButton.addEventListener("click", () => {
-      d1aCaptureSelectedContextInputs();
-      renderDecisionReviewShell();
-    });
-  }
 }
 
 function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
@@ -1461,7 +1384,6 @@ function renderRoleActivationWorkspace() {
       const endpointPath = d1aRoleEndpoint(role);
       const message = input.value.trim();
       if (!message) return;
-      d1aCaptureSelectedContextInputs();
       appendPrimeMessage("user", message);
       history.push({ role: "operator", content: message });
       input.value = "";
