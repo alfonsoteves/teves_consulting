@@ -71,6 +71,8 @@ const D1A_WORKING_CONTEXT_OPTIONS = [
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
+let roleWorkspaceTranscript = [];
+let roleWorkspaceInitialized = false;
 let activeRole = "prime";
 let decisionReviewShellState = createEmptyDecisionReviewShellState();
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
@@ -507,7 +509,7 @@ function d1aWorkspaceFrameHtml() {
         options: D1A_WORKING_CONTEXT_OPTIONS,
         selected: state.workingContext,
       })}
-      <p class="d1a-helper">Choose how to frame this workspace.</p>
+      <button id="d1aStartDecisionReviewButton" class="d1a-start-review-button" type="button">Start Decision Review</button>
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
   `;
@@ -553,6 +555,10 @@ function d1aAttachWorkspaceHandlers() {
       if (input.checked) d1aWorkspaceState.workingContext = input.value;
     });
   });
+  const decisionReviewButton = document.getElementById("d1aStartDecisionReviewButton");
+  if (decisionReviewButton) {
+    decisionReviewButton.addEventListener("click", renderDecisionReviewShell);
+  }
 }
 
 function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
@@ -694,7 +700,7 @@ function decisionReviewSetupHtml() {
           ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
           <div class="decision-review-actions">
             <button class="decision-review-primary" type="submit">Create Review</button>
-            <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to Aion home</button>
+            <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to workspace</button>
           </div>
           <p class="meta">This shell does not write memory, call providers, or authorize execution.</p>
         </form>
@@ -804,7 +810,7 @@ function decisionReviewMainHtml(review) {
         <div class="decision-review-actions">
           <button id="decisionReviewEditButton" class="decision-review-secondary" type="button">Edit setup</button>
           <button id="decisionReviewDiscardButton" class="decision-review-secondary" type="button">Discard review</button>
-          <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to Aion home</button>
+          <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to workspace</button>
         </div>
         <p class="meta">Workflow session state, not memory. Role stages are placeholders only in F-D1.</p>
       </section>
@@ -830,7 +836,7 @@ function attachDecisionReviewSetupHandlers() {
   if (homeButton) {
     homeButton.addEventListener("click", () => {
       decisionReviewShellState = createEmptyDecisionReviewShellState();
-      renderPrimeHome({});
+      renderRoleActivationWorkspace();
     });
   }
   if (!form) return;
@@ -888,7 +894,7 @@ function attachDecisionReviewMainHandlers() {
   if (homeButton) {
     homeButton.addEventListener("click", () => {
       decisionReviewShellState = createEmptyDecisionReviewShellState();
-      renderPrimeHome({});
+      renderRoleActivationWorkspace();
     });
   }
 }
@@ -905,49 +911,16 @@ function renderDecisionReviewShell() {
   }
 }
 
-function renderPrimeHome(report) {
-  /* prime minimal daily start ux start */
-  const container = document.getElementById("primeHomeResults");
-  if (!container) return;
-  container.innerHTML = `
-    <div class="prime-daily-start">
-      <div class="prime-daily-greeting">
-        <h2>Good morning Alfonso</h2>
-        <p class="meta">Aion already has the current work state.</p>
-      </div>
-      <div class="prime-daily-focus">
-        <div class="prime-daily-row">
-          <p class="prime-daily-label">Current focus</p>
-          <p class="prime-daily-value">${escapeHtml(PRIME_CURRENT_FOCUS)}</p>
-        </div>
-        <div class="prime-daily-row">
-          <p class="prime-daily-label">Recommended next step</p>
-          <p class="prime-daily-value">${escapeHtml(PRIME_RECOMMENDED_NEXT_STEP)}</p>
-        </div>
-      </div>
-      <div class="prime-daily-action-row">
-        <button id="primeStartButton" class="nav-link prime-start-button" type="button">Start working</button>
-        <button id="decisionReviewStartButton" class="nav-link prime-role-button" type="button">Start Decision Review</button>
-      </div>
-      <p class="prime-daily-note">Decision Review creates a local workflow shell only. It does not call roles or write memory.</p>
-    </div>
-  `;
-  const startButton = document.getElementById("primeStartButton");
-  if (startButton) {
-    startButton.addEventListener("click", renderRoleActivationWorkspace);
-  }
-  const decisionReviewButton = document.getElementById("decisionReviewStartButton");
-  if (decisionReviewButton) {
-    decisionReviewButton.addEventListener("click", renderDecisionReviewShell);
-  }
-  /* prime minimal daily start ux end */
+function renderPrimeHome(_report) {
+  renderRoleActivationWorkspace({ resetConversation: true });
 }
 
-function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "Prime") {
+function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "Prime", options = {}) {
   const conversation = document.getElementById("primeConversation");
   if (!conversation) return null;
   const article = document.createElement("article");
   article.className = `prime-message ${role === "user" ? "user" : "assistant"}`;
+  if (options.extraClass) article.classList.add(options.extraClass);
   if (role === "assistant") {
     const label = document.createElement("div");
     label.className = "prime-message-role";
@@ -964,7 +937,41 @@ function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "
   }
   conversation.appendChild(article);
   conversation.scrollTop = conversation.scrollHeight;
+  if (options.persist) {
+    roleWorkspaceTranscript.push({
+      role,
+      message,
+      evidenceHtml,
+      assistantLabel,
+      extraClass: options.extraClass || "",
+    });
+  }
   return article;
+}
+
+function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
+  if (!resetConversation && roleWorkspaceInitialized) return;
+  activeRole = "prime";
+  primeConversationHistory = [{ role: "prime", content: PRIME_INITIAL_MESSAGE }];
+  mirrorConversationHistory = [];
+  engineerConversationHistory = [];
+  roleWorkspaceTranscript = [{
+    role: "assistant",
+    message: PRIME_INITIAL_MESSAGE,
+    evidenceHtml: "",
+    assistantLabel: "Prime",
+    extraClass: "prime-welcome-message",
+  }];
+  roleWorkspaceInitialized = true;
+}
+
+function renderRoleWorkspaceTranscript() {
+  roleWorkspaceTranscript.forEach((entry) => {
+    appendPrimeMessage(entry.role, entry.message, entry.evidenceHtml, entry.assistantLabel, {
+      extraClass: entry.extraClass,
+      persist: false,
+    });
+  });
 }
 
 function primeEvidenceList(items) {
@@ -1315,40 +1322,31 @@ function activateEngineerRole() {
   setActiveRole("engineer");
 }
 
-function renderRoleActivationWorkspace() {
+function renderRoleActivationWorkspace(options = {}) {
   const container = document.getElementById("primeHomeResults");
   if (!container) return;
+  initializeRoleWorkspaceState(options);
   setAccess("Operator access verified. Aion is ready.", "verified");
-  activeRole = "prime";
-  primeConversationHistory = [{ role: "prime", content: PRIME_INITIAL_MESSAGE }];
   container.innerHTML = `
     <div class="prime-working-surface role-activation-surface">
-      <div class="prime-working-header">
-        <div class="prime-working-role">
-          <p class="prime-working-label">Aion role</p>
-          <h2>Choose the reasoning you need</h2>
-        </div>
-        <span class="prime-role-pill">Flexible activation</span>
+      <h2 class="aion-workspace-title">Aion</h2>
+      <div class="role-activation-bar" aria-label="Roles">
+        <button class="role-activation-button" type="button" data-role="prime">Prime</button>
+        <button class="role-activation-button" type="button" data-role="mirror">Mirror</button>
+        <button class="role-activation-button" type="button" data-role="engineer">Engineer</button>
       </div>
       ${d1aWorkspaceFrameHtml()}
-      <div class="role-activation-bar" aria-label="Aion roles">
-        <button class="role-activation-button is-active" type="button" data-role="prime">Ask Prime</button>
-        <button class="role-activation-button" type="button" data-role="mirror">Ask Mirror</button>
-        <button class="role-activation-button" type="button" data-role="engineer">Ask Engineer</button>
-      </div>
       <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is ready.</p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
       <form id="primeComposer" class="prime-composer">
         <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime..."></textarea>
         <div class="prime-composer-actions">
-          <span class="prime-composer-hint">You are choosing how Aion should reason.</span>
           <button class="prime-send-button" type="submit">Send to Prime</button>
         </div>
       </form>
     </div>
   `;
-  const welcomeMessage = appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
-  if (welcomeMessage) welcomeMessage.classList.add("prime-welcome-message");
+  renderRoleWorkspaceTranscript();
   d1aAttachWorkspaceHandlers();
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1366,6 +1364,7 @@ function renderRoleActivationWorkspace() {
       }
     });
   });
+  setActiveRole(activeRole);
   const form = document.getElementById("primeComposer");
   const input = document.getElementById("primeComposerInput");
   const submitButton = form ? form.querySelector(".prime-send-button") : null;
@@ -1384,7 +1383,7 @@ function renderRoleActivationWorkspace() {
       const endpointPath = d1aRoleEndpoint(role);
       const message = input.value.trim();
       if (!message) return;
-      appendPrimeMessage("user", message);
+      appendPrimeMessage("user", message, "", "Prime", { persist: true });
       history.push({ role: "operator", content: message });
       input.value = "";
       input.disabled = true;
@@ -1406,7 +1405,7 @@ function renderRoleActivationWorkspace() {
         d1aRefreshDiagnosticDisplay();
         if (pending) pending.remove();
         const answer = packet.answer || `${roleLabel} did not return an answer.`;
-        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel);
+        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel, { persist: true });
         history.push({ role, content: answer });
       } catch (error) {
         if (pending) pending.remove();
@@ -1420,7 +1419,7 @@ function renderRoleActivationWorkspace() {
         });
         d1aRefreshDiagnosticDisplay();
         const detail = d1aRoleFailureCopy(d1aWorkspaceState.lastRoleSendDiagnostic);
-        appendPrimeMessage("assistant", `${roleLabel} could not complete that request. ${detail}`, "", roleLabel);
+        appendPrimeMessage("assistant", `${roleLabel} could not complete that request. ${detail}`, "", roleLabel, { persist: true });
         console.error(`${roleLabel} workspace message failed`, error);
       } finally {
         input.disabled = false;
@@ -1441,13 +1440,7 @@ function renderRoleActivationWorkspace() {
 
 
 async function loadPrimeHome() {
-  try {
-    const report = await renderFetch("/admin/prime-operational-experience");
-    renderPrimeHome(report);
-  } catch (error) {
-    console.warn("Prime Home report unavailable; rendering Operator workspace shell.", error);
-    renderPrimeHome({});
-  }
+  renderRoleActivationWorkspace({ resetConversation: true });
 }
 
 function renderMirrorWorkflow(report) {
