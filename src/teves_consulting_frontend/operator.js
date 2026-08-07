@@ -56,17 +56,13 @@ const PRIME_CURRENT_FOCUS = "Phase 9 flexible role activation";
 const PRIME_RECOMMENDED_NEXT_STEP = "Choose the reasoning role you need: Prime, Mirror, or Engineer.";
 const DECISION_REVIEW_STATE_KIND = "workflow_session_state_non_canonical";
 const DECISION_REVIEW_TASK_CLASSES = [
-  { id: "architecture_decision", label: "Architecture decision" },
-  { id: "workflow_decision", label: "Workflow decision" },
-  { id: "policy_decision", label: "Policy decision" },
-];
-const DECISION_REVIEW_WORKFLOW_MODES = [
-  { id: "trio_review", label: "Trio review" },
-  { id: "prime_mirror_review", label: "Prime and Mirror review" },
+  { id: "architecture_decision", label: "Architecture" },
+  { id: "workflow_decision", label: "Workflow" },
+  { id: "policy_decision", label: "Policy" },
 ];
 const D1A_WORKING_CONTEXT_OPTIONS = [
-  { id: "program", label: "Program" },
   { id: "general", label: "General" },
+  { id: "program", label: "Program" },
 ];
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
@@ -443,7 +439,6 @@ function createEmptyDecisionReviewShellState() {
     setupDraft: {
       objective: "",
       taskClass: "",
-      workflowMode: "",
       validationMessages: [],
     },
     stages: [],
@@ -601,73 +596,41 @@ function decisionReviewId() {
 }
 
 function decisionReviewStagePlan(review) {
-  const includeEngineer = !review || review.workflowMode !== "prime_mirror_review";
-  const stages = [
+  return [
     {
       id: "decision_setup",
       label: "Decision Setup",
-      purpose: "Define the decision, task class, and review mode.",
+      purpose: "Define the decision and optional decision type.",
       status: review ? "complete" : "active",
       gate: "",
     },
     {
-      id: "prime_recommendation",
-      label: "Prime Recommendation",
-      purpose: "Future role stage for the first proposal.",
+      id: "flexible_role_work",
+      label: "Flexible Role Work",
+      purpose: "Future operator-directed Prime, Mirror, and Engineer interactions inside the review.",
       status: "not_available_in_f_d1",
-      gate: "Owner gate after Prime: continue, revise, or stop.",
+      gate: "Roles may be used in any order when activation semantics are approved.",
     },
     {
-      id: "mirror_review",
-      label: "Mirror Review",
-      purpose: "Future role stage for critique and risk review.",
+      id: "owner_assessment",
+      label: "Owner Assessment",
+      purpose: "Future final assessment packet for owner review.",
       status: "not_available_in_f_d1",
-      gate: "Owner gate after Mirror: accept, revise, or request more review.",
+      gate: "",
     },
   ];
-
-  if (includeEngineer) {
-    stages.push({
-      id: "engineer_readiness",
-      label: "Engineer Readiness",
-      purpose: "Future reasoning-only readiness stage. No execution authority.",
-      status: "not_available_in_f_d1",
-      gate: "Owner gate before any implementation planning.",
-    });
-  }
-
-  stages.push({
-    id: "owner_assessment",
-    label: "Owner Assessment",
-    purpose: "Future final assessment packet for owner review.",
-    status: "not_available_in_f_d1",
-    gate: "",
-  });
-
-  return stages;
 }
 
 function decisionReviewValidationMessages(draft) {
   const messages = [];
   if (!String(draft.objective || "").trim()) messages.push("Add the decision objective.");
-  if (!draft.taskClass) messages.push("Choose a task class.");
-  if (!draft.workflowMode) messages.push("Choose a review mode.");
   return messages;
 }
 
 function decisionReviewTaskClassOptionsHtml(selected) {
   return [
-    '<option value="">Choose task class...</option>',
+    '<option value="">Optional decision type...</option>',
     ...DECISION_REVIEW_TASK_CLASSES.map((option) => (
-      `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
-    )),
-  ].join("");
-}
-
-function decisionReviewWorkflowModeOptionsHtml(selected) {
-  return [
-    '<option value="">Choose review mode...</option>',
-    ...DECISION_REVIEW_WORKFLOW_MODES.map((option) => (
       `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
     )),
   ].join("");
@@ -682,7 +645,7 @@ function decisionReviewSetupHtml() {
         <div class="decision-review-heading">
           <p class="prime-daily-label">Decision Review</p>
           <h2 id="decisionReviewSetupTitle">Start a Decision Review</h2>
-          <p class="meta">Define the decision, choose the review type, and prepare the workflow shell. No roles are invoked in this step.</p>
+          <p class="meta">Define the decision and optional decision type. No roles are invoked in this step.</p>
         </div>
         <form id="decisionReviewSetupForm" class="decision-review-form">
           <div class="decision-review-field">
@@ -690,12 +653,8 @@ function decisionReviewSetupHtml() {
             <textarea id="decisionReviewObjective" placeholder="What decision needs governed review?">${escapeHtml(draft.objective)}</textarea>
           </div>
           <div class="decision-review-field">
-            <label for="decisionReviewTaskClass">Task class</label>
+            <label for="decisionReviewTaskClass">Decision type</label>
             <select id="decisionReviewTaskClass">${decisionReviewTaskClassOptionsHtml(draft.taskClass)}</select>
-          </div>
-          <div class="decision-review-field">
-            <label for="decisionReviewWorkflowMode">Review mode</label>
-            <select id="decisionReviewWorkflowMode">${decisionReviewWorkflowModeOptionsHtml(draft.workflowMode)}</select>
           </div>
           ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
           <div class="decision-review-actions">
@@ -715,10 +674,10 @@ function decisionReviewHeaderHtml(review) {
       <div class="decision-review-heading">
         <p class="prime-daily-label">Decision under review</p>
         <h2>${escapeHtml(review.objective)}</h2>
-        <p class="meta">${escapeHtml(decisionReviewOptionLabel(DECISION_REVIEW_TASK_CLASSES, review.taskClass))} | ${escapeHtml(decisionReviewOptionLabel(DECISION_REVIEW_WORKFLOW_MODES, review.workflowMode))}</p>
+        <p class="meta">${escapeHtml(review.taskClass ? decisionReviewOptionLabel(DECISION_REVIEW_TASK_CLASSES, review.taskClass) : "Decision type optional")}</p>
       </div>
       <div class="decision-review-status-stack">
-        <span class="decision-review-pill is-ready">Ready for role sequence</span>
+        <span class="decision-review-pill is-ready">Ready for review</span>
         <span class="decision-review-pill">Session only</span>
         <span class="decision-review-pill">Not continuity</span>
       </div>
@@ -812,7 +771,7 @@ function decisionReviewMainHtml(review) {
           <button id="decisionReviewDiscardButton" class="decision-review-secondary" type="button">Discard review</button>
           <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to workspace</button>
         </div>
-        <p class="meta">Workflow session state, not memory. Role stages are placeholders only in F-D1.</p>
+        <p class="meta">Workflow session state, not memory. Role interactions are placeholders only in F-D1.</p>
       </section>
     </div>
   `;
@@ -821,11 +780,9 @@ function decisionReviewMainHtml(review) {
 function readDecisionReviewSetupDraft() {
   const objective = document.getElementById("decisionReviewObjective");
   const taskClass = document.getElementById("decisionReviewTaskClass");
-  const workflowMode = document.getElementById("decisionReviewWorkflowMode");
   return {
     objective: objective ? objective.value.trim() : "",
     taskClass: taskClass ? taskClass.value : "",
-    workflowMode: workflowMode ? workflowMode.value : "",
     validationMessages: [],
   };
 }
@@ -854,7 +811,6 @@ function attachDecisionReviewSetupHandlers() {
       id: decisionReviewId(),
       objective: draft.objective,
       taskClass: draft.taskClass,
-      workflowMode: draft.workflowMode,
       status: "ready_for_role_sequence",
       createdAt: now,
       updatedAt: now,
@@ -877,7 +833,6 @@ function attachDecisionReviewMainHandlers() {
         decisionReviewShellState.setupDraft = {
           objective: decisionReviewShellState.review.objective,
           taskClass: decisionReviewShellState.review.taskClass,
-          workflowMode: decisionReviewShellState.review.workflowMode,
           validationMessages: [],
         };
       }
@@ -1298,7 +1253,6 @@ function setActiveRole(role) {
     };
     input.setAttribute("aria-label", `Message ${role.charAt(0).toUpperCase()}${role.slice(1)}`);
     input.placeholder = placeholders[role] || placeholders.prime;
-    input.focus();
   }
   if (sendButton) {
     const labels = { prime: "Send to Prime", mirror: "Send to Mirror", engineer: "Send to Engineer" };
@@ -1329,7 +1283,6 @@ function renderRoleActivationWorkspace(options = {}) {
   setAccess("Operator access verified. Aion is ready.", "verified");
   container.innerHTML = `
     <div class="prime-working-surface role-activation-surface">
-      <h2 class="aion-workspace-title">Aion</h2>
       <div class="role-activation-bar" aria-label="Roles">
         <button class="role-activation-button" type="button" data-role="prime">Prime</button>
         <button class="role-activation-button" type="button" data-role="mirror">Mirror</button>
@@ -1431,7 +1384,6 @@ function renderRoleActivationWorkspace(options = {}) {
         input.focus();
       }
     });
-    input.focus();
   }
 }
 

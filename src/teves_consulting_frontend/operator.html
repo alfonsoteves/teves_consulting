@@ -1112,7 +1112,8 @@
     /* Prime working surface start */
     .prime-working-surface {
       display: grid;
-      gap: 18px;
+      align-content: start;
+      gap: 12px;
       min-height: calc(100vh - var(--header-height) - 170px);
       border-color: #2c3138;
       background: #111315;
@@ -1160,19 +1161,12 @@
       white-space: nowrap;
     }
 
-    .aion-workspace-title {
-      margin: 0;
-      color: #ffffff;
-      font-size: 1.35rem;
-      line-height: 1.2;
-    }
-
     .prime-conversation {
       display: flex;
       flex-direction: column;
       gap: 14px;
-      min-height: 260px;
-      padding: 8px 0 6px;
+      min-height: 150px;
+      padding: 6px 0 4px;
     }
 
     .prime-message {
@@ -1728,6 +1722,12 @@
     /* Operator role activation surface start */
     body.operator-signed-in .operator-workspace-nav {
       margin-bottom: 18px !important;
+    }
+
+    body.operator-signed-in #primeHomePanel.prime-daily-home {
+      border: 0 !important;
+      background: transparent !important;
+      padding: 0 !important;
     }
 
     body.operator-signed-in #operatorWorkspace > section:not(#primeHomePanel) {
