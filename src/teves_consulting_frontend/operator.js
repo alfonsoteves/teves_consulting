@@ -64,11 +64,20 @@ const DECISION_REVIEW_WORKFLOW_MODES = [
   { id: "trio_review", label: "Trio review" },
   { id: "prime_mirror_review", label: "Prime and Mirror review" },
 ];
+const D1A_WORKING_CONTEXT_OPTIONS = [
+  { id: "aion_program", label: "Aion Program" },
+  { id: "general", label: "General" },
+];
+const D1A_GOVERNANCE_OPTIONS = [
+  { id: "ordinary", label: "Ordinary flexible work" },
+  { id: "decision_review", label: "Decision Review" },
+];
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
 let activeRole = "prime";
 let decisionReviewShellState = createEmptyDecisionReviewShellState();
+let d1aWorkspaceState = createEmptyD1AWorkspaceState();
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
@@ -227,11 +236,21 @@ async function renderPost(path, payload) {
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
   }
-  const response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
+  let response;
+  try {
+    response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    if (error && typeof error === "object") {
+      error.fetchStarted = true;
+      error.fetchRejected = true;
+      error.responseReceived = false;
+    }
+    throw error;
+  }
   let data = {};
   try {
     data = await response.json();
@@ -240,7 +259,13 @@ async function renderPost(path, payload) {
   }
   if (!response.ok) {
     const detail = data && data.detail ? data.detail : `Render request failed: ${response.status}`;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const requestError = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    requestError.fetchStarted = true;
+    requestError.fetchRejected = false;
+    requestError.responseReceived = true;
+    requestError.httpStatus = response.status;
+    requestError.backendDetail = detail;
+    throw requestError;
   }
   return data;
 }
@@ -436,6 +461,205 @@ function createEmptyDecisionReviewShellState() {
       canonicality: "not_canonical",
     },
   };
+}
+
+function createEmptyD1AWorkspaceState() {
+  return {
+    stateKind: DECISION_REVIEW_STATE_KIND,
+    workingContext: "aion_program",
+    governanceMode: "ordinary",
+    activeArtifactSummary: "",
+    selectedContextSummary: "",
+    immediateTaskContextNote: "",
+    lastRoleSendDiagnostic: null,
+  };
+}
+
+function d1aOptionLabel(options, id) {
+  const option = options.find((item) => item.id === id);
+  return option ? option.label : "Not selected";
+}
+
+function d1aChoiceGroupHtml({ name, legend, options, selected }) {
+  return `
+    <fieldset class="d1a-choice-group">
+      <legend>${escapeHtml(legend)}</legend>
+      <div class="d1a-choice-row">
+        ${options.map((option) => `
+          <label>
+            <input type="radio" name="${escapeHtml(name)}" value="${escapeHtml(option.id)}"${option.id === selected ? " checked" : ""}>
+            <span>${escapeHtml(option.label)}</span>
+          </label>
+        `).join("")}
+      </div>
+    </fieldset>
+  `;
+}
+
+function d1aRoleEndpoint(role) {
+  const routes = {
+    prime: "/admin/prime-workspace-message",
+    mirror: "/admin/mirror-workspace-message",
+    engineer: "/admin/engineer-workspace-message",
+  };
+  return routes[role] || routes.prime;
+}
+
+function d1aWorkspaceFrameHtml() {
+  const state = d1aWorkspaceState;
+  return `
+    <section class="d1a-workspace-frame" aria-label="Workspace context">
+      <div class="d1a-frame-head">
+        <div>
+          <p class="prime-daily-label">Context -> Governance -> Role</p>
+          <h3>Frame this work</h3>
+        </div>
+        <p class="d1a-helper">Working context: ${escapeHtml(d1aOptionLabel(D1A_WORKING_CONTEXT_OPTIONS, state.workingContext))}</p>
+      </div>
+      <div class="d1a-frame-grid">
+        ${d1aChoiceGroupHtml({
+          name: "d1aWorkingContext",
+          legend: "Working context",
+          options: D1A_WORKING_CONTEXT_OPTIONS,
+          selected: state.workingContext,
+        })}
+        ${d1aChoiceGroupHtml({
+          name: "d1aGovernanceMode",
+          legend: "Governance",
+          options: D1A_GOVERNANCE_OPTIONS,
+          selected: state.governanceMode,
+        })}
+      </div>
+      <p class="d1a-context-status">Applies to this workspace. Role-context integration is not yet active.</p>
+      <div id="d1aGovernanceCue" class="d1a-governance-cue"${state.governanceMode === "decision_review" ? "" : " hidden"}>
+        <p class="d1a-helper">Decision Review selected for orientation. Use the existing shell for formal setup; role behavior here is unchanged.</p>
+        <button id="d1aOpenDecisionReviewButton" type="button">Open Decision Review shell</button>
+      </div>
+      <div class="d1a-selected-context">
+        <div class="d1a-field">
+          <label for="d1aActiveArtifactSummary">Active artifact or reference</label>
+          <input id="d1aActiveArtifactSummary" type="text" value="${escapeHtml(state.activeArtifactSummary)}" placeholder="Optional artifact, output, or reference">
+        </div>
+        <div class="d1a-field">
+          <label for="d1aSelectedContextSummary">Selected context</label>
+          <textarea id="d1aSelectedContextSummary" placeholder="Optional context selected for this workspace">${escapeHtml(state.selectedContextSummary)}</textarea>
+        </div>
+        <div class="d1a-field">
+          <label for="d1aImmediateTaskContextNote">Immediate task note</label>
+          <textarea id="d1aImmediateTaskContextNote" placeholder="Paste exact text into the message when a role should receive it">${escapeHtml(state.immediateTaskContextNote)}</textarea>
+        </div>
+      </div>
+      <p class="d1a-helper">Visible workspace notes stay here unless you include them in the message you send.</p>
+      <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
+    </section>
+  `;
+}
+
+function d1aRoleDiagnosticHtml(diagnostic) {
+  if (!diagnostic || !diagnostic.outcome || diagnostic.outcome === "completed") return "";
+  const responseCopy = diagnostic.responseReceived
+    ? "The backend returned an error."
+    : "Request failed before an HTTP response was received.";
+  const detail = diagnostic.sanitizedBackendDetail || diagnostic.fetchRejectionClassification || "No additional detail available.";
+  return `
+    <section class="d1a-role-diagnostic is-error" aria-live="polite">
+      <p class="d1a-diagnostic-summary">${escapeHtml(responseCopy)}</p>
+      <details>
+        <summary>Request details</summary>
+        <dl class="d1a-diagnostic-grid">
+          <div><dt>Role</dt><dd>${escapeHtml(diagnostic.role)}</dd></div>
+          <div><dt>Endpoint</dt><dd>${escapeHtml(diagnostic.endpointPath)}</dd></div>
+          <div><dt>Message characters</dt><dd>${escapeHtml(String(diagnostic.messageCharCount))}</dd></div>
+          <div><dt>Prior messages</dt><dd>${escapeHtml(String(diagnostic.priorMessageCount))}</dd></div>
+          <div><dt>Auth present</dt><dd>${diagnostic.authPresent ? "yes" : "no"}</dd></div>
+          <div><dt>Fetch started</dt><dd>${diagnostic.fetchStarted ? "yes" : "no"}</dd></div>
+          <div><dt>Response received</dt><dd>${diagnostic.responseReceived ? "yes" : "no"}</dd></div>
+          <div><dt>HTTP status</dt><dd>${escapeHtml(String(diagnostic.httpStatus || "not available"))}</dd></div>
+          <div><dt>Detail</dt><dd>${escapeHtml(detail)}</dd></div>
+          <div><dt>Timestamp</dt><dd>${escapeHtml(diagnostic.timestamp)}</dd></div>
+          <div><dt>Retry attempted</dt><dd>${diagnostic.retryAttempted ? "yes" : "no"}</dd></div>
+        </dl>
+      </details>
+    </section>
+  `;
+}
+
+function d1aRefreshGovernanceCue() {
+  const cue = document.getElementById("d1aGovernanceCue");
+  if (cue) cue.hidden = d1aWorkspaceState.governanceMode !== "decision_review";
+}
+
+function d1aRefreshDiagnosticDisplay() {
+  const container = document.getElementById("d1aRoleDiagnostic");
+  if (container) container.innerHTML = d1aRoleDiagnosticHtml(d1aWorkspaceState.lastRoleSendDiagnostic);
+}
+
+function d1aCaptureSelectedContextInputs() {
+  const artifact = document.getElementById("d1aActiveArtifactSummary");
+  const selected = document.getElementById("d1aSelectedContextSummary");
+  const immediate = document.getElementById("d1aImmediateTaskContextNote");
+  d1aWorkspaceState.activeArtifactSummary = artifact ? artifact.value : d1aWorkspaceState.activeArtifactSummary;
+  d1aWorkspaceState.selectedContextSummary = selected ? selected.value : d1aWorkspaceState.selectedContextSummary;
+  d1aWorkspaceState.immediateTaskContextNote = immediate ? immediate.value : d1aWorkspaceState.immediateTaskContextNote;
+}
+
+function d1aAttachWorkspaceHandlers() {
+  document.querySelectorAll('input[name="d1aWorkingContext"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.checked) d1aWorkspaceState.workingContext = input.value;
+      const helper = document.querySelector(".d1a-frame-head .d1a-helper");
+      if (helper) {
+        helper.textContent = `Working context: ${d1aOptionLabel(D1A_WORKING_CONTEXT_OPTIONS, d1aWorkspaceState.workingContext)}`;
+      }
+    });
+  });
+  document.querySelectorAll('input[name="d1aGovernanceMode"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.checked) d1aWorkspaceState.governanceMode = input.value;
+      d1aRefreshGovernanceCue();
+    });
+  });
+  ["d1aActiveArtifactSummary", "d1aSelectedContextSummary", "d1aImmediateTaskContextNote"].forEach((id) => {
+    const field = document.getElementById(id);
+    if (field) field.addEventListener("input", d1aCaptureSelectedContextInputs);
+  });
+  const decisionReviewButton = document.getElementById("d1aOpenDecisionReviewButton");
+  if (decisionReviewButton) {
+    decisionReviewButton.addEventListener("click", () => {
+      d1aCaptureSelectedContextInputs();
+      renderDecisionReviewShell();
+    });
+  }
+}
+
+function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
+  const responseReceived = Boolean(error && error.responseReceived);
+  const httpStatus = error && error.httpStatus ? error.httpStatus : (outcome === "completed" ? 200 : null);
+  const backendDetail = error && error.backendDetail ? error.backendDetail : "";
+  const fetchRejected = Boolean(error && error.fetchRejected);
+  return {
+    role,
+    endpointPath,
+    messageCharCount: message.length,
+    priorMessageCount: priorMessages.length,
+    authPresent: Boolean(renderOperatorSessionToken),
+    fetchStarted: true,
+    responseReceived: outcome === "completed" ? true : responseReceived,
+    httpStatus,
+    sanitizedBackendDetail: typeof backendDetail === "string" ? backendDetail : JSON.stringify(backendDetail || ""),
+    fetchRejectionClassification: fetchRejected ? "browser_fetch_rejected_before_http_response" : "",
+    timestamp: new Date().toISOString(),
+    retryAttempted: false,
+    outcome,
+  };
+}
+
+function d1aRoleFailureCopy(diagnostic) {
+  if (!diagnostic) return "The workspace route did not return a usable response.";
+  if (diagnostic.responseReceived) {
+    return "The backend returned an error.";
+  }
+  return "Request failed before an HTTP response was received.";
 }
 
 function decisionReviewOptionLabel(options, id) {
@@ -1106,17 +1330,12 @@ async function loadEngineerPacket() {
 }
 
 async function sendRoleWorkspaceMessage(role, message) {
-  const routes = {
-    prime: "/admin/prime-workspace-message",
-    mirror: "/admin/mirror-workspace-message",
-    engineer: "/admin/engineer-workspace-message",
-  };
   const histories = {
     prime: primeConversationHistory,
     mirror: mirrorConversationHistory,
     engineer: engineerConversationHistory,
   };
-  return renderPost(routes[role] || routes.prime, {
+  return renderPost(d1aRoleEndpoint(role), {
     message,
     priorMessages: (histories[role] || primeConversationHistory).slice(-8),
   });
@@ -1188,6 +1407,7 @@ function renderRoleActivationWorkspace() {
         </div>
         <span class="prime-role-pill">Flexible activation</span>
       </div>
+      ${d1aWorkspaceFrameHtml()}
       <div class="role-activation-bar" aria-label="Aion roles">
         <button class="role-activation-button is-active" type="button" data-role="prime">Ask Prime</button>
         <button class="role-activation-button" type="button" data-role="mirror">Ask Mirror</button>
@@ -1206,6 +1426,7 @@ function renderRoleActivationWorkspace() {
   `;
   const welcomeMessage = appendPrimeMessage("assistant", PRIME_INITIAL_MESSAGE);
   if (welcomeMessage) welcomeMessage.classList.add("prime-welcome-message");
+  d1aAttachWorkspaceHandlers();
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.addEventListener("click", () => {
       const role = button.dataset.role;
@@ -1235,10 +1456,14 @@ function renderRoleActivationWorkspace() {
         mirror: mirrorConversationHistory,
         engineer: engineerConversationHistory,
       };
+      const history = histories[role] || primeConversationHistory;
+      const priorMessages = history.slice(-8);
+      const endpointPath = d1aRoleEndpoint(role);
       const message = input.value.trim();
       if (!message) return;
+      d1aCaptureSelectedContextInputs();
       appendPrimeMessage("user", message);
-      (histories[role] || primeConversationHistory).push({ role: "operator", content: message });
+      history.push({ role: "operator", content: message });
       input.value = "";
       input.disabled = true;
       if (submitButton) {
@@ -1249,13 +1474,30 @@ function renderRoleActivationWorkspace() {
       if (pending) pending.classList.add("pending");
       try {
         const packet = await sendRoleWorkspaceMessage(role, message);
+        d1aWorkspaceState.lastRoleSendDiagnostic = d1aBuildRoleSendDiagnostic({
+          role,
+          endpointPath,
+          message,
+          priorMessages,
+          outcome: "completed",
+        });
+        d1aRefreshDiagnosticDisplay();
         if (pending) pending.remove();
         const answer = packet.answer || `${roleLabel} did not return an answer.`;
         appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel);
-        (histories[role] || primeConversationHistory).push({ role, content: answer });
+        history.push({ role, content: answer });
       } catch (error) {
         if (pending) pending.remove();
-        const detail = error && error.message ? error.message : "The workspace route did not return a usable response.";
+        d1aWorkspaceState.lastRoleSendDiagnostic = d1aBuildRoleSendDiagnostic({
+          role,
+          endpointPath,
+          message,
+          priorMessages,
+          error,
+          outcome: "failed",
+        });
+        d1aRefreshDiagnosticDisplay();
+        const detail = d1aRoleFailureCopy(d1aWorkspaceState.lastRoleSendDiagnostic);
         appendPrimeMessage("assistant", `${roleLabel} could not complete that request. ${detail}`, "", roleLabel);
         console.error(`${roleLabel} workspace message failed`, error);
       } finally {
