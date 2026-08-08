@@ -492,6 +492,10 @@ function d1aRoleEndpoint(role) {
   return routes[role] || routes.prime;
 }
 
+function d1aWorkingContextValue(value) {
+  return value === "program" || value === "general" ? value : "general";
+}
+
 function decisionReviewOptionLabel(options, id) {
   const option = options.find((item) => item.id === id);
   return option ? option.label : "Not selected";
@@ -1338,6 +1342,7 @@ async function sendRoleWorkspaceMessage(role, message) {
   return renderPost(d1aRoleEndpoint(role), {
     message,
     priorMessages: (histories[role] || primeConversationHistory).slice(-8),
+    workingContext: d1aWorkingContextValue(d1aWorkspaceState.workingContext),
   });
 }
 
