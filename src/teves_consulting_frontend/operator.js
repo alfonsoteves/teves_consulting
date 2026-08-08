@@ -69,6 +69,7 @@ let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
 let roleWorkspaceTranscript = [];
 let roleWorkspaceInitialized = false;
+let primeWelcomeReplayConsumed = false;
 let activeRole = "prime";
 let decisionReviewShellState = createEmptyDecisionReviewShellState();
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
@@ -1026,11 +1027,16 @@ function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
     assistantLabel: "Prime",
     extraClass: "prime-welcome-message",
   }];
+  primeWelcomeReplayConsumed = false;
   roleWorkspaceInitialized = true;
 }
 
 function renderRoleWorkspaceTranscript() {
   roleWorkspaceTranscript.forEach((entry) => {
+    if (entry.extraClass === "prime-welcome-message") {
+      if (primeWelcomeReplayConsumed) return;
+      primeWelcomeReplayConsumed = true;
+    }
     appendPrimeMessage(entry.role, entry.message, entry.evidenceHtml, entry.assistantLabel, {
       extraClass: entry.extraClass,
       persist: false,
