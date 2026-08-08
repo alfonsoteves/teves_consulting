@@ -435,24 +435,21 @@ function renderContextPackets(report) {
 function createEmptyDecisionReviewShellState() {
   return {
     stateKind: DECISION_REVIEW_STATE_KIND,
-    review: null,
+    status: "off",
     setupDraft: {
       objective: "",
       taskClass: "",
+      priorContext: "",
       validationMessages: [],
     },
-    stages: [],
-    approvals: [],
-    artifacts: [],
-    evidence: {
-      primary: { label: "Primary evidence", status: "not_collected" },
-      supporting: { label: "Supporting evidence", status: "not_collected" },
-      technical: { label: "Technical evidence", status: "not_collected" },
+    activeReview: null,
+    completionDraft: {
+      isOpen: false,
+      outcome: "",
+      remainingQuestions: "",
+      validationMessages: [],
     },
-    finalAssessment: {
-      status: "not_available_in_f_d1",
-      canonicality: "not_canonical",
-    },
+    lastClosedReview: null,
   };
 }
 
@@ -494,6 +491,177 @@ function d1aRoleEndpoint(role) {
   return routes[role] || routes.prime;
 }
 
+function decisionReviewOptionLabel(options, id) {
+  const option = options.find((item) => item.id === id);
+  return option ? option.label : "Not selected";
+}
+
+function decisionReviewId() {
+  return `decision-review-${Date.now().toString(36)}`;
+}
+
+function decisionReviewControlHtml() {
+  const state = decisionReviewShellState;
+  if (state.status === "active") {
+    return `
+      <div class="decision-review-control" aria-label="Decision Review">
+        <span class="decision-review-label">Decision Review</span>
+        <span class="decision-review-state is-active">On</span>
+      </div>
+    `;
+  }
+  if (state.status === "setup") {
+    return `
+      <div class="decision-review-control" aria-label="Decision Review">
+        <span class="decision-review-label">Decision Review</span>
+        <span class="decision-review-state is-active">Setup</span>
+      </div>
+    `;
+  }
+  if (state.status === "deferred") {
+    return `
+      <div class="decision-review-control" aria-label="Decision Review">
+        <span class="decision-review-label">Decision Review</span>
+        <span class="decision-review-state">Deferred</span>
+        <button id="decisionReviewResumeButton" class="decision-review-action" type="button">Resume review</button>
+        <button id="decisionReviewEndDeferredButton" class="decision-review-action" type="button">End without decision</button>
+      </div>
+    `;
+  }
+  return `
+    <div class="decision-review-control" aria-label="Decision Review">
+      <span class="decision-review-label">Decision Review</span>
+      <span class="decision-review-state is-muted">Off</span>
+      <button id="decisionReviewOnButton" class="decision-review-action" type="button">On</button>
+    </div>
+  `;
+}
+
+function decisionReviewTypeCopy(taskClass) {
+  return taskClass ? decisionReviewOptionLabel(DECISION_REVIEW_TASK_CLASSES, taskClass) : "";
+}
+
+function decisionReviewSetupHtml() {
+  const state = decisionReviewShellState;
+  const draft = state.setupDraft;
+  const messages = draft.validationMessages || [];
+  const isEditing = Boolean(state.activeReview);
+  return `
+    <section class="decision-review-inline" aria-label="Decision Review setup">
+      <div class="decision-review-inline-header">
+        <div>
+          <p class="decision-review-inline-title">${isEditing ? "Edit Decision Review" : "Start Decision Review"}</p>
+          <p class="meta">Define the decision under review. Prior context is optional.</p>
+        </div>
+      </div>
+      <form id="decisionReviewSetupForm" class="decision-review-form">
+        <div class="decision-review-field">
+          <label for="decisionReviewObjective">Decision objective</label>
+          <textarea id="decisionReviewObjective" placeholder="What decision needs governed review?">${escapeHtml(draft.objective)}</textarea>
+        </div>
+        <div class="decision-review-field">
+          <label for="decisionReviewTaskClass">Decision type</label>
+          <select id="decisionReviewTaskClass">${decisionReviewTaskClassOptionsHtml(draft.taskClass)}</select>
+        </div>
+        <div class="decision-review-field decision-review-prior-context">
+          <label for="decisionReviewPriorContext">Prior context</label>
+          <textarea id="decisionReviewPriorContext" placeholder="Optional summary or pasted material, if useful.">${escapeHtml(draft.priorContext)}</textarea>
+        </div>
+        ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
+        <div class="decision-review-actions">
+          <button class="decision-review-primary" type="submit">${isEditing ? "Save review" : "Start review"}</button>
+          <button id="decisionReviewCancelSetupButton" class="decision-review-secondary" type="button">Cancel</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function decisionReviewActiveHtml() {
+  const review = decisionReviewShellState.activeReview;
+  if (!review) return "";
+  const decisionType = decisionReviewTypeCopy(review.taskClass);
+  const completion = decisionReviewShellState.completionDraft;
+  return `
+    <section class="decision-review-inline" aria-label="Active Decision Review">
+      <div class="decision-review-inline-header">
+        <div class="decision-review-summary">
+          <p class="decision-review-inline-title">${escapeHtml(review.objective)}</p>
+          ${decisionType ? `<p class="meta">${escapeHtml(decisionType)}</p>` : ""}
+        </div>
+        <div class="decision-review-actions">
+          <button id="decisionReviewEditButton" class="decision-review-secondary" type="button">Edit details</button>
+          <button id="decisionReviewDeferButton" class="decision-review-secondary" type="button">Defer</button>
+          <button id="decisionReviewCompleteButton" class="decision-review-primary" type="button">Complete</button>
+          <button id="decisionReviewEndButton" class="decision-review-secondary" type="button">End without decision</button>
+        </div>
+      </div>
+      ${completion.isOpen ? decisionReviewCompletionHtml() : ""}
+    </section>
+  `;
+}
+
+function decisionReviewDeferredHtml() {
+  const review = decisionReviewShellState.activeReview;
+  if (!review) return "";
+  const decisionType = decisionReviewTypeCopy(review.taskClass);
+  return `
+    <section class="decision-review-inline" aria-label="Deferred Decision Review">
+      <div class="decision-review-summary">
+        <p class="decision-review-inline-title">${escapeHtml(review.objective)}</p>
+        ${decisionType ? `<p class="meta">${escapeHtml(decisionType)}</p>` : ""}
+        <p class="meta">Deferred for this frontend session. Ordinary work can continue.</p>
+      </div>
+    </section>
+  `;
+}
+
+function decisionReviewCompletionHtml() {
+  const draft = decisionReviewShellState.completionDraft;
+  const messages = draft.validationMessages || [];
+  return `
+    <form id="decisionReviewCompletionForm" class="decision-review-form decision-review-completion-form">
+      <div class="decision-review-field">
+        <label for="decisionReviewOutcome">Decision / outcome</label>
+        <textarea id="decisionReviewOutcome" placeholder="What outcome should close this review?">${escapeHtml(draft.outcome)}</textarea>
+      </div>
+      <div class="decision-review-field">
+        <label for="decisionReviewRemainingQuestions">Remaining questions</label>
+        <textarea id="decisionReviewRemainingQuestions" placeholder="Optional questions or follow-ups.">${escapeHtml(draft.remainingQuestions)}</textarea>
+      </div>
+      ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
+      <div class="decision-review-actions">
+        <button class="decision-review-primary" type="submit">Record outcome</button>
+        <button id="decisionReviewCancelCompleteButton" class="decision-review-secondary" type="button">Cancel</button>
+      </div>
+    </form>
+  `;
+}
+
+function decisionReviewLastClosedHtml() {
+  const review = decisionReviewShellState.lastClosedReview;
+  if (!review || decisionReviewShellState.status === "setup" || decisionReviewShellState.status === "active" || decisionReviewShellState.status === "deferred") return "";
+  const label = review.status === "completed" ? "Review completed" : "Review ended without decision";
+  return `
+    <section class="decision-review-inline decision-review-last" aria-label="Last Decision Review">
+      <div class="decision-review-summary">
+        <p class="decision-review-inline-title">${escapeHtml(label)}</p>
+        <p class="meta">${escapeHtml(review.objective)}</p>
+        ${review.outcome ? `<p>${escapeHtml(review.outcome)}</p>` : ""}
+        ${review.remainingQuestions ? `<p class="meta">${escapeHtml(review.remainingQuestions)}</p>` : ""}
+      </div>
+    </section>
+  `;
+}
+
+function decisionReviewInlineHtml() {
+  const state = decisionReviewShellState;
+  if (state.status === "setup") return decisionReviewSetupHtml();
+  if (state.status === "active") return decisionReviewActiveHtml();
+  if (state.status === "deferred") return decisionReviewDeferredHtml();
+  return decisionReviewLastClosedHtml();
+}
+
 function d1aWorkspaceFrameHtml() {
   const state = d1aWorkspaceState;
   return `
@@ -504,9 +672,10 @@ function d1aWorkspaceFrameHtml() {
         options: D1A_WORKING_CONTEXT_OPTIONS,
         selected: state.workingContext,
       })}
-      <button id="d1aStartDecisionReviewButton" class="d1a-start-review-button" type="button">Start Decision Review</button>
+      ${decisionReviewControlHtml()}
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
+    <div id="decisionReviewInline">${decisionReviewInlineHtml()}</div>
   `;
 }
 
@@ -544,16 +713,238 @@ function d1aRefreshDiagnosticDisplay() {
   if (container) container.innerHTML = d1aRoleDiagnosticHtml(d1aWorkspaceState.lastRoleSendDiagnostic);
 }
 
+function decisionReviewTaskClassOptionsHtml(selected) {
+  return [
+    '<option value="">Optional decision type...</option>',
+    ...DECISION_REVIEW_TASK_CLASSES.map((option) => (
+      `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+    )),
+  ].join("");
+}
+
+function decisionReviewReadSetupDraft() {
+  const objective = document.getElementById("decisionReviewObjective");
+  const taskClass = document.getElementById("decisionReviewTaskClass");
+  const priorContext = document.getElementById("decisionReviewPriorContext");
+  return {
+    objective: objective ? objective.value.trim() : "",
+    taskClass: taskClass ? taskClass.value : "",
+    priorContext: priorContext ? priorContext.value.trim() : "",
+    validationMessages: [],
+  };
+}
+
+function decisionReviewSetupValidationMessages(draft) {
+  const messages = [];
+  if (!String(draft.objective || "").trim()) messages.push("Add the decision objective.");
+  return messages;
+}
+
+function decisionReviewReadCompletionDraft() {
+  const outcome = document.getElementById("decisionReviewOutcome");
+  const remainingQuestions = document.getElementById("decisionReviewRemainingQuestions");
+  return {
+    isOpen: true,
+    outcome: outcome ? outcome.value.trim() : "",
+    remainingQuestions: remainingQuestions ? remainingQuestions.value.trim() : "",
+    validationMessages: [],
+  };
+}
+
+function decisionReviewCompletionValidationMessages(draft) {
+  const messages = [];
+  if (!String(draft.outcome || "").trim()) messages.push("Add the decision / outcome.");
+  return messages;
+}
+
+function decisionReviewRenderWorkspace() {
+  renderRoleActivationWorkspace();
+}
+
+function decisionReviewClose(status, completion = {}) {
+  const review = decisionReviewShellState.activeReview;
+  decisionReviewShellState.lastClosedReview = review ? {
+    ...review,
+    status,
+    outcome: completion.outcome || "",
+    remainingQuestions: completion.remainingQuestions || "",
+    closedAt: new Date().toISOString(),
+    canonicality: "not_canonical",
+  } : null;
+  decisionReviewShellState.status = status;
+  decisionReviewShellState.activeReview = null;
+  decisionReviewShellState.setupDraft = {
+    objective: "",
+    taskClass: "",
+    priorContext: "",
+    validationMessages: [],
+  };
+  decisionReviewShellState.completionDraft = {
+    isOpen: false,
+    outcome: "",
+    remainingQuestions: "",
+    validationMessages: [],
+  };
+  decisionReviewRenderWorkspace();
+}
+
 function d1aAttachWorkspaceHandlers() {
   document.querySelectorAll('input[name="d1aWorkingContext"]').forEach((input) => {
     input.addEventListener("change", () => {
       if (input.checked) d1aWorkspaceState.workingContext = input.value;
     });
   });
-  const decisionReviewButton = document.getElementById("d1aStartDecisionReviewButton");
-  if (decisionReviewButton) {
-    decisionReviewButton.addEventListener("click", renderDecisionReviewShell);
+
+  const onButton = document.getElementById("decisionReviewOnButton");
+  if (onButton) {
+    onButton.addEventListener("click", () => {
+      decisionReviewShellState.status = "setup";
+      decisionReviewShellState.setupDraft = {
+        objective: "",
+        taskClass: "",
+        priorContext: "",
+        validationMessages: [],
+      };
+      decisionReviewRenderWorkspace();
+    });
   }
+
+  const setupForm = document.getElementById("decisionReviewSetupForm");
+  if (setupForm) {
+    setupForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const draft = decisionReviewReadSetupDraft();
+      const validationMessages = decisionReviewSetupValidationMessages(draft);
+      decisionReviewShellState.setupDraft = { ...draft, validationMessages };
+      if (validationMessages.length) {
+        decisionReviewRenderWorkspace();
+        return;
+      }
+      const now = new Date().toISOString();
+      const existing = decisionReviewShellState.activeReview;
+      decisionReviewShellState.activeReview = {
+        id: existing ? existing.id : decisionReviewId(),
+        objective: draft.objective,
+        taskClass: draft.taskClass,
+        priorContext: draft.priorContext,
+        status: "active",
+        activatedAt: existing ? existing.activatedAt : now,
+        updatedAt: now,
+        stateKind: DECISION_REVIEW_STATE_KIND,
+        canonicality: "not_canonical",
+      };
+      decisionReviewShellState.status = "active";
+      decisionReviewShellState.completionDraft = {
+        isOpen: false,
+        outcome: "",
+        remainingQuestions: "",
+        validationMessages: [],
+      };
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const cancelSetupButton = document.getElementById("decisionReviewCancelSetupButton");
+  if (cancelSetupButton) {
+    cancelSetupButton.addEventListener("click", () => {
+      if (decisionReviewShellState.activeReview) {
+        decisionReviewShellState.status = "active";
+      } else {
+        decisionReviewShellState.status = "off";
+      }
+      decisionReviewShellState.setupDraft.validationMessages = [];
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const editButton = document.getElementById("decisionReviewEditButton");
+  if (editButton) {
+    editButton.addEventListener("click", () => {
+      const review = decisionReviewShellState.activeReview;
+      if (!review) return;
+      decisionReviewShellState.setupDraft = {
+        objective: review.objective,
+        taskClass: review.taskClass || "",
+        priorContext: review.priorContext || "",
+        validationMessages: [],
+      };
+      decisionReviewShellState.status = "setup";
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const deferButton = document.getElementById("decisionReviewDeferButton");
+  if (deferButton) {
+    deferButton.addEventListener("click", () => {
+      if (decisionReviewShellState.activeReview) {
+        decisionReviewShellState.activeReview.status = "deferred";
+      }
+      decisionReviewShellState.status = "deferred";
+      decisionReviewShellState.completionDraft.isOpen = false;
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const resumeButton = document.getElementById("decisionReviewResumeButton");
+  if (resumeButton) {
+    resumeButton.addEventListener("click", () => {
+      if (decisionReviewShellState.activeReview) {
+        decisionReviewShellState.activeReview.status = "active";
+      }
+      decisionReviewShellState.status = "active";
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const completeButton = document.getElementById("decisionReviewCompleteButton");
+  if (completeButton) {
+    completeButton.addEventListener("click", () => {
+      decisionReviewShellState.completionDraft = {
+        isOpen: true,
+        outcome: "",
+        remainingQuestions: "",
+        validationMessages: [],
+      };
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const completionForm = document.getElementById("decisionReviewCompletionForm");
+  if (completionForm) {
+    completionForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const draft = decisionReviewReadCompletionDraft();
+      const validationMessages = decisionReviewCompletionValidationMessages(draft);
+      decisionReviewShellState.completionDraft = { ...draft, validationMessages };
+      if (validationMessages.length) {
+        decisionReviewRenderWorkspace();
+        return;
+      }
+      decisionReviewClose("completed", draft);
+    });
+  }
+
+  const cancelCompleteButton = document.getElementById("decisionReviewCancelCompleteButton");
+  if (cancelCompleteButton) {
+    cancelCompleteButton.addEventListener("click", () => {
+      decisionReviewShellState.completionDraft = {
+        isOpen: false,
+        outcome: "",
+        remainingQuestions: "",
+        validationMessages: [],
+      };
+      decisionReviewRenderWorkspace();
+    });
+  }
+
+  const endButton = document.getElementById("decisionReviewEndButton");
+  const endDeferredButton = document.getElementById("decisionReviewEndDeferredButton");
+  [endButton, endDeferredButton].forEach((button) => {
+    if (!button) return;
+    button.addEventListener("click", () => {
+      decisionReviewClose("ended_without_decision");
+    });
+  });
 }
 
 function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
@@ -584,286 +975,6 @@ function d1aRoleFailureCopy(diagnostic) {
     return "The backend returned an error.";
   }
   return "Request failed before an HTTP response was received.";
-}
-
-function decisionReviewOptionLabel(options, id) {
-  const option = options.find((item) => item.id === id);
-  return option ? option.label : "Not selected";
-}
-
-function decisionReviewId() {
-  return `decision-review-${Date.now().toString(36)}`;
-}
-
-function decisionReviewStagePlan(review) {
-  return [
-    {
-      id: "decision_setup",
-      label: "Decision Setup",
-      purpose: "Define the decision and optional decision type.",
-      status: review ? "complete" : "active",
-      gate: "",
-    },
-    {
-      id: "flexible_role_work",
-      label: "Flexible Role Work",
-      purpose: "Future operator-directed Prime, Mirror, and Engineer interactions inside the review.",
-      status: "not_available_in_f_d1",
-      gate: "Roles may be used in any order when activation semantics are approved.",
-    },
-    {
-      id: "owner_assessment",
-      label: "Owner Assessment",
-      purpose: "Future final assessment packet for owner review.",
-      status: "not_available_in_f_d1",
-      gate: "",
-    },
-  ];
-}
-
-function decisionReviewValidationMessages(draft) {
-  const messages = [];
-  if (!String(draft.objective || "").trim()) messages.push("Add the decision objective.");
-  return messages;
-}
-
-function decisionReviewTaskClassOptionsHtml(selected) {
-  return [
-    '<option value="">Optional decision type...</option>',
-    ...DECISION_REVIEW_TASK_CLASSES.map((option) => (
-      `<option value="${escapeHtml(option.id)}"${option.id === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`
-    )),
-  ].join("");
-}
-
-function decisionReviewSetupHtml() {
-  const draft = decisionReviewShellState.setupDraft;
-  const messages = draft.validationMessages || [];
-  return `
-    <div class="decision-review-shell">
-      <section class="decision-review-setup" aria-labelledby="decisionReviewSetupTitle">
-        <div class="decision-review-heading">
-          <p class="prime-daily-label">Decision Review</p>
-          <h2 id="decisionReviewSetupTitle">Start a Decision Review</h2>
-          <p class="meta">Define the decision and optional decision type. No roles are invoked in this step.</p>
-        </div>
-        <form id="decisionReviewSetupForm" class="decision-review-form">
-          <div class="decision-review-field">
-            <label for="decisionReviewObjective">Decision objective</label>
-            <textarea id="decisionReviewObjective" placeholder="What decision needs governed review?">${escapeHtml(draft.objective)}</textarea>
-          </div>
-          <div class="decision-review-field">
-            <label for="decisionReviewTaskClass">Decision type</label>
-            <select id="decisionReviewTaskClass">${decisionReviewTaskClassOptionsHtml(draft.taskClass)}</select>
-          </div>
-          ${messages.length ? `<p class="decision-review-validation">${escapeHtml(messages.join(" "))}</p>` : ""}
-          <div class="decision-review-actions">
-            <button class="decision-review-primary" type="submit">Create Review</button>
-            <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to workspace</button>
-          </div>
-          <p class="meta">This shell does not write memory, call providers, or authorize execution.</p>
-        </form>
-      </section>
-    </div>
-  `;
-}
-
-function decisionReviewHeaderHtml(review) {
-  return `
-    <header class="decision-review-header">
-      <div class="decision-review-heading">
-        <p class="prime-daily-label">Decision under review</p>
-        <h2>${escapeHtml(review.objective)}</h2>
-        <p class="meta">${escapeHtml(review.taskClass ? decisionReviewOptionLabel(DECISION_REVIEW_TASK_CLASSES, review.taskClass) : "Decision type optional")}</p>
-      </div>
-      <div class="decision-review-status-stack">
-        <span class="decision-review-pill is-ready">Ready for review</span>
-        <span class="decision-review-pill">Session only</span>
-        <span class="decision-review-pill">Not continuity</span>
-      </div>
-    </header>
-  `;
-}
-
-function decisionReviewTimelineHtml(review) {
-  const stages = decisionReviewStagePlan(review);
-  return `
-    <section class="decision-review-panel">
-      <h3>Review timeline</h3>
-      <p class="meta">Where the review is and what comes next.</p>
-      <div class="decision-review-timeline">
-        ${stages.map((stage, index) => `
-          <article class="decision-review-stage ${stage.status === "complete" ? "is-complete" : ""}">
-            <span class="decision-review-step">${index + 1}</span>
-            <div>
-              <p class="decision-review-stage-status">${stage.status === "complete" ? "Complete" : "Deferred in F-D1"}</p>
-              <h3>${escapeHtml(stage.label)}</h3>
-              <p class="meta">${escapeHtml(stage.purpose)}</p>
-              ${stage.gate ? `<p class="decision-review-gate">${escapeHtml(stage.gate)}</p>` : ""}
-            </div>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-  `;
-}
-
-function decisionReviewArtifactPanelHtml() {
-  return `
-    <section class="decision-review-panel">
-      <h3>Active artifact</h3>
-      <p>No role artifact yet.</p>
-      <p class="meta">Future role outputs will appear here for review. Displaying an artifact will not make it canonical.</p>
-    </section>
-  `;
-}
-
-function decisionReviewApprovalPanelHtml() {
-  return `
-    <section class="decision-review-panel">
-      <h3>Approvals</h3>
-      <p>No approval requested.</p>
-      <p class="meta">Approvals will be explicit owner actions in later stages. This shell does not authorize execution.</p>
-    </section>
-  `;
-}
-
-function decisionReviewEvidenceHtml() {
-  return `
-    <section class="decision-review-panel">
-      <h3>Evidence</h3>
-      <p class="meta">Evidence has a place, but no evidence has been collected in this shell.</p>
-      <ul class="decision-review-evidence-list">
-        <li><strong>Primary evidence</strong><br><span class="meta">Decision-relevant role outputs will appear here later.</span></li>
-        <li><strong>Supporting evidence</strong><br><span class="meta">Lineage and artifact references will appear here later.</span></li>
-        <li><strong>Technical evidence</strong><br><span class="meta">Receipts stay secondary unless needed.</span></li>
-      </ul>
-    </section>
-  `;
-}
-
-function decisionReviewFinalAssessmentHtml() {
-  return `
-    <section class="decision-review-panel">
-      <h3>Owner assessment</h3>
-      <p>Final assessment unavailable until role stages exist.</p>
-      <p class="meta">A final assessment is not canonical memory by itself.</p>
-    </section>
-  `;
-}
-
-function decisionReviewMainHtml(review) {
-  return `
-    <div class="decision-review-shell">
-      <section class="decision-review-main" aria-label="Decision Review shell">
-        ${decisionReviewHeaderHtml(review)}
-        <div class="decision-review-grid">
-          ${decisionReviewTimelineHtml(review)}
-          <div class="decision-review-stack">
-            ${decisionReviewArtifactPanelHtml()}
-            ${decisionReviewApprovalPanelHtml()}
-            ${decisionReviewEvidenceHtml()}
-            ${decisionReviewFinalAssessmentHtml()}
-          </div>
-        </div>
-        <div class="decision-review-actions">
-          <button id="decisionReviewEditButton" class="decision-review-secondary" type="button">Edit setup</button>
-          <button id="decisionReviewDiscardButton" class="decision-review-secondary" type="button">Discard review</button>
-          <button id="decisionReviewHomeButton" class="decision-review-secondary" type="button">Return to workspace</button>
-        </div>
-        <p class="meta">Workflow session state, not memory. Role interactions are placeholders only in F-D1.</p>
-      </section>
-    </div>
-  `;
-}
-
-function readDecisionReviewSetupDraft() {
-  const objective = document.getElementById("decisionReviewObjective");
-  const taskClass = document.getElementById("decisionReviewTaskClass");
-  return {
-    objective: objective ? objective.value.trim() : "",
-    taskClass: taskClass ? taskClass.value : "",
-    validationMessages: [],
-  };
-}
-
-function attachDecisionReviewSetupHandlers() {
-  const form = document.getElementById("decisionReviewSetupForm");
-  const homeButton = document.getElementById("decisionReviewHomeButton");
-  if (homeButton) {
-    homeButton.addEventListener("click", () => {
-      decisionReviewShellState = createEmptyDecisionReviewShellState();
-      renderRoleActivationWorkspace();
-    });
-  }
-  if (!form) return;
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const draft = readDecisionReviewSetupDraft();
-    const validationMessages = decisionReviewValidationMessages(draft);
-    decisionReviewShellState.setupDraft = { ...draft, validationMessages };
-    if (validationMessages.length) {
-      renderDecisionReviewShell();
-      return;
-    }
-    const now = new Date().toISOString();
-    decisionReviewShellState.review = {
-      id: decisionReviewId(),
-      objective: draft.objective,
-      taskClass: draft.taskClass,
-      status: "ready_for_role_sequence",
-      createdAt: now,
-      updatedAt: now,
-      authorityState: "operator_managed_session_only",
-      continuityState: "not_continuity",
-      executionAuthority: "none",
-    };
-    decisionReviewShellState.stages = decisionReviewStagePlan(decisionReviewShellState.review);
-    renderDecisionReviewShell();
-  });
-}
-
-function attachDecisionReviewMainHandlers() {
-  const editButton = document.getElementById("decisionReviewEditButton");
-  const discardButton = document.getElementById("decisionReviewDiscardButton");
-  const homeButton = document.getElementById("decisionReviewHomeButton");
-  if (editButton) {
-    editButton.addEventListener("click", () => {
-      if (decisionReviewShellState.review) {
-        decisionReviewShellState.setupDraft = {
-          objective: decisionReviewShellState.review.objective,
-          taskClass: decisionReviewShellState.review.taskClass,
-          validationMessages: [],
-        };
-      }
-      decisionReviewShellState.review = null;
-      renderDecisionReviewShell();
-    });
-  }
-  if (discardButton) {
-    discardButton.addEventListener("click", () => {
-      decisionReviewShellState = createEmptyDecisionReviewShellState();
-      renderDecisionReviewShell();
-    });
-  }
-  if (homeButton) {
-    homeButton.addEventListener("click", () => {
-      decisionReviewShellState = createEmptyDecisionReviewShellState();
-      renderRoleActivationWorkspace();
-    });
-  }
-}
-
-function renderDecisionReviewShell() {
-  const container = document.getElementById("primeHomeResults");
-  if (!container) return;
-  const review = decisionReviewShellState.review;
-  container.innerHTML = review ? decisionReviewMainHtml(review) : decisionReviewSetupHtml();
-  if (review) {
-    attachDecisionReviewMainHandlers();
-  } else {
-    attachDecisionReviewSetupHandlers();
-  }
 }
 
 function renderPrimeHome(_report) {
