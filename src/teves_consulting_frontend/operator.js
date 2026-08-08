@@ -530,9 +530,7 @@ function decisionReviewControlHtml() {
   }
   return `
     <div class="decision-review-control" aria-label="Decision Review">
-      <span class="decision-review-label">Decision Review</span>
-      <span class="decision-review-state is-muted">Off</span>
-      <button id="decisionReviewOnButton" class="decision-review-action" type="button">On</button>
+      <button id="decisionReviewOnButton" class="decision-review-action" type="button">Start Decision Review</button>
     </div>
   `;
 }
