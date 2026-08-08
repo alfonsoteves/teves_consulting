@@ -456,7 +456,7 @@ function createEmptyDecisionReviewShellState() {
 function createEmptyD1AWorkspaceState() {
   return {
     stateKind: DECISION_REVIEW_STATE_KIND,
-    workingContext: "program",
+    workingContext: "general",
     lastRoleSendDiagnostic: null,
   };
 }
