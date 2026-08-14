@@ -52,13 +52,31 @@ function clearStoredOperatorSession() {
 /* shared operator session helpers end */
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
-const PRIME_CURRENT_FOCUS = "Phase 9 flexible role activation";
-const PRIME_RECOMMENDED_NEXT_STEP = "Choose the reasoning role you need: Prime, Mirror, or Engineer.";
+const PRIME_CURRENT_FOCUS = "Prime is ready";
+const PRIME_RECOMMENDED_NEXT_STEP = "Choose a role or continue the current Aion objective.";
 const D1A_WORKSPACE_STATE_KIND = "role_workspace_session_state_non_canonical";
 const D1A_WORKING_CONTEXT_OPTIONS = [
   { id: "general", label: "General" },
   { id: "program", label: "Program" },
 ];
+const ENGINEER_NORMAL_STEERING_TYPES = [
+  { id: "reasoning_direction", label: "Reasoning direction" },
+  { id: "constraint", label: "Constraint" },
+  { id: "narrow_scope", label: "Narrow scope" },
+  { id: "stop", label: "Stop" },
+];
+const ENGINEER_ADVANCED_STEERING_TYPE = "execution_scope_change";
+const ENGINEER_TRACE_STAGE_LABELS = {
+  waiting_for_approval: "Waiting for your approval",
+  approval_received: "Approval recorded",
+  approved_execution_started: "Approved read starting",
+  approved_execution_completed: "Approved read complete",
+  preparing_continuation: "Preparing Engineer continuation",
+  provider_pass2_started: "Engineer reasoning resumed",
+  provider_pass2_completed: "Engineer reasoning complete",
+  completed: "Complete",
+  blocked: "Stopped",
+};
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
@@ -70,8 +88,9 @@ let d1aWorkspaceState = createEmptyD1AWorkspaceState();
 const PRIME_INITIAL_MESSAGE = [
   "Good morning Alfonso.",
   "",
-  "Current focus: Phase 9 flexible role activation.",
-  "Recommended next step: Choose Prime, Mirror, or Engineer based on the work."
+  "Prime is ready.",
+  "",
+  "Choose a role or continue the current Aion objective."
 ].join("\n");
 
 function idlFactory({ IDL }) {
@@ -215,13 +234,46 @@ async function renderFetch(path) {
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
   }
-  const response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, { headers });
-  if (!response.ok) throw new Error(`Render request failed: ${response.status}`);
-  return response.json();
+  let response;
+  try {
+    response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, { headers });
+  } catch (error) {
+    if (error && typeof error === "object") {
+      error.fetchStarted = true;
+      error.fetchRejected = true;
+      error.responseReceived = false;
+    }
+    throw error;
+  }
+  const data = await readRenderResponse(response);
+  if (!response.ok) throw buildRenderRequestError(response, data);
+  return data;
 }
 
-async function renderPost(path, payload) {
-  const headers = new Headers({ "Content-Type": "application/json" });
+async function readRenderResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return { detail: text };
+  }
+}
+
+function buildRenderRequestError(response, data) {
+  const detail = data && data.detail ? data.detail : data && Object.keys(data).length ? data : `Render request failed: ${response.status}`;
+  const requestError = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  requestError.fetchStarted = true;
+  requestError.fetchRejected = false;
+  requestError.responseReceived = true;
+  requestError.httpStatus = response.status;
+  requestError.backendDetail = detail;
+  requestError.responseData = data;
+  return requestError;
+}
+
+async function renderPostWithOptions(path, options = {}) {
+  const headers = new Headers(options.headers || {});
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
   }
@@ -230,7 +282,7 @@ async function renderPost(path, payload) {
     response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload),
+      ...options.request,
     });
   } catch (error) {
     if (error && typeof error === "object") {
@@ -240,23 +292,20 @@ async function renderPost(path, payload) {
     }
     throw error;
   }
-  let data = {};
-  try {
-    data = await response.json();
-  } catch (_) {
-    data = {};
-  }
-  if (!response.ok) {
-    const detail = data && data.detail ? data.detail : `Render request failed: ${response.status}`;
-    const requestError = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-    requestError.fetchStarted = true;
-    requestError.fetchRejected = false;
-    requestError.responseReceived = true;
-    requestError.httpStatus = response.status;
-    requestError.backendDetail = detail;
-    throw requestError;
-  }
+  const data = await readRenderResponse(response);
+  if (!response.ok) throw buildRenderRequestError(response, data);
   return data;
+}
+
+async function renderPost(path, payload) {
+  return renderPostWithOptions(path, {
+    headers: { "Content-Type": "application/json" },
+    request: { body: JSON.stringify(payload) },
+  });
+}
+
+async function renderPostNoBody(path) {
+  return renderPostWithOptions(path);
 }
 
 function setAccess(message, state = "") {
@@ -432,6 +481,18 @@ function createEmptyD1AWorkspaceState() {
     stateKind: D1A_WORKSPACE_STATE_KIND,
     workingContext: "general",
     lastRoleSendDiagnostic: null,
+    engineerWorkflow: createEmptyEngineerWorkflowState(),
+  };
+}
+
+function createEmptyEngineerWorkflowState() {
+  return {
+    current: null,
+    trace: null,
+    steering: null,
+    actionStatus: "",
+    inFlightAction: "",
+    lastError: null,
   };
 }
 
@@ -554,6 +615,545 @@ function d1aRoleFailureCopy(diagnostic) {
     return "The backend returned an error.";
   }
   return "Request failed before an HTTP response was received.";
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function safeText(value, fallback = "unknown") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function safeList(value) {
+  return Array.isArray(value)
+    ? value.filter((item) => item !== undefined && item !== null && String(item).trim()).map((item) => String(item))
+    : [];
+}
+
+function firstOrUnknown(items) {
+  return items.length ? items[0] : "unknown";
+}
+
+function engineerCurrentWorkflow() {
+  return d1aWorkspaceState.engineerWorkflow || createEmptyEngineerWorkflowState();
+}
+
+function engineerWorkflowIsTerminal(current) {
+  if (!current) return false;
+  const lifecycle = current.lifecycleState || "";
+  const status = current.resumeStatus || "";
+  return [
+    "canonical_state_unavailable",
+    "denied",
+    "expired",
+    "cancelled",
+    "consumed",
+    "read_resume_continuation_completed",
+    "read_resume_stopped_by_operator",
+    "read_resume_requires_new_approval",
+    "read_resume_additional_read_required",
+    "read_resume_continuation_failed",
+    "read_resume_completed",
+    "read_resume_failed",
+    "read_resume_unavailable",
+  ].includes(lifecycle) || status.startsWith("read_resume_");
+}
+
+function engineerResponsePayload(value) {
+  if (!isPlainObject(value)) return value || {};
+  if (isPlainObject(value.detail)) return value.detail;
+  return value;
+}
+
+function normalizeEngineerReadWorkflow(packet) {
+  const evidence = isPlainObject(packet.evidence) ? packet.evidence : {};
+  const repositoryBinding = isPlainObject(packet.repositoryBinding)
+    ? packet.repositoryBinding
+    : isPlainObject(evidence.repositoryBinding)
+    ? evidence.repositoryBinding
+    : {};
+  return {
+    pendingApprovalId: safeText(packet.pendingApprovalId, ""),
+    workItemId: safeText(packet.workItemId, ""),
+    repositoryName: safeText(packet.repositoryName || repositoryBinding.repositoryName),
+    requestedOperations: safeList(packet.requestedOperations),
+    requestedPaths: safeList(packet.requestedPaths),
+    requestReasons: safeList(packet.requestReasons),
+    expiresAt: safeText(packet.expiresAt),
+    expectedHeadCandidate: safeText(repositoryBinding.expectedHeadCandidate),
+    approvedBranchCandidate: safeText(repositoryBinding.approvedBranchCandidate),
+    cleanTreeRequired: repositoryBinding.cleanTreeRequired === true,
+    lifecycleState: "awaiting_approval",
+    canonicalStateUnavailable: false,
+    approvalResponse: null,
+    resumeResponse: null,
+    resumeStatus: "",
+    providerPassCountSoFar: Number.isInteger(packet.providerPassCountSoFar) ? packet.providerPassCountSoFar : 1,
+    secondProviderPassOccurred: packet.secondProviderPassOccurred === true,
+    repositoryAccessPerformed: packet.repositoryAccessPerformed === true,
+    grantCreated: packet.grantCreated === true,
+    continuityWritten: packet.continuityWritten === true,
+    evidenceAuthorizesExecution: packet.evidenceAuthorizesExecution === true,
+  };
+}
+
+function mergeEngineerApprovalDetails(current, packet) {
+  const detail = engineerResponsePayload(packet);
+  const repositoryBinding = isPlainObject(detail.repositoryBinding) ? detail.repositoryBinding : {};
+  current.lifecycleState = safeText(detail.lifecycleState, current.lifecycleState);
+  current.repositoryName = safeText(repositoryBinding.repositoryName, current.repositoryName);
+  current.requestedOperations = safeList(detail.requestedOperations).length ? safeList(detail.requestedOperations) : current.requestedOperations;
+  current.requestedPaths = safeList(detail.requestedPaths).length ? safeList(detail.requestedPaths) : current.requestedPaths;
+  current.requestReasons = safeList(detail.requestReasons).length ? safeList(detail.requestReasons) : current.requestReasons;
+  current.expiresAt = safeText(detail.expiresAt, current.expiresAt);
+  current.expectedHeadCandidate = safeText(repositoryBinding.expectedHeadCandidate, current.expectedHeadCandidate);
+  current.approvedBranchCandidate = safeText(repositoryBinding.approvedBranchCandidate, current.approvedBranchCandidate);
+  current.cleanTreeRequired = repositoryBinding.cleanTreeRequired === true || current.cleanTreeRequired === true;
+  current.approvalResponse = detail;
+}
+
+function engineerSafetyListHtml() {
+  return `
+    <ul class="engineer-authority-list">
+      <li>other files</li>
+      <li>writes</li>
+      <li>commit</li>
+      <li>push</li>
+      <li>deploy</li>
+      <li>continuity promotion</li>
+    </ul>
+  `;
+}
+
+function engineerTraceLabel(stage) {
+  return ENGINEER_TRACE_STAGE_LABELS[stage] || "Status update";
+}
+
+function engineerExecutionKnownCopy(packet) {
+  if (packet && packet.responseReceived === false) return "The execution outcome is unknown because no backend response was received.";
+  const evidence = isPlainObject(packet && packet.evidence) ? packet.evidence : {};
+  if (packet && packet.localExecutionCompleted === true) return "The approved read completed.";
+  if (evidence.localDispatchOccurred === true || evidence.d1Invoked === true) return "Approved local execution may have started; review the trace.";
+  return "No execution is proven by the returned evidence.";
+}
+
+function engineerNextStepCopy(packet) {
+  const text = `${safeText(packet && packet.status, "")} ${safeText(packet && packet.classification, "")} ${safeText(packet && packet.failure, "")}`.toLowerCase();
+  if (text.includes("not_found")) return "Start a fresh Engineer request if the work is still needed.";
+  if (text.includes("expired") || text.includes("terminal") || text.includes("already_claimed")) return "Do not retry automatically; create a new bounded request if needed.";
+  if (text.includes("head") || text.includes("mismatch")) return "Check repository currentness before asking Engineer to continue.";
+  if (text.includes("adapter") || text.includes("transport")) return "Confirm the local Engineer adapter is available before a new attempt.";
+  if (text.includes("requires_new_approval")) return "Review the new scope as a separate approval before any further read.";
+  if (text.includes("provider") || text.includes("continuation")) return "Review the returned status before deciding whether to ask Engineer again.";
+  if (packet && packet.responseReceived === false) return "Do not retry this pending approval automatically; ask Engineer for a fresh bounded request if needed.";
+  return "Review the returned status and continue only with a new Owner decision if needed.";
+}
+
+function engineerResultStatusCopy(packet) {
+  if (!packet) return "";
+  const status = packet.status || packet.lifecycleState || packet.applicationStatus || packet.classification || "unknown";
+  const statusCopy = {
+    read_resume_continuation_completed: "Engineer continuation completed.",
+    read_resume_stopped_by_operator: "Engineer stopped after your Steering instruction.",
+    read_resume_requires_new_approval: "Engineer needs a new approval for additional scope.",
+    read_resume_additional_read_required: "Engineer needs another read approval before it can answer.",
+    read_resume_continuation_failed: "Engineer continuation did not complete.",
+    read_resume_completed: "Approved read completed.",
+    read_resume_unavailable: "Approved read could not run because the adapter is unavailable.",
+    read_resume_failed: "Approved read failed closed.",
+    approved: "Approved - waiting for resume.",
+    canonical_state_unavailable: "Canonical approval state is unavailable.",
+    denied: "Denied. No approved read will execute.",
+    awaiting_approval: "Waiting for your approval.",
+    pending: "Steering is pending for the next continuation.",
+    applied: "Steering was applied.",
+    requires_new_approval: "Steering requires a new approval.",
+    stopped: "Steering stopped the continuation.",
+  };
+  return statusCopy[status] || `Backend status: ${status}`;
+}
+
+function engineerWorkflowStatusHtml(workflow) {
+  if (!workflow.current) {
+    return `
+      <section class="engineer-workflow-card">
+        <div>
+          <p class="prime-message-role">Engineer read workflow</p>
+          <h3>No active read approval</h3>
+          <p class="meta">Ask Engineer to inspect a bounded file or directory. If a read is required, the approval request appears here for this page session.</p>
+        </div>
+      </section>
+    `;
+  }
+  const current = workflow.current;
+  const status = workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
+  return `
+    <section class="engineer-workflow-card">
+      <div class="engineer-workflow-card-header">
+        <div>
+          <p class="prime-message-role">Engineer read workflow</p>
+          <h3>${escapeHtml(status)}</h3>
+          <p class="meta">Approval allows one bounded repository read. Resume continues the governed workflow using only that approved read.</p>
+        </div>
+        <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || current.resumeStatus || "pending")}</span>
+      </div>
+    </section>
+  `;
+}
+
+function engineerApprovalPanelHtml(workflow) {
+  const current = workflow.current;
+  if (!current) return "";
+  const operation = firstOrUnknown(current.requestedOperations);
+  const path = firstOrUnknown(current.requestedPaths);
+  const reason = firstOrUnknown(current.requestReasons);
+  const actionable = current.canonicalStateUnavailable !== true;
+  const awaiting = actionable && current.lifecycleState === "awaiting_approval";
+  const approved = actionable && current.lifecycleState === "approved";
+  const denied = current.lifecycleState === "denied";
+  const busy = Boolean(workflow.inFlightAction);
+  return `
+    <section class="engineer-workflow-card engineer-approval-card">
+      <div class="engineer-workflow-card-header">
+        <div>
+          <p class="prime-message-role">Attention required</p>
+          <h3>Engineer needs repository evidence</h3>
+        </div>
+        <span class="engineer-status-pill">${escapeHtml(current.capabilityRequested || "read")}</span>
+      </div>
+      <dl class="engineer-workflow-grid">
+        <div><dt>Repository</dt><dd>${escapeHtml(current.repositoryName)}</dd></div>
+        <div><dt>Operation</dt><dd>${escapeHtml(operation)}</dd></div>
+        <div><dt>Path</dt><dd>${escapeHtml(path)}</dd></div>
+        <div><dt>Reason</dt><dd>${escapeHtml(reason)}</dd></div>
+        <div><dt>Expected HEAD</dt><dd>${escapeHtml(current.expectedHeadCandidate)}</dd></div>
+        <div><dt>Expires</dt><dd>${escapeHtml(current.expiresAt)}</dd></div>
+      </dl>
+      <div class="engineer-authority-copy">
+        <p><strong>Approval allows:</strong> one bounded approved repository read.</p>
+        <p><strong>Approval does not allow:</strong></p>
+        ${engineerSafetyListHtml()}
+      </div>
+      <div class="engineer-workflow-actions">
+        <button id="engineerApproveReadButton" type="button"${!awaiting || busy ? " disabled" : ""}>Approve once</button>
+        <button id="engineerDenyReadButton" class="secondary" type="button"${!awaiting || busy ? " disabled" : ""}>Deny</button>
+        <button id="engineerResumeReadButton" type="button"${!approved || denied || busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>
+      </div>
+      <p class="meta">Resume continues the workflow using only the approved repository read. It does not expand authority.</p>
+    </section>
+  `;
+}
+
+function engineerTraceHtml(workflow) {
+  const current = workflow.current;
+  if (!current) return "";
+  const entries = workflow.trace && Array.isArray(workflow.trace.entries) ? workflow.trace.entries : [];
+  const currentStage = workflow.trace && workflow.trace.currentStage ? workflow.trace.currentStage : "waiting_for_approval";
+  const rows = entries.length ? entries.map((entry) => `
+    <li>
+      <strong>${escapeHtml(engineerTraceLabel(entry.stage))}</strong>
+      <span>${escapeHtml(entry.activity || "")}</span>
+      <details>
+        <summary>Details</summary>
+        <dl class="engineer-workflow-grid">
+          <div><dt>Stage</dt><dd>${escapeHtml(entry.stage || "unknown")}</dd></div>
+          <div><dt>Created</dt><dd>${escapeHtml(entry.createdAt || "unknown")}</dd></div>
+          <div><dt>Next step</dt><dd>${escapeHtml(entry.nextStep || "none")}</dd></div>
+        </dl>
+      </details>
+    </li>
+  `).join("") : `<li><strong>${escapeHtml(engineerTraceLabel(currentStage))}</strong><span>Trace will update as the workflow moves.</span></li>`;
+  return `
+    <section class="engineer-workflow-card">
+      <div class="engineer-workflow-card-header">
+        <div>
+          <p class="prime-message-role">Working Trace</p>
+          <h3>${escapeHtml(engineerTraceLabel(currentStage))}</h3>
+        </div>
+        <button id="engineerRefreshTraceButton" class="secondary" type="button"${workflow.inFlightAction ? " disabled" : ""}>Refresh trace</button>
+      </div>
+      <ol class="engineer-trace-list">${rows}</ol>
+      <p class="meta">Trace shows workflow stages only. It does not expose hidden model reasoning.</p>
+    </section>
+  `;
+}
+
+function engineerSteeringHtml(workflow) {
+  const current = workflow.current;
+  if (!current) return "";
+  const terminal = engineerWorkflowIsTerminal(current);
+  const busy = Boolean(workflow.inFlightAction);
+  const directives = workflow.steering && Array.isArray(workflow.steering.directives) ? workflow.steering.directives : [];
+  const directiveRows = directives.length ? directives.map((directive) => `
+    <li>
+      <strong>${escapeHtml(engineerResultStatusCopy(directive))}</strong>
+      <span>${escapeHtml(directive.directiveType || "unknown")} (${escapeHtml(String(directive.operatorTextChars || 0))} chars)</span>
+    </li>
+  `).join("") : `<li><strong>No Steering submitted</strong><span>Steering can guide the next continuation checkpoint.</span></li>`;
+  return `
+    <section class="engineer-workflow-card">
+      <div>
+        <p class="prime-message-role">Steering</p>
+        <h3>Guide the next Engineer checkpoint</h3>
+        <p class="meta">Steering is not arbitrary live interruption and does not independently authorize execution.</p>
+      </div>
+      <form id="engineerSteeringForm" class="engineer-steering-form">
+        <label>
+          <span>Steering type</span>
+          <select id="engineerSteeringType"${terminal || busy ? " disabled" : ""}>
+            ${ENGINEER_NORMAL_STEERING_TYPES.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`).join("")}
+            <option value="${ENGINEER_ADVANCED_STEERING_TYPE}">Advanced: Execution scope change</option>
+          </select>
+        </label>
+        <label>
+          <span>Instruction</span>
+          <textarea id="engineerSteeringText" maxlength="1000" placeholder="Give Engineer a bounded instruction for the next continuation."${terminal || busy ? " disabled" : ""}></textarea>
+        </label>
+        <fieldset id="engineerScopeFields" class="engineer-scope-fields" hidden>
+          <legend>Additional scope request</legend>
+          <label>
+            <span>Operation</span>
+            <select id="engineerScopeOperation">
+              <option value="read_text_file">read_text_file</option>
+              <option value="list_directory">list_directory</option>
+            </select>
+          </label>
+          <label>
+            <span>Repository</span>
+            <input id="engineerScopeRepository" type="text" value="${escapeHtml(current.repositoryName)}" />
+          </label>
+          <label>
+            <span>Path</span>
+            <input id="engineerScopePath" type="text" placeholder="repo-relative/path" />
+          </label>
+          <p class="meta">Requesting additional repository scope requires new approval. It does not widen the existing grant.</p>
+        </fieldset>
+        <div class="engineer-workflow-actions">
+          <button id="engineerSubmitSteeringButton" type="submit"${terminal || busy ? " disabled" : ""}>Submit Steering</button>
+          <button id="engineerRefreshSteeringButton" class="secondary" type="button"${busy ? " disabled" : ""}>Refresh Steering</button>
+        </div>
+      </form>
+      <ol class="engineer-trace-list">${directiveRows}</ol>
+    </section>
+  `;
+}
+
+function engineerErrorHtml(workflow) {
+  if (!workflow.lastError) return "";
+  const packet = engineerResponsePayload(workflow.lastError.responseData || workflow.lastError.backendDetail || {});
+  if (isPlainObject(packet) && workflow.lastError.responseReceived === false) {
+    packet.responseReceived = false;
+  }
+  const message = typeof packet === "string" ? packet : safeText(packet.reason || packet.failure || packet.status || packet.classification, "The backend returned an error.");
+  const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
+  const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
+  return `
+    <section class="engineer-workflow-card engineer-workflow-error" role="alert">
+      <p class="prime-message-role">Engineer workflow issue</p>
+      <h3>${escapeHtml(message)}</h3>
+      <p>${escapeHtml(execution)}</p>
+      <p class="meta">${escapeHtml(next)}</p>
+    </section>
+  `;
+}
+
+function d1aEngineerWorkflowHtml() {
+  const workflow = engineerCurrentWorkflow();
+  return `
+    ${engineerWorkflowStatusHtml(workflow)}
+    ${engineerErrorHtml(workflow)}
+    ${engineerApprovalPanelHtml(workflow)}
+    ${engineerTraceHtml(workflow)}
+    ${engineerSteeringHtml(workflow)}
+    <details class="engineer-session-limits">
+      <summary>Session limits</summary>
+      <p>Backend pending approval and work state is process-local. If the backend process or this page state is lost, the current workflow may not be durably discoverable and a fresh Engineer request may be required.</p>
+      <p>No grants, execution envelopes, raw source contents, provider prompts, credentials, or continuity writes are stored by this UI.</p>
+    </details>
+  `;
+}
+
+function d1aRefreshEngineerWorkflowDisplay() {
+  const container = document.getElementById("engineerGovernedWorkflow");
+  if (!container) return;
+  container.hidden = activeRole !== "engineer";
+  if (activeRole !== "engineer") return;
+  container.innerHTML = d1aEngineerWorkflowHtml();
+  d1aAttachEngineerWorkflowHandlers();
+}
+
+function engineerApprovalPath(action) {
+  const current = engineerCurrentWorkflow().current;
+  if (!current || !current.pendingApprovalId) return "";
+  return `/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}/${action}`;
+}
+
+async function refreshEngineerTrace() {
+  const workflow = engineerCurrentWorkflow();
+  const current = workflow.current;
+  if (!current || !current.workItemId) return;
+  workflow.trace = await renderFetch(`/admin/engineer-working-trace/${encodeURIComponent(current.workItemId)}`);
+}
+
+async function refreshEngineerApprovalDetails() {
+  const workflow = engineerCurrentWorkflow();
+  const current = workflow.current;
+  if (!current || !current.pendingApprovalId) return;
+  const result = await renderFetch(`/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}`);
+  mergeEngineerApprovalDetails(current, result);
+}
+
+function markEngineerCanonicalStateUnavailable(error) {
+  const workflow = engineerCurrentWorkflow();
+  if (!workflow.current) return;
+  workflow.current.canonicalStateUnavailable = true;
+  workflow.current.lifecycleState = "canonical_state_unavailable";
+  workflow.current.resumeSubmitted = Boolean(workflow.current.resumeSubmitted);
+  workflow.actionStatus = "Canonical approval state is unavailable.";
+  workflow.lastError = error;
+}
+
+async function refreshEngineerSteering() {
+  const workflow = engineerCurrentWorkflow();
+  const current = workflow.current;
+  if (!current || !current.workItemId) return;
+  workflow.steering = await renderFetch(`/admin/engineer-work/${encodeURIComponent(current.workItemId)}/steering`);
+}
+
+async function runEngineerWorkflowAction(actionName, fn) {
+  const workflow = engineerCurrentWorkflow();
+  workflow.inFlightAction = actionName;
+  workflow.lastError = null;
+  d1aRefreshEngineerWorkflowDisplay();
+  try {
+    await fn(workflow);
+  } catch (error) {
+    workflow.lastError = error;
+    const responseData = error && error.responseData ? engineerResponsePayload(error.responseData) : null;
+    if (responseData && workflow.current) {
+      workflow.current.resumeResponse = responseData;
+      workflow.current.resumeStatus = responseData.status || "";
+      workflow.actionStatus = engineerResultStatusCopy(responseData);
+    } else if (actionName === "resume" && workflow.current) {
+      workflow.current.resumeSubmitted = true;
+      workflow.actionStatus = "Resume result is ambiguous. Do not retry automatically.";
+    }
+  } finally {
+    workflow.inFlightAction = "";
+    d1aRefreshEngineerWorkflowDisplay();
+  }
+}
+
+async function approveEngineerPendingRead() {
+  await runEngineerWorkflowAction("approve", async (workflow) => {
+    const result = await renderPostNoBody(engineerApprovalPath("approve"));
+    workflow.current.lifecycleState = result.lifecycleState || workflow.current.lifecycleState;
+    workflow.current.canonicalStateUnavailable = false;
+    workflow.current.approvalResponse = result;
+    workflow.actionStatus = engineerResultStatusCopy(result);
+    await refreshEngineerTrace();
+  });
+}
+
+async function denyEngineerPendingRead() {
+  await runEngineerWorkflowAction("deny", async (workflow) => {
+    const result = await renderPostNoBody(engineerApprovalPath("deny"));
+    workflow.current.lifecycleState = result.lifecycleState || "denied";
+    workflow.current.canonicalStateUnavailable = false;
+    workflow.current.approvalResponse = result;
+    workflow.actionStatus = engineerResultStatusCopy(result);
+    await refreshEngineerTrace();
+  });
+}
+
+async function resumeEngineerPendingRead() {
+  engineerCurrentWorkflow().actionStatus = "Approved execution in progress.";
+  await runEngineerWorkflowAction("resume", async (workflow) => {
+    workflow.current.resumeSubmitted = true;
+    const result = await renderPostNoBody(engineerApprovalPath("resume"));
+    workflow.current.resumeResponse = result;
+    workflow.current.resumeStatus = result.status || "";
+    workflow.current.lifecycleState = result.workItemLifecycle || workflow.current.lifecycleState;
+    workflow.actionStatus = engineerResultStatusCopy(result);
+    await refreshEngineerTrace();
+    await refreshEngineerSteering();
+    if (result.answer) {
+      const evidenceHtml = result.engineerResponse ? primeEvidenceHtml(result.engineerResponse) : "";
+      appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", { persist: true });
+      engineerConversationHistory.push({ role: "engineer", content: result.answer });
+    }
+  });
+}
+
+async function submitEngineerSteering(event) {
+  event.preventDefault();
+  const type = document.getElementById("engineerSteeringType");
+  const text = document.getElementById("engineerSteeringText");
+  if (!type || !text || !text.value.trim()) return;
+  await runEngineerWorkflowAction("steering", async (workflow) => {
+    const payload = {
+      directiveType: type.value,
+      text: text.value.trim(),
+      pendingApprovalId: workflow.current.pendingApprovalId,
+    };
+    if (type.value === ENGINEER_ADVANCED_STEERING_TYPE) {
+      const operation = document.getElementById("engineerScopeOperation");
+      const repository = document.getElementById("engineerScopeRepository");
+      const path = document.getElementById("engineerScopePath");
+      payload.executionScopeRequest = {
+        operation: operation ? operation.value : "read_text_file",
+        repositoryName: repository ? repository.value.trim() : workflow.current.repositoryName,
+        path: path ? path.value.trim() : "",
+      };
+    }
+    const result = await renderPost(`/admin/engineer-work/${encodeURIComponent(workflow.current.workItemId)}/steering`, payload);
+    workflow.actionStatus = engineerResultStatusCopy(result);
+    await refreshEngineerSteering();
+    await refreshEngineerTrace();
+  });
+}
+
+function toggleEngineerScopeFields() {
+  const type = document.getElementById("engineerSteeringType");
+  const fields = document.getElementById("engineerScopeFields");
+  if (type && fields) fields.hidden = type.value !== ENGINEER_ADVANCED_STEERING_TYPE;
+}
+
+function d1aAttachEngineerWorkflowHandlers() {
+  const approve = document.getElementById("engineerApproveReadButton");
+  const deny = document.getElementById("engineerDenyReadButton");
+  const resume = document.getElementById("engineerResumeReadButton");
+  const refreshTrace = document.getElementById("engineerRefreshTraceButton");
+  const refreshSteering = document.getElementById("engineerRefreshSteeringButton");
+  const form = document.getElementById("engineerSteeringForm");
+  const type = document.getElementById("engineerSteeringType");
+  if (approve) approve.addEventListener("click", approveEngineerPendingRead);
+  if (deny) deny.addEventListener("click", denyEngineerPendingRead);
+  if (resume) resume.addEventListener("click", resumeEngineerPendingRead);
+  if (refreshTrace) refreshTrace.addEventListener("click", () => runEngineerWorkflowAction("trace", refreshEngineerTrace));
+  if (refreshSteering) refreshSteering.addEventListener("click", () => runEngineerWorkflowAction("steeringRefresh", refreshEngineerSteering));
+  if (form) form.addEventListener("submit", submitEngineerSteering);
+  if (type) {
+    type.addEventListener("change", toggleEngineerScopeFields);
+    toggleEngineerScopeFields();
+  }
+}
+
+async function captureEngineerPendingRead(packet) {
+  const workflow = engineerCurrentWorkflow();
+  workflow.current = normalizeEngineerReadWorkflow(packet);
+  workflow.trace = null;
+  workflow.steering = null;
+  workflow.actionStatus = "Waiting for your approval.";
+  workflow.lastError = null;
+  try {
+    await refreshEngineerApprovalDetails();
+    await refreshEngineerTrace();
+  } catch (error) {
+    markEngineerCanonicalStateUnavailable(error);
+  }
+  d1aRefreshEngineerWorkflowDisplay();
 }
 
 function renderPrimeHome(_report) {
@@ -958,10 +1558,11 @@ function setActiveRole(role) {
     const hints = {
       prime: "Prime is ready.",
       mirror: "Mirror is ready.",
-      engineer: "Engineer is ready.",
+      engineer: "Engineer is ready. Requests for repository evidence will ask for your approval here.",
     };
     roleHint.textContent = hints[role] || "";
   }
+  d1aRefreshEngineerWorkflowDisplay();
 }
 
 function activateMirrorRole() {
@@ -987,6 +1588,7 @@ function renderRoleActivationWorkspace(options = {}) {
       ${d1aWorkspaceFrameHtml()}
       <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is ready.</p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
+      <div id="engineerGovernedWorkflow" class="engineer-governed-workflow" hidden></div>
       <form id="primeComposer" class="prime-composer">
         <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime..."></textarea>
         <div class="prime-composer-actions">
@@ -1053,6 +1655,13 @@ function renderRoleActivationWorkspace(options = {}) {
         });
         d1aRefreshDiagnosticDisplay();
         if (pending) pending.remove();
+        if (role === "engineer" && packet.status === "read_approval_required") {
+          await captureEngineerPendingRead(packet);
+          const requestSummary = "Engineer needs repository evidence before answering. Review the requested authority below.";
+          appendPrimeMessage("assistant", requestSummary, "", roleLabel, { persist: true });
+          history.push({ role, content: requestSummary });
+          return;
+        }
         const answer = packet.answer || `${roleLabel} did not return an answer.`;
         appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel, { persist: true });
         history.push({ role, content: answer });

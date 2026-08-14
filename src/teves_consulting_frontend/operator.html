@@ -1436,15 +1436,218 @@
       font-weight: 800;
     }
 
-    .d1a-diagnostic-grid dd {
-      margin: 2px 0 0;
-      overflow-wrap: anywhere;
-    }
+	    .d1a-diagnostic-grid dd {
+	      margin: 2px 0 0;
+	      overflow-wrap: anywhere;
+	    }
 
-    .role-evidence h3 {
-      margin: 14px 0 6px;
-      color: #c4b5fd;
-      font-size: 0.9rem;
+	    .engineer-governed-workflow {
+	      display: grid;
+	      gap: 12px;
+	    }
+
+	    .engineer-governed-workflow[hidden] {
+	      display: none;
+	    }
+
+	    .engineer-workflow-card {
+	      display: grid;
+	      gap: 12px;
+	      border: 1px solid #2c3138;
+	      border-radius: 10px;
+	      background: #151a21;
+	      padding: 14px;
+	    }
+
+	    .engineer-workflow-card h3 {
+	      margin: 2px 0 0;
+	      font-size: 1rem;
+	      line-height: 1.25;
+	    }
+
+	    .engineer-workflow-card-header {
+	      display: flex;
+	      align-items: start;
+	      justify-content: space-between;
+	      gap: 12px;
+	    }
+
+	    .engineer-status-pill {
+	      flex: 0 0 auto;
+	      max-width: 220px;
+	      border: 1px solid rgba(147, 197, 253, 0.35);
+	      border-radius: 999px;
+	      padding: 4px 9px;
+	      background: rgba(96, 165, 250, 0.11);
+	      color: #bfdbfe;
+	      font-size: 0.76rem;
+	      font-weight: 800;
+	      overflow-wrap: anywhere;
+	    }
+
+	    .engineer-workflow-grid {
+	      display: grid;
+	      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	      gap: 9px 12px;
+	      margin: 0;
+	    }
+
+	    .engineer-workflow-grid dt {
+	      color: #cbd5e1;
+	      font-size: 0.78rem;
+	      font-weight: 800;
+	    }
+
+	    .engineer-workflow-grid dd {
+	      margin: 2px 0 0;
+	      color: #f8fafc;
+	      overflow-wrap: anywhere;
+	    }
+
+	    .engineer-authority-copy {
+	      display: grid;
+	      gap: 8px;
+	      border-top: 1px solid #2c3138;
+	      padding-top: 10px;
+	    }
+
+	    .engineer-authority-list {
+	      display: flex;
+	      flex-wrap: wrap;
+	      gap: 8px;
+	      margin: 0;
+	      padding: 0;
+	      list-style: none;
+	    }
+
+	    .engineer-authority-list li {
+	      margin: 0;
+	      border: 1px solid #3f2f2f;
+	      border-radius: 999px;
+	      padding: 3px 8px;
+	      background: rgba(127, 29, 29, 0.16);
+	      color: #fecaca;
+	      font-size: 0.78rem;
+	      font-weight: 800;
+	    }
+
+	    .engineer-workflow-actions {
+	      display: flex;
+	      align-items: center;
+	      flex-wrap: wrap;
+	      gap: 10px;
+	    }
+
+	    .engineer-workflow-actions button[disabled] {
+	      cursor: default;
+	      opacity: 0.62;
+	    }
+
+	    .engineer-trace-list {
+	      display: grid;
+	      gap: 8px;
+	      margin: 0;
+	      padding: 0;
+	      list-style: none;
+	    }
+
+	    .engineer-trace-list li {
+	      display: grid;
+	      gap: 4px;
+	      margin: 0;
+	      border: 1px solid #2c3138;
+	      border-radius: 8px;
+	      background: #111315;
+	      padding: 10px;
+	    }
+
+	    .engineer-trace-list span {
+	      color: #cbd5e1;
+	      font-size: 0.88rem;
+	    }
+
+	    .engineer-trace-list details {
+	      margin-top: 2px;
+	    }
+
+	    .engineer-trace-list summary,
+	    .engineer-session-limits summary {
+	      cursor: pointer;
+	      color: #93c5fd;
+	      font-size: 0.84rem;
+	      font-weight: 800;
+	    }
+
+	    .engineer-steering-form {
+	      display: grid;
+	      gap: 10px;
+	    }
+
+	    .engineer-steering-form label,
+	    .engineer-scope-fields label {
+	      display: grid;
+	      gap: 5px;
+	      color: #cbd5e1;
+	      font-size: 0.84rem;
+	      font-weight: 800;
+	    }
+
+	    .engineer-steering-form select {
+	      min-height: 40px;
+	      border: 1px solid #2c3138;
+	      border-radius: 8px;
+	      background: #1a1d21;
+	      color: #f8fafc;
+	      font: inherit;
+	      padding: 8px 10px;
+	    }
+
+	    .engineer-scope-fields {
+	      display: grid;
+	      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	      gap: 10px;
+	      border: 1px solid #2c3138;
+	      border-radius: 8px;
+	      margin: 0;
+	      padding: 12px;
+	    }
+
+	    .engineer-scope-fields[hidden] {
+	      display: none;
+	    }
+
+	    .engineer-scope-fields legend {
+	      color: #cbd5e1;
+	      font-size: 0.84rem;
+	      font-weight: 800;
+	    }
+
+	    .engineer-scope-fields .meta {
+	      grid-column: 1 / -1;
+	    }
+
+	    .engineer-workflow-error {
+	      border-color: #7f1d1d;
+	      background: rgba(127, 29, 29, 0.12);
+	    }
+
+	    .engineer-session-limits {
+	      border: 1px solid #2c3138;
+	      border-radius: 10px;
+	      background: #111315;
+	      padding: 12px;
+	      color: #9ca3af;
+	      font-size: 0.86rem;
+	    }
+
+	    .engineer-session-limits p {
+	      margin-top: 8px;
+	    }
+
+	    .role-evidence h3 {
+	      margin: 14px 0 6px;
+	      color: #c4b5fd;
+	      font-size: 0.9rem;
     }
 
     .role-evidence ul {
