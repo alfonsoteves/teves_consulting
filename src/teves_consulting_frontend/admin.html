@@ -2268,7 +2268,7 @@
 
     <section id="aionHealth" class="admin-section" data-admin-view="overview">
       <h2>Aion Dashboard</h2>
-      <p class="section-note">Live status for access, continuity, provider routing, memory, feedback, and transport.</p>
+      <p class="section-note">Start here: check attention, open the recommended action, and keep decision evidence ready before changes.</p>
 
       <div class="admin-dashboard-summary">
         <div>
@@ -2277,10 +2277,10 @@
         </div>
         <div class="admin-dashboard-summary-actions">
           <div id="adminDashboardPill" class="admin-dashboard-pill is-clear">Operator verified</div>
-          <button type="button" id="adminDashboardActionButton" class="admin-dashboard-action" onclick="openAdminRecommendedAction()">Open action</button>
+          <button type="button" id="adminDashboardActionButton" class="admin-dashboard-action" onclick="openAdminRecommendedAction()">Open recommended action</button>
           <button type="button" id="adminDashboardRefreshButton" class="admin-dashboard-refresh" onclick="refreshAdminDashboardData()">Refresh dashboard</button>
           <button type="button" id="adminDashboardCopyButton" class="admin-dashboard-copy" onclick="copyAdminDashboardSummary()">Copy summary</button>
-          <button type="button" id="adminDashboardCopyActionsButton" class="admin-dashboard-copy" onclick="copyAdminDashboardActions()">Copy actions</button>
+          <button type="button" id="adminDashboardCopyActionsButton" class="admin-dashboard-copy" onclick="copyAdminDashboardActions()">Copy recommended actions</button>
         </div>
       </div>
       <div id="adminDashboardAttention" class="admin-dashboard-attention" aria-label="Dashboard attention">
@@ -2322,8 +2322,8 @@
 
       <!-- Admin dashboard details start -->
       <details id="adminDashboardDetails" class="admin-dashboard-detail-panel">
-        <summary><strong>Dashboard details</strong><span id="adminDashboardDetailsSummary" class="admin-dashboard-panel-summary">Snapshots and evidence</span></summary>
-        <div class="admin-dashboard-detail-grid" aria-label="Dashboard details">
+        <summary><strong>Decision evidence</strong><span id="adminDashboardDetailsSummary" class="admin-dashboard-panel-summary">Readiness, blockers, evidence</span></summary>
+        <div class="admin-dashboard-detail-grid" aria-label="Decision evidence">
           <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
           <div class="metric-card"><div class="metric-label">Backend cycles</div><div id="healthBackendCycles" class="metric-value">Add snapshot</div></div>
           <div class="metric-card"><div class="metric-label">Wallet cycles</div><div id="healthWalletCycles" class="metric-value">Add balance</div></div>
@@ -2380,7 +2380,7 @@
       <!-- Admin dashboard handoff start -->
       <details id="adminDashboardHandoff" class="admin-dashboard-handoff-panel">
         <summary><strong>Operator handoff</strong><span id="adminDashboardHandoffSummary" class="admin-dashboard-panel-summary">Checklist pending</span></summary>
-        <p class="meta">Keep local review notes, handoff checks, and recent dashboard actions together without crowding the main status view.</p>
+        <p class="meta">Use this area when preparing a handoff or deploy decision: save evidence, finish the checklist, and copy the review packet.</p>
       <!-- Admin dashboard review evidence start -->
       <div id="adminDashboardReviewEvidence" class="admin-dashboard-note" aria-label="Review evidence">
         <div class="admin-dashboard-activity-header">
@@ -2391,7 +2391,7 @@
             <button type="button" class="admin-dashboard-clear" onclick="clearAdminReviewEvidence()">Clear</button>
           </div>
         </div>
-        <textarea id="adminDashboardReviewEvidenceInput" spellcheck="false" placeholder="Paste the output from Copy checks after local validation completes."></textarea>
+        <textarea id="adminDashboardReviewEvidenceInput" spellcheck="false" placeholder="Paste validation-check output after local validation completes."></textarea>
         <ul id="adminDashboardReviewEvidenceChecks" class="admin-dashboard-evidence-checks" aria-live="polite">
           <li>Diff check</li>
           <li>Assets prepared</li>
@@ -2446,10 +2446,11 @@
         <div class="admin-dashboard-activity-header">
           <p class="admin-dashboard-activity-title">Review packet</p>
           <div class="admin-dashboard-note-actions">
-            <button type="button" id="adminDashboardCopyPacketButton" class="admin-dashboard-clear" onclick="copyAdminReviewPacket()">Copy packet</button>
+            <button type="button" id="adminDashboardCopyPacketButton" class="admin-dashboard-clear" onclick="copyAdminReviewPacket()">Copy review packet</button>
             <button type="button" class="admin-dashboard-clear" onclick="markDashboardReviewed()">Mark reviewed</button>
           </div>
         </div>
+        <p class="meta">Copy this packet for Owner review. It summarizes next action, readiness, evidence, blockers, and local notes without executing anything.</p>
         <p id="adminDashboardReviewPacketStatus" class="admin-cycle-status" role="status" aria-live="polite">Pending dashboard state</p>
         <ul id="adminDashboardReviewPacketList" class="admin-dashboard-packet-list" aria-live="polite">
           <li><strong>Next action</strong><span>Pending</span></li>
@@ -2462,9 +2463,9 @@
         <div class="admin-dashboard-activity-header">
           <p class="admin-dashboard-activity-title">Recent activity</p>
           <div class="admin-dashboard-note-actions">
-            <button type="button" id="adminDashboardCopyReviewCommandsButton" class="admin-dashboard-clear" onclick="copyAdminReviewCommands()">Copy checks</button>
-            <button type="button" id="adminDashboardCopyStateButton" class="admin-dashboard-clear" onclick="copyAdminDashboardState()">Copy state</button>
-            <button type="button" id="adminDashboardRestoreStateButton" class="admin-dashboard-clear" onclick="restoreAdminDashboardState()">Restore</button>
+            <button type="button" id="adminDashboardCopyReviewCommandsButton" class="admin-dashboard-clear" onclick="copyAdminReviewCommands()">Copy validation checks</button>
+            <button type="button" id="adminDashboardCopyStateButton" class="admin-dashboard-clear" onclick="copyAdminDashboardState()">Copy dashboard state</button>
+            <button type="button" id="adminDashboardRestoreStateButton" class="admin-dashboard-clear" onclick="restoreAdminDashboardState()">Restore dashboard state</button>
             <button type="button" id="adminDashboardClearActivityButton" class="admin-dashboard-clear" onclick="clearAdminDashboardActivity()">Clear</button>
           </div>
         </div>
@@ -2479,7 +2480,7 @@
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
       <h2>Memory & Feedback</h2>
-      <p class="section-note">Review saved continuity memories, milestones, and feedback.</p>
+      <p class="section-note">Review what Aion remembers and what users signaled before judging answer quality.</p>
 
       <div class="admin-section-overview-grid" aria-label="Memory review shortcuts">
         <div class="admin-section-overview-card">
@@ -2488,7 +2489,7 @@
           <button type="button" data-admin-detail-jump="memoryOverviewPanel">Open overview</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Memory list</strong>
+          <strong>Saved memories</strong>
           <span>Review saved memories when continuity behavior needs investigation.</span>
           <button type="button" data-admin-detail-jump="memoryListPanel">Open memories</button>
         </div>
@@ -2512,21 +2513,21 @@
     </details>
 
     <details id="memoryListPanel" class="admin-section-tool-secondary">
-      <summary><strong>Memory List</strong></summary>
+      <summary><strong>Saved memories</strong></summary>
 
-      <button onclick="loadMemories()">Refresh Memories</button>
+      <button onclick="loadMemories()">Refresh saved memories</button>
 
       <div id="memoryList"></div>
     </details>
 
     <details id="feedbackDashboardPanel" class="admin-section-tool-secondary">
-      <summary><strong>Feedback Dashboard</strong></summary>
+      <summary><strong>Feedback signal</strong></summary>
 
       <p>Total Feedback: <span id="feedbackTotal">0</span></p>
       <p>Thumbs Up: <span id="feedbackUp">0</span></p>
       <p>Thumbs Down: <span id="feedbackDown">0</span></p>
 
-      <button onclick="loadFeedback()">Refresh Feedback</button>
+      <button onclick="loadFeedback()">Refresh feedback</button>
       <button onclick="exportFeedback()">Export Feedback JSON</button>
 
       <div id="feedbackList"></div>
@@ -2534,8 +2535,8 @@
     </section>
 
     <section id="continuityInspector" class="admin-section" data-admin-view="continuity">
-      <h2>Continuity Tools</h2>
-      <p class="section-note">Inspect native continuity, retrieval, packet validation, and bounded evidence tools.</p>
+      <h2>Continuity & Retrieval</h2>
+      <p class="section-note">Check what Aion will use before answer generation. Advanced diagnostics remain available for investigation.</p>
 
       <div class="admin-section-overview-grid" aria-label="Continuity shortcuts">
         <div class="admin-section-overview-card">
@@ -2544,7 +2545,7 @@
           <button type="button" data-admin-detail-jump="currentContinuityPanel">Open current</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Operational checks</strong>
+          <strong>Routine checks</strong>
           <span>Run packet validation and handoff checks without changing public routing.</span>
           <button type="button" data-admin-detail-jump="continuityOperationalChecksPanel">Open checks</button>
         </div>
@@ -2583,20 +2584,20 @@
 
     <!-- Admin continuity group start: Operational checks -->
     <details id="continuityOperationalChecksPanel" class="admin-continuity-group admin-section-tool-routine">
-      <summary><strong>Operational checks</strong></summary>
+      <summary><strong>Routine checks</strong></summary>
       <p class="admin-continuity-group-note">Validation and internal-test checks that are still useful during routine review.</p>
       <details class="primary-operator-tool">
-      <summary><strong>Packet Validation Preview</strong></summary>
+      <summary><strong>Sample packet check</strong></summary>
       
             <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
       
-            <button onclick="runNativeRetrievalPacketValidationPreview()">Validate Sample Packet</button>
+            <button onclick="runNativeRetrievalPacketValidationPreview()">Check sample packet</button>
       
             <div id="nativeRetrievalPacketValidationResults"></div>
           </details>
 
       <details class="primary-operator-tool">
-      <summary><strong>Handoff Internal-Test Answer</strong></summary>
+      <summary><strong>Handoff answer check</strong></summary>
       
             <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
       
@@ -2609,7 +2610,7 @@
               <option value="spanish_water_storage">Spanish water storage</option>
             </select>
       
-            <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Generate Handoff Answer</button>
+            <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Build handoff answer</button>
       
             <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
           </details>
@@ -2651,7 +2652,7 @@
       
             <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
       
-            <button onclick="runNativeRetrievalFeatureFlagState()">Refresh Feature-Flag State</button>
+            <button onclick="runNativeRetrievalFeatureFlagState()">Check feature-flag state</button>
       
             <div id="nativeRetrievalFeatureFlagStateResults"></div>
           </details>
@@ -4182,8 +4183,8 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
     </section>
 
     <section id="providers" class="admin-section" data-admin-view="providers">
-      <h2>Providers</h2>
-      <p class="section-note">Review provider status, candidate policy, and Admin-only test tools without changing public answers.</p>
+      <h2>Provider Controls</h2>
+      <p class="section-note">Start with status and audit. Route changes require operator confirmations; candidate tests do not change public answers.</p>
 
       <div class="admin-section-overview-grid" aria-label="Provider review shortcuts">
         <div class="admin-section-overview-card">
@@ -4192,31 +4193,31 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <button type="button" data-admin-detail-jump="providerStatusPanel">Open status</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Production route</strong>
-          <span>Select OpenAI or native for the production answer route, then roll back manually.</span>
+          <strong>Production route change</strong>
+          <span>Select OpenAI or native only after reviewing identity, audit, rollback, and no-deploy confirmations.</span>
           <button type="button" data-admin-detail-jump="productionRouteSwitchPanel">Open switch</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Candidate tests</strong>
+          <strong>Advanced candidate tests</strong>
           <span>Run Admin-only candidate checks without changing public answers.</span>
           <button type="button" data-admin-detail-jump="candidateTestConsolePanel">Open tests</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Archived evidence</strong>
+          <strong>Archived diagnostics</strong>
           <span>Keep older provider design and handoff artifacts available but out of the way.</span>
           <button type="button" data-admin-detail-jump="archivedProviderEvidencePanel">Open archive</button>
         </div>
       </div>
 
 <details id="providerStatusPanel" class="admin-section-tool-primary" open>
-      <summary><strong>Provider Status & Registry</strong></summary>
+      <summary><strong>Provider status</strong></summary>
 
-      <p>Verify the OpenAI baseline and ICP LLM canister candidate before running candidate tests.</p>
+      <p>Verify the public OpenAI route and inspect the ICP candidate registry before running advanced candidate tests.</p>
 
-      <button onclick="runProviderInspectionDebug()">Inspect Candidate</button>
-      <button onclick="runIcpLlmCandidInspectionDebug()">Inspect Interface</button>
-      <button onclick="runParallelProviderHarnessPlanDebug()">Build Harness Plan</button>
-      <button onclick="runCandidateModelRegistryDryRun()">Build Model Registry</button>
+      <button onclick="runProviderInspectionDebug()">Inspect candidate registry</button>
+      <button onclick="runIcpLlmCandidInspectionDebug()">Inspect candidate interface</button>
+      <button onclick="runParallelProviderHarnessPlanDebug()">Build test plan</button>
+      <button onclick="runCandidateModelRegistryDryRun()">Build model registry</button>
 
       <div id="providerInspectionResults"></div>
       <div id="icpLlmCandidInspectionResults"></div>
@@ -4304,9 +4305,9 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       </details>
     </details>
     <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
-      <summary><strong>Production Route Switch</strong></summary>
+      <summary><strong>Production route change</strong></summary>
 
-      <p>Select the production answer route used by Aion, inspect route identity, and manually roll back to the OpenAI baseline.</p>
+      <p>Production-impacting: select the answer route used by Aion only after the confirmation checklist is complete. This control does not deploy or change memory/continuity.</p>
 
       <button type="button" onclick="refreshProductionRouteSwitch()">Refresh Route</button>
       <button type="button" onclick="refreshProductionRouteSwitchAudit()">View Audit</button>
@@ -4338,7 +4339,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="productionRouteSwitchAudit"></div>
     </details>
     <details id="candidateTestConsolePanel" class="admin-section-tool-secondary">
-      <summary><strong>Candidate Test Console</strong></summary>
+      <summary><strong>Advanced candidate tests</strong></summary>
 
       <p>Run one-off or batch ICP candidate tests. Candidate output stays in Admin and cannot affect production answers.</p>
 
@@ -4364,7 +4365,7 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="candidateBatchTestResults"></div>
     </details>
     <details id="archivedProviderEvidencePanel" class="admin-section-tool-archived">
-      <summary><strong>Archived Provider Evidence</strong></summary>
+      <summary><strong>Archived provider diagnostics</strong></summary>
 
       <p>Review provider design and prompt hardening artifacts without changing routing.</p>
 
@@ -4392,12 +4393,12 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
 
     <section id="systemValidation" class="admin-section" data-admin-view="validation">
-      <h2>Validation</h2>
-      <p class="section-note">Run answer-quality, access, transport, and deployment checks after a reviewed change.</p>
+      <h2>Validation & Access Checks</h2>
+      <p class="section-note">Use these checks after a reviewed change, before relying on quality, access, or deployment evidence.</p>
 
       <div class="admin-section-overview-grid" aria-label="Validation shortcuts">
         <div class="admin-section-overview-card">
-          <strong>Routine quality</strong>
+          <strong>Answer quality</strong>
           <span>Run golden tests after reviewed copy, routing, or continuity changes.</span>
           <button type="button" data-admin-detail-jump="goldenTestsPanel">Open tests</button>
         </div>
@@ -4414,18 +4415,18 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       </div>
 
 <details id="goldenTestsPanel" class="admin-section-tool-routine" open>
-      <summary><strong>Golden Tests</strong></summary>
+      <summary><strong>Answer quality checks</strong></summary>
 
       <p id="goldenLastRun">Last run: Never</p>
       <p id="goldenSummary">No results available.</p>
 
-      <button onclick="runGoldenTests()">Run Golden Tests</button>
+      <button onclick="runGoldenTests()">Run quality checks</button>
 
       <div id="goldenResults"></div>
     </details>
 
     <details id="securityDiagnostics" class="admin-section-tool-routine">
-      <summary><strong>Security Diagnostics</strong></summary>
+      <summary><strong>Operator access check</strong></summary>
 
       <p>Review operator authorization and the short-lived protected Admin session.</p>
       <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
@@ -4434,10 +4435,10 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
     </details>
 
     <details id="transportValidation" class="admin-section-tool-secondary">
-      <summary><strong>HTTPS Transport Validation</strong></summary>
+      <summary><strong>Advanced transport check</strong></summary>
 
       <p>Run the fixed operator-only non-replicated transport proof when validating a deployment. The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
-      <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run HTTPS Transport Probe</button>
+      <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run transport check</button>
 
       <div id="httpsOutcallTransportResults"></div>
     </details>

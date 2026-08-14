@@ -1020,7 +1020,7 @@ window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizatio
     `;
   } catch (err) {
     console.error("Operator access refresh failed:", err);
-    container.innerHTML = `<p>Could not refresh operator access: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+    container.innerHTML = `<p>Could not refresh operator access. Sign in again, confirm the operator allowlist, then retry. ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
   }
 };
 
@@ -1058,7 +1058,7 @@ window.runHttpsOutcallTransportProbe = async function runHttpsOutcallTransportPr
     `;
   } catch (err) {
     console.error("HTTPS transport probe failed:", err);
-    container.innerHTML = `<p>HTTPS transport probe failed: ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
+    container.innerHTML = `<p>Transport check failed. Confirm operator access and retry before using transport evidence. ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
   } finally {
     if (button) {
       button.disabled = false;
@@ -2015,7 +2015,7 @@ window.runGoldenTests = async function runGoldenTests() {
     console.error("Failed to run golden tests:", err);
   } finally {
     button.disabled = false;
-    button.textContent = "Run Golden Tests";
+    button.textContent = "Run quality checks";
   }
 };
 
@@ -13698,15 +13698,17 @@ window.copyAdminDashboardState = async function copyAdminDashboardState() {
     if (button) {
       button.textContent = "Copied";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy state";
+        button.textContent = previousText || "Copy dashboard state";
       }, 1600);
     }
   } catch (err) {
     console.error("Could not copy dashboard state:", err);
     if (button) {
       button.textContent = "Copy failed";
+      button.title = "Could not copy dashboard state. Use the visible dashboard values or try again.";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy state";
+        button.textContent = previousText || "Copy dashboard state";
+        button.removeAttribute("title");
       }, 2200);
     }
   }
@@ -13739,15 +13741,17 @@ window.copyAdminReviewCommands = async function copyAdminReviewCommands() {
     if (button) {
       button.textContent = "Copied";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy checks";
+        button.textContent = previousText || "Copy validation checks";
       }, 1600);
     }
   } catch (err) {
     console.error("Could not copy review commands:", err);
     if (button) {
       button.textContent = "Copy failed";
+      button.title = "Could not copy validation checks. Copy the visible commands manually or try again.";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy checks";
+        button.textContent = previousText || "Copy validation checks";
+        button.removeAttribute("title");
       }, 2200);
     }
   }
@@ -13765,15 +13769,17 @@ window.restoreAdminDashboardState = async function restoreAdminDashboardState() 
     if (button) {
       button.textContent = "Restored";
       window.setTimeout(() => {
-        button.textContent = previousText || "Restore";
+        button.textContent = previousText || "Restore dashboard state";
       }, 1600);
     }
   } catch (err) {
     console.error("Could not restore dashboard state:", err);
     if (button) {
       button.textContent = "Restore failed";
+      button.title = "Could not restore dashboard state. Paste valid dashboard-state JSON and try again.";
       window.setTimeout(() => {
-        button.textContent = previousText || "Restore";
+        button.textContent = previousText || "Restore dashboard state";
+        button.removeAttribute("title");
       }, 2400);
     }
   }
@@ -15100,8 +15106,8 @@ function updateRecommendedActionButton(action) {
   if (!button || !action) return;
   const clear = action.className === "healthy";
   button.disabled = clear;
-  button.textContent = clear ? "Dashboard clear" : "Open action";
-  button.title = clear ? "No immediate operator action is needed." : `Open: ${action.label}`;
+  button.textContent = clear ? "Dashboard clear" : "Open recommended action";
+  button.title = clear ? "No immediate operator action is needed." : `Open recommended action: ${action.label}`;
 }
 
 function renderRecommendedActionMetric(action) {
@@ -15178,10 +15184,10 @@ function dashboardActionDestination(action) {
   const labels = {
     cycleRunwayPanel: "Reports > Cycles runway",
     siteMetricsPanel: "Reports > Site metrics",
-    goldenTestsPanel: "Providers > Golden tests",
-    feedbackDashboardPanel: "Overview > Feedback dashboard",
-    memoryHealthDashboardPanel: "Memory > Health dashboard",
-    adminDashboardHandoff: "Overview > Operator handoff",
+    goldenTestsPanel: "Validation > Answer quality checks",
+    feedbackDashboardPanel: "Memory > Feedback signal",
+    memoryHealthDashboardPanel: "Reports > Memory dashboard",
+    adminDashboardHandoff: "Overview > Evidence and handoff",
   };
   return action.detailId ? labels[action.detailId] || action.detailId : "";
 }
@@ -15408,15 +15414,17 @@ window.copyAdminReviewPacket = async function copyAdminReviewPacket() {
     if (button) {
       button.textContent = "Copied";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy packet";
+        button.textContent = previousText || "Copy review packet";
       }, 1600);
     }
   } catch (err) {
     console.error("Could not copy review packet:", err);
     if (button) {
       button.textContent = "Copy failed";
+      button.title = "Could not copy review packet. Use the visible packet details or try again.";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy packet";
+        button.textContent = previousText || "Copy review packet";
+        button.removeAttribute("title");
       }, 2200);
     }
   }
@@ -15456,7 +15464,7 @@ window.copyCycleStatusCommands = async function copyCycleStatusCommands() {
   } catch (err) {
     console.error("Could not copy cycle status commands:", err);
     if (status) {
-      status.textContent = "Could not copy cycle status commands.";
+      status.textContent = "Could not copy cycle status commands. Copy the visible validation checks manually and try again.";
     }
   }
 };
@@ -15485,7 +15493,7 @@ window.copyFrontendTopUpCommand = async function copyFrontendTopUpCommand() {
   } catch (err) {
     console.error("Could not copy frontend top-up command:", err);
     if (status) {
-      status.textContent = "Could not copy frontend top-up command.";
+      status.textContent = "Could not copy frontend top-up command. Check the wallet and frontend snapshots, then try again.";
     }
   }
 };
@@ -15586,7 +15594,7 @@ window.copyCycleMovementHistory = async function copyCycleMovementHistory() {
   } catch (err) {
     console.error("Could not copy cycle movement:", err);
     if (status) {
-      status.textContent = "Could not copy cycle movement.";
+      status.textContent = "Could not copy cycle movement. Review the visible movement history or paste a fresh snapshot and try again.";
     }
     if (button) {
       button.textContent = "Copy failed";
@@ -15616,7 +15624,7 @@ window.copyAdminDeployPacket = async function copyAdminDeployPacket() {
   } catch (err) {
     console.error("Could not copy deploy packet:", err);
     if (status) {
-      status.textContent = "Could not copy deploy packet.";
+      status.textContent = "Could not copy deploy packet. Review readiness and saved evidence, then try again.";
     }
     if (button) {
       button.textContent = "Copy failed";
@@ -15643,8 +15651,10 @@ window.copyAdminDashboardSummary = async function copyAdminDashboardSummary() {
     console.error("Could not copy dashboard summary:", err);
     if (button) {
       button.textContent = "Copy failed";
+      button.title = "Could not copy dashboard summary. Use the visible dashboard status or try again.";
       window.setTimeout(() => {
         button.textContent = previousText || "Copy summary";
+        button.removeAttribute("title");
       }, 2200);
     }
   }
@@ -15655,8 +15665,9 @@ function buildAdminDashboardActionsText() {
   const actions = dashboardActionQueue(snapshots);
   const readiness = operatorReadinessScore(snapshots);
   const lines = [
-    "Aion Operator Next Actions",
+    "Aion Operator Recommended Actions",
     `Generated: ${new Date().toLocaleString()}`,
+    "Scope: dashboard guidance only; copying this does not execute an action.",
     `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
     `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
     `Freshness: ${dashboardMetricText("healthFreshness")}`,
@@ -15681,15 +15692,17 @@ window.copyAdminDashboardActions = async function copyAdminDashboardActions() {
     if (button) {
       button.textContent = "Copied";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy actions";
+        button.textContent = previousText || "Copy recommended actions";
       }, 1600);
     }
   } catch (err) {
     console.error("Could not copy next actions:", err);
     if (button) {
       button.textContent = "Copy failed";
+      button.title = "Could not copy recommended actions. Use the visible action queue or try again.";
       window.setTimeout(() => {
-        button.textContent = previousText || "Copy actions";
+        button.textContent = previousText || "Copy recommended actions";
+        button.removeAttribute("title");
       }, 2200);
     }
   }
@@ -15852,7 +15865,7 @@ window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "
     }
   } catch (err) {
     if (status) {
-      status.textContent = err.message || "Could not parse cycle snapshot.";
+      status.textContent = `${err.message || "Could not parse cycle snapshot."} Paste fresh canister status output and try again.`;
     }
   }
 };
@@ -15883,7 +15896,7 @@ window.saveCombinedCycleSnapshotsFromInput = function saveCombinedCycleSnapshots
     }
   } catch (err) {
     if (status) {
-      status.textContent = err.message || "Could not parse combined cycles output.";
+      status.textContent = `${err.message || "Could not parse combined cycles output."} Paste the wallet, frontend, and backend outputs again, then retry.`;
     }
   }
 };
@@ -15900,7 +15913,7 @@ window.pasteCombinedCycleSnapshotsFromClipboard = async function pasteCombinedCy
     window.saveCombinedCycleSnapshotsFromInput();
   } catch (err) {
     if (status) {
-      status.textContent = err.message || "Could not read combined cycles output.";
+      status.textContent = `${err.message || "Could not read combined cycles output."} Paste the output manually if clipboard access is blocked.`;
     }
   }
 };
@@ -15932,7 +15945,7 @@ window.saveCycleWalletFromInput = function saveCycleWalletFromInput() {
     }
   } catch (err) {
     if (status) {
-      status.textContent = err.message || "Could not parse cycles wallet balance.";
+      status.textContent = `${err.message || "Could not parse cycles wallet balance."} Paste fresh wallet balance output and try again.`;
     }
   }
 };
