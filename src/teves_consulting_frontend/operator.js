@@ -52,8 +52,6 @@ function clearStoredOperatorSession() {
 /* shared operator session helpers end */
 
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
-const PRIME_CURRENT_FOCUS = "Prime is ready";
-const PRIME_RECOMMENDED_NEXT_STEP = "Choose a role or continue the current Aion objective.";
 const D1A_WORKSPACE_STATE_KIND = "role_workspace_session_state_non_canonical";
 const D1A_WORKING_CONTEXT_OPTIONS = [
   { id: "general", label: "General" },
@@ -82,16 +80,8 @@ let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
 let roleWorkspaceTranscript = [];
 let roleWorkspaceInitialized = false;
-let primeWelcomeReplayConsumed = false;
 let activeRole = "prime";
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
-const PRIME_INITIAL_MESSAGE = [
-  "Good morning Alfonso.",
-  "",
-  "Prime is ready.",
-  "",
-  "Choose a role or continue the current Aion objective."
-].join("\n");
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -660,6 +650,10 @@ function engineerWorkflowIsTerminal(current) {
   ].includes(lifecycle) || status.startsWith("read_resume_");
 }
 
+function engineerWorkflowHasActiveWork(current) {
+  return Boolean(current && (current.pendingApprovalId || current.workItemId) && !engineerWorkflowIsTerminal(current));
+}
+
 function engineerResponsePayload(value) {
   if (!isPlainObject(value)) return value || {};
   if (isPlainObject(value.detail)) return value.detail;
@@ -775,19 +769,11 @@ function engineerResultStatusCopy(packet) {
 }
 
 function engineerWorkflowStatusHtml(workflow) {
-  if (!workflow.current) {
-    return `
-      <section class="engineer-workflow-card">
-        <div>
-          <p class="prime-message-role">Engineer read workflow</p>
-          <h3>No active read approval</h3>
-          <p class="meta">Ask Engineer to inspect a bounded file or directory. If a read is required, the approval request appears here for this page session.</p>
-        </div>
-      </section>
-    `;
-  }
+  if (!workflow.current) return "";
   const current = workflow.current;
-  const status = workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
+  const status = engineerWorkflowIsTerminal(current)
+    ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
+    : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -805,14 +791,23 @@ function engineerWorkflowStatusHtml(workflow) {
 function engineerApprovalPanelHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
-  const operation = firstOrUnknown(current.requestedOperations);
-  const path = firstOrUnknown(current.requestedPaths);
-  const reason = firstOrUnknown(current.requestReasons);
   const actionable = current.canonicalStateUnavailable !== true;
   const awaiting = actionable && current.lifecycleState === "awaiting_approval";
   const approved = actionable && current.lifecycleState === "approved";
-  const denied = current.lifecycleState === "denied";
+  if (!awaiting && !approved) return "";
+  const operation = firstOrUnknown(current.requestedOperations);
+  const path = firstOrUnknown(current.requestedPaths);
+  const reason = firstOrUnknown(current.requestReasons);
   const busy = Boolean(workflow.inFlightAction);
+  const approvalButtons = awaiting
+    ? `
+        <button id="engineerApproveReadButton" type="button"${busy ? " disabled" : ""}>Approve once</button>
+        <button id="engineerDenyReadButton" class="secondary" type="button"${busy ? " disabled" : ""}>Deny</button>
+      `
+    : "";
+  const resumeButton = approved
+    ? `<button id="engineerResumeReadButton" type="button"${busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>`
+    : "";
   return `
     <section class="engineer-workflow-card engineer-approval-card">
       <div class="engineer-workflow-card-header">
@@ -836,18 +831,17 @@ function engineerApprovalPanelHtml(workflow) {
         ${engineerSafetyListHtml()}
       </div>
       <div class="engineer-workflow-actions">
-        <button id="engineerApproveReadButton" type="button"${!awaiting || busy ? " disabled" : ""}>Approve once</button>
-        <button id="engineerDenyReadButton" class="secondary" type="button"${!awaiting || busy ? " disabled" : ""}>Deny</button>
-        <button id="engineerResumeReadButton" type="button"${!approved || denied || busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>
+        ${approvalButtons}
+        ${resumeButton}
       </div>
-      <p class="meta">Resume continues the workflow using only the approved repository read. It does not expand authority.</p>
+      ${approved ? '<p class="meta">Resume continues the workflow using only the approved repository read. It does not expand authority.</p>' : ""}
     </section>
   `;
 }
 
 function engineerTraceHtml(workflow) {
   const current = workflow.current;
-  if (!current) return "";
+  if (!engineerWorkflowHasActiveWork(current)) return "";
   const entries = workflow.trace && Array.isArray(workflow.trace.entries) ? workflow.trace.entries : [];
   const currentStage = workflow.trace && workflow.trace.currentStage ? workflow.trace.currentStage : "waiting_for_approval";
   const rows = entries.length ? entries.map((entry) => `
@@ -883,6 +877,7 @@ function engineerSteeringHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
   const terminal = engineerWorkflowIsTerminal(current);
+  if (terminal || current.lifecycleState !== "approved") return "";
   const busy = Boolean(workflow.inFlightAction);
   const directives = workflow.steering && Array.isArray(workflow.steering.directives) ? workflow.steering.directives : [];
   const directiveRows = directives.length ? directives.map((directive) => `
@@ -960,15 +955,27 @@ function engineerErrorHtml(workflow) {
 
 function d1aEngineerWorkflowHtml() {
   const workflow = engineerCurrentWorkflow();
+  if (!workflow.current && !workflow.lastError) return "";
   return `
     ${engineerWorkflowStatusHtml(workflow)}
     ${engineerErrorHtml(workflow)}
     ${engineerApprovalPanelHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
+    ${engineerSessionLimitsHtml(workflow)}
+  `;
+}
+
+function engineerSessionLimitsHtml(workflow) {
+  const current = workflow.current;
+  const shouldShow = Boolean(workflow.lastError)
+    || (current && current.canonicalStateUnavailable === true)
+    || engineerWorkflowHasActiveWork(current);
+  if (!shouldShow) return "";
+  return `
     <details class="engineer-session-limits">
       <summary>Session limits</summary>
-      <p>Backend pending approval and work state is process-local. If the backend process or this page state is lost, the current workflow may not be durably discoverable and a fresh Engineer request may be required.</p>
+      <p>Backend pending approval/work state is process-local and may not be durably discoverable after state loss.</p>
       <p>No grants, execution envelopes, raw source contents, provider prompts, credentials, or continuity writes are stored by this UI.</p>
     </details>
   `;
@@ -977,9 +984,10 @@ function d1aEngineerWorkflowHtml() {
 function d1aRefreshEngineerWorkflowDisplay() {
   const container = document.getElementById("engineerGovernedWorkflow");
   if (!container) return;
-  container.hidden = activeRole !== "engineer";
-  if (activeRole !== "engineer") return;
-  container.innerHTML = d1aEngineerWorkflowHtml();
+  const html = activeRole === "engineer" ? d1aEngineerWorkflowHtml().trim() : "";
+  container.hidden = !html;
+  container.innerHTML = html;
+  if (!html) return;
   d1aAttachEngineerWorkflowHandlers();
 }
 
@@ -1156,6 +1164,13 @@ async function captureEngineerPendingRead(packet) {
   d1aRefreshEngineerWorkflowDisplay();
 }
 
+function resetEngineerWorkflowForFreshObjective() {
+  const workflow = engineerCurrentWorkflow();
+  if (!workflow.current && !workflow.trace && !workflow.steering && !workflow.lastError) return;
+  d1aWorkspaceState.engineerWorkflow = createEmptyEngineerWorkflowState();
+  d1aRefreshEngineerWorkflowDisplay();
+}
+
 function renderPrimeHome(_report) {
   renderRoleActivationWorkspace({ resetConversation: true });
 }
@@ -1197,26 +1212,16 @@ function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "
 function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
   if (!resetConversation && roleWorkspaceInitialized) return;
   activeRole = "prime";
-  primeConversationHistory = [{ role: "prime", content: PRIME_INITIAL_MESSAGE }];
+  primeConversationHistory = [];
   mirrorConversationHistory = [];
   engineerConversationHistory = [];
-  roleWorkspaceTranscript = [{
-    role: "assistant",
-    message: PRIME_INITIAL_MESSAGE,
-    evidenceHtml: "",
-    assistantLabel: "Prime",
-    extraClass: "prime-welcome-message",
-  }];
-  primeWelcomeReplayConsumed = false;
+  roleWorkspaceTranscript = [];
+  d1aWorkspaceState.engineerWorkflow = createEmptyEngineerWorkflowState();
   roleWorkspaceInitialized = true;
 }
 
 function renderRoleWorkspaceTranscript() {
   roleWorkspaceTranscript.forEach((entry) => {
-    if (entry.extraClass === "prime-welcome-message") {
-      if (primeWelcomeReplayConsumed) return;
-      primeWelcomeReplayConsumed = true;
-    }
     appendPrimeMessage(entry.role, entry.message, entry.evidenceHtml, entry.assistantLabel, {
       extraClass: entry.extraClass,
       persist: false,
@@ -1522,15 +1527,8 @@ async function sendRoleWorkspaceMessage(role, message) {
   });
 }
 
-function removePrimeWelcomeMessage() {
-  document.querySelectorAll(".prime-welcome-message").forEach((message) => message.remove());
-}
-
 function setActiveRole(role) {
   activeRole = role;
-  if (role !== "prime") {
-    removePrimeWelcomeMessage();
-  }
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.role === role);
   });
@@ -1556,11 +1554,13 @@ function setActiveRole(role) {
   }
   if (roleHint) {
     const hints = {
-      prime: "Prime is ready.",
-      mirror: "Mirror is ready.",
-      engineer: "Engineer is ready. Requests for repository evidence will ask for your approval here.",
+      prime: "",
+      mirror: "",
+      engineer: "",
     };
-    roleHint.textContent = hints[role] || "";
+    const hint = hints[role] || "";
+    roleHint.textContent = hint;
+    roleHint.hidden = !hint;
   }
   d1aRefreshEngineerWorkflowDisplay();
 }
@@ -1586,7 +1586,7 @@ function renderRoleActivationWorkspace(options = {}) {
         <button class="role-activation-button" type="button" data-role="engineer">Engineer</button>
       </div>
       ${d1aWorkspaceFrameHtml()}
-      <p id="roleWorkspaceHint" class="prime-composer-hint">Prime is ready.</p>
+      <p id="roleWorkspaceHint" class="prime-composer-hint" hidden></p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
       <div id="engineerGovernedWorkflow" class="engineer-governed-workflow" hidden></div>
       <form id="primeComposer" class="prime-composer">
@@ -1634,6 +1634,9 @@ function renderRoleActivationWorkspace(options = {}) {
       const endpointPath = d1aRoleEndpoint(role);
       const message = input.value.trim();
       if (!message) return;
+      if (role === "engineer") {
+        resetEngineerWorkflowForFreshObjective();
+      }
       appendPrimeMessage("user", message, "", "Prime", { persist: true });
       history.push({ role: "operator", content: message });
       input.value = "";
