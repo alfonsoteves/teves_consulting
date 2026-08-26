@@ -621,15 +621,70 @@ function suitabilityLedgerForBenchmark(status, benchmarkId) {
   if (!status || !isPlainObject(status.ledgerState)) return {};
   const runId = safeText(status.evaluationRunId, "");
   const exactKey = `${runId}:${benchmarkId}`;
-  if (isPlainObject(status.ledgerState[exactKey])) return status.ledgerState[exactKey];
-  const matching = safeObjectEntries(status.ledgerState)
-    .find(([key, value]) => key.endsWith(`:${benchmarkId}`) && isPlainObject(value));
-  return matching ? matching[1] : {};
+  return isPlainObject(status.ledgerState[exactKey]) ? status.ledgerState[exactKey] : {};
+}
+
+function suitabilityRetainedResultsForBenchmark(status, benchmarkId) {
+  if (!status || !isPlainObject(status.retainedResults)) return {};
+  const runId = safeText(status.evaluationRunId, "");
+  const exactKey = `${runId}:${benchmarkId}`;
+  return isPlainObject(status.retainedResults[exactKey]) ? status.retainedResults[exactKey] : {};
+}
+
+function suitabilityResultKey(status, benchmarkId) {
+  const runId = safeText(status && status.evaluationRunId, "");
+  return runId && benchmarkId ? `${runId}:${benchmarkId}` : "";
+}
+
+function suitabilityArmConsumed(ledger, arm) {
+  return ["succeeded", "failed"].includes(safeText(ledger && ledger[arm], ""));
+}
+
+function suitabilityEligibleResult(result, status, benchmarkId, arm, ledger) {
+  if (!isPlainObject(result)) return false;
+  const runId = safeText(status && status.evaluationRunId, "");
+  return runId
+    && result.evaluationRunId === runId
+    && result.benchmarkId === benchmarkId
+    && result.arm === arm
+    && suitabilityArmConsumed(ledger, arm);
+}
+
+function mergeSuitabilityRetainedResults(status) {
+  if (!status || !isPlainObject(status.retainedResults)) return;
+  safeObjectEntries(status.retainedResults).forEach(([key, value]) => {
+    if (!isPlainObject(value)) return;
+    const runId = safeText(status.evaluationRunId, "");
+    if (!key.startsWith(`${runId}:`)) return;
+    const benchmarkId = key.slice(runId.length + 1);
+    if (!benchmarkId) return;
+    const resultKey = suitabilityResultKey(status, benchmarkId);
+    const ledger = suitabilityLedgerForBenchmark(status, benchmarkId);
+    const current = engineerSuitabilityState.latestResults[resultKey] || {};
+    const next = {};
+    ["baseline", "candidate"].forEach((arm) => {
+      if (suitabilityEligibleResult(value[arm], status, benchmarkId, arm, ledger)) next[arm] = value[arm];
+      if (suitabilityEligibleResult(current[arm], status, benchmarkId, arm, ledger)) next[arm] = current[arm];
+    });
+    engineerSuitabilityState.latestResults[resultKey] = next;
+  });
+}
+
+function suitabilityResultsForBenchmark(status, benchmarkId) {
+  const ledger = suitabilityLedgerForBenchmark(status, benchmarkId);
+  const retained = suitabilityRetainedResultsForBenchmark(status, benchmarkId);
+  const local = engineerSuitabilityState.latestResults[suitabilityResultKey(status, benchmarkId)] || {};
+  const results = {};
+  ["baseline", "candidate"].forEach((arm) => {
+    if (suitabilityEligibleResult(retained[arm], status, benchmarkId, arm, ledger)) results[arm] = retained[arm];
+    if (suitabilityEligibleResult(local[arm], status, benchmarkId, arm, ledger)) results[arm] = local[arm];
+  });
+  return results;
 }
 
 function suitabilityBaselineSucceeded() {
   const benchmarkId = suitabilitySelectedBenchmarkId();
-  const local = engineerSuitabilityState.latestResults[benchmarkId] || {};
+  const local = suitabilityResultsForBenchmark(engineerSuitabilityState.status, benchmarkId);
   if (local.baseline && local.baseline.status === "succeeded") return true;
   const ledger = suitabilityLedgerForBenchmark(engineerSuitabilityState.status, benchmarkId);
   return ledger.baseline === "succeeded";
@@ -731,6 +786,18 @@ function suitabilitySafeResultHtml(result) {
   `;
 }
 
+function suitabilityMissingRetainedResultHtml(arm, ledger, localResults) {
+  const armState = ledger && ledger[arm];
+  if (!armState || localResults[arm]) return "";
+  if (!["succeeded", "failed"].includes(armState)) return "";
+  return `
+    <details class="prime-evidence role-evidence" open>
+      <summary>${escapeHtml(`${arm} result unavailable`)}</summary>
+      <p class="meta">${escapeHtml("Arm completed, but sanitized result was not retained for this run.")}</p>
+    </details>
+  `;
+}
+
 function renderEngineerSuitabilityDiagnostic(options = {}) {
   const container = document.getElementById("engineerSuitabilityDiagnostic");
   if (!container) return;
@@ -740,8 +807,11 @@ function renderEngineerSuitabilityDiagnostic(options = {}) {
   const benchmarkOptions = suitabilityBenchmarkIds(status);
   const busy = Boolean(engineerSuitabilityState.inFlightAction);
   const configured = status && status.configured === true;
+  const ledger = suitabilityLedgerForBenchmark(status, selectedBenchmark);
   const baselineReady = suitabilityBaselineSucceeded();
-  const localResults = engineerSuitabilityState.latestResults[selectedBenchmark] || {};
+  const baselineConsumed = Boolean(ledger.baseline);
+  const candidateConsumed = Boolean(ledger.candidate) || ledger.completed === "succeeded";
+  const localResults = suitabilityResultsForBenchmark(status, selectedBenchmark);
   container.innerHTML = `
     <section class="engineer-suitability-diagnostic" aria-label="Engineer execution model suitability diagnostic">
       <div class="engineer-workflow-card-header">
@@ -767,15 +837,17 @@ function renderEngineerSuitabilityDiagnostic(options = {}) {
       </div>
       <div class="engineer-suitability-actions">
         <button id="engineerSuitabilityRefreshButton" type="button" class="secondary"${busy ? " disabled" : ""}>Refresh status</button>
-        <button id="engineerSuitabilityRunBaselineButton" type="button"${busy || !configured ? " disabled" : ""}>Run baseline arm</button>
-        <button id="engineerSuitabilityRunCandidateButton" type="button"${busy || !configured || !baselineReady ? " disabled" : ""}>Run candidate arm</button>
+        <button id="engineerSuitabilityRunBaselineButton" type="button"${busy || !configured || baselineConsumed ? " disabled" : ""}>Run baseline arm</button>
+        <button id="engineerSuitabilityRunCandidateButton" type="button"${busy || !configured || !baselineReady || candidateConsumed ? " disabled" : ""}>Run candidate arm</button>
         <button id="engineerSuitabilityClearTokenButton" type="button" class="secondary"${busy ? " disabled" : ""}>Clear token</button>
       </div>
       <p class="meta" role="status" aria-live="polite">${escapeHtml(engineerSuitabilityState.error || engineerSuitabilityState.message || "No provider evaluation has been started from this panel.")}</p>
       <div class="engineer-suitability-result"${status || localResults.baseline || localResults.candidate ? "" : " hidden"}>
         ${suitabilitySafeStatusHtml(status)}
         ${suitabilitySafeResultHtml(localResults.baseline)}
+        ${suitabilityMissingRetainedResultHtml("baseline", ledger, localResults)}
         ${suitabilitySafeResultHtml(localResults.candidate)}
+        ${suitabilityMissingRetainedResultHtml("candidate", ledger, localResults)}
       </div>
     </section>
   `;
@@ -803,8 +875,14 @@ async function refreshEngineerSuitabilityStatus() {
   renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
   try {
     const status = await renderFetch(ENGINEER_MODEL_SUITABILITY_STATUS_PATH);
+    const previousRunId = safeText(engineerSuitabilityState.status && engineerSuitabilityState.status.evaluationRunId, "");
+    const nextRunId = safeText(status && status.evaluationRunId, "");
+    if (previousRunId && nextRunId && previousRunId !== nextRunId) {
+      engineerSuitabilityState.latestResults = {};
+    }
     engineerSuitabilityState.status = status;
     engineerSuitabilityState.selectedBenchmarkId = suitabilitySelectedBenchmarkId();
+    mergeSuitabilityRetainedResults(status);
     engineerSuitabilityState.message = "Suitability status refreshed.";
   } catch (error) {
     engineerSuitabilityState.error = error && error.httpStatus === 401
@@ -836,8 +914,11 @@ async function runEngineerSuitabilityArm(arm) {
       arm,
       capabilityToken,
     });
-    const currentResults = engineerSuitabilityState.latestResults[benchmarkId] || {};
-    engineerSuitabilityState.latestResults[benchmarkId] = { ...currentResults, [arm]: result };
+    const resultKey = suitabilityResultKey({ evaluationRunId: result.evaluationRunId }, result.benchmarkId);
+    if (resultKey) {
+      const currentResults = engineerSuitabilityState.latestResults[resultKey] || {};
+      engineerSuitabilityState.latestResults[resultKey] = { ...currentResults, [arm]: result };
+    }
     engineerSuitabilityState.message = `${arm.charAt(0).toUpperCase()}${arm.slice(1)} arm returned ${safeText(result.status, "status unknown")}.`;
     if (arm === "candidate" && result.status === "succeeded") {
       clearCapabilityAfterRun = true;
@@ -848,6 +929,10 @@ async function runEngineerSuitabilityArm(arm) {
     engineerSuitabilityState.error = error && error.httpStatus === 401
       ? "Operator session is required. Sign in again before using this diagnostic."
       : safeText(error && error.message, `${arm} arm failed.`);
+    if (error && error.httpStatus === 400 && /duplicate/.test(safeText(error.message, ""))) {
+      await refreshEngineerSuitabilityStatus();
+      engineerSuitabilityState.error = safeText(error.message, `${arm} arm was already consumed for this benchmark.`);
+    }
   } finally {
     engineerSuitabilityState.inFlightAction = "";
     renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: !clearCapabilityAfterRun });
