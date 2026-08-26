@@ -75,6 +75,15 @@ const ENGINEER_TRACE_STAGE_LABELS = {
   completed: "Complete",
   blocked: "Stopped",
 };
+const ENGINEER_MODEL_SUITABILITY_STATUS_PATH = "/admin/engineer-execution-model-suitability";
+const ENGINEER_MODEL_SUITABILITY_RUN_ARM_PATH = "/admin/engineer-execution-model-suitability/run-arm";
+const ENGINEER_MODEL_SUITABILITY_BENCHMARK_IDS = [
+  "continuity_icon_weak_generic_evidence_v1",
+  "continuity_icon_applicable_style_box_model_v1",
+  "continuity_icon_direct_18_24_evidence_v1",
+  "continuity_icon_stronger_computed_runtime_insufficient_v1",
+  "continuity_icon_malformed_structured_output_fixture_v1",
+];
 let primeConversationHistory = [];
 let mirrorConversationHistory = [];
 let engineerConversationHistory = [];
@@ -82,6 +91,14 @@ let roleWorkspaceTranscript = [];
 let roleWorkspaceInitialized = false;
 let activeRole = "prime";
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
+let engineerSuitabilityState = {
+  status: null,
+  selectedBenchmarkId: "",
+  latestResults: {},
+  inFlightAction: "",
+  message: "",
+  error: "",
+};
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -577,6 +594,289 @@ function d1aAttachWorkspaceHandlers() {
   });
 }
 
+function suitabilityDisplayValue(value) {
+  if (value === true || value === false) return boolText(value);
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "none";
+  if (value === undefined || value === null || value === "") return "unknown";
+  if (isPlainObject(value)) return JSON.stringify(value);
+  return String(value);
+}
+
+function suitabilityBenchmarkIds(status) {
+  const fromStatus = safeList(status && status.benchmarkIds);
+  return fromStatus.length ? fromStatus : ENGINEER_MODEL_SUITABILITY_BENCHMARK_IDS;
+}
+
+function suitabilitySelectedBenchmarkId() {
+  const status = engineerSuitabilityState.status || {};
+  const options = suitabilityBenchmarkIds(status);
+  if (engineerSuitabilityState.selectedBenchmarkId && options.includes(engineerSuitabilityState.selectedBenchmarkId)) {
+    return engineerSuitabilityState.selectedBenchmarkId;
+  }
+  if (status.primaryBenchmarkId && options.includes(status.primaryBenchmarkId)) return status.primaryBenchmarkId;
+  return firstOrUnknown(options);
+}
+
+function suitabilityLedgerForBenchmark(status, benchmarkId) {
+  if (!status || !isPlainObject(status.ledgerState)) return {};
+  const runId = safeText(status.evaluationRunId, "");
+  const exactKey = `${runId}:${benchmarkId}`;
+  if (isPlainObject(status.ledgerState[exactKey])) return status.ledgerState[exactKey];
+  const matching = safeObjectEntries(status.ledgerState)
+    .find(([key, value]) => key.endsWith(`:${benchmarkId}`) && isPlainObject(value));
+  return matching ? matching[1] : {};
+}
+
+function suitabilityBaselineSucceeded() {
+  const benchmarkId = suitabilitySelectedBenchmarkId();
+  const local = engineerSuitabilityState.latestResults[benchmarkId] || {};
+  if (local.baseline && local.baseline.status === "succeeded") return true;
+  const ledger = suitabilityLedgerForBenchmark(engineerSuitabilityState.status, benchmarkId);
+  return ledger.baseline === "succeeded";
+}
+
+function suitabilitySafeStatusHtml(status) {
+  if (!status) return `<p class="meta">Refresh status before running an arm.</p>`;
+  const benchmarkId = suitabilitySelectedBenchmarkId();
+  const ledger = suitabilityLedgerForBenchmark(status, benchmarkId);
+  const isolation = isPlainObject(status.productionIsolation) ? status.productionIsolation : {};
+  const rows = [
+    ["Configured", status.configured],
+    ["Evaluation run", status.evaluationRunId],
+    ["Capability hash configured", status.capabilityHashConfigured],
+    ["Capability hash preview", status.capabilityHashPreview],
+    ["Capability token returned", status.capabilityTokenReturned],
+    ["Frozen packet", status.frozenPacketIdentity],
+    ["Frozen pack SHA", status.frozenPacketPackSha256],
+    ["Response schema hash", status.responseTextFormatHash],
+    ["Baseline model", status.baselineModel],
+    ["Candidate model", status.candidateModel],
+    ["Candidate reasoning", status.candidateReasoningEffort],
+    ["Selected benchmark ledger", ledger],
+    ["Production model changed", isolation.productionModelChanged],
+    ["Provider policy mutated", isolation.providerPolicyMutated],
+    ["Repository access", isolation.repositoryAccessPerformed],
+    ["Approval created", isolation.approvalCreated],
+    ["Grant created", isolation.grantCreated],
+  ];
+  return `
+    <details class="prime-evidence role-evidence" open>
+      <summary>Suitability status</summary>
+      <dl class="prime-evidence-grid">
+        ${rows.map(([label, value]) => `
+          <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(suitabilityDisplayValue(value))}</dd></div>
+        `).join("")}
+      </dl>
+      <p class="meta">${escapeHtml(status.resetGuidance || "")}</p>
+    </details>
+  `;
+}
+
+function suitabilitySafeResultHtml(result) {
+  if (!result) return "";
+  const need = isPlainObject(result.additionalEvidenceNeed) ? result.additionalEvidenceNeed : {};
+  const sameInput = isPlainObject(result.sameInputProof) ? result.sameInputProof : {};
+  const rows = [
+    ["Benchmark", result.benchmarkId],
+    ["Arm", result.arm],
+    ["Configured model", result.configuredRequestedModel],
+    ["Returned runtime model", result.returnedRuntimeModelIdentity],
+    ["Runtime model captured", result.runtimeReturnedModelCaptured],
+    ["Reasoning", result.reasoningEffortConfigured],
+    ["Status", result.status],
+    ["Classification", result.classification],
+    ["Failure classification", result.failureClassification],
+    ["Structured classification", result.structuredClassification],
+    ["Continuation classification", result.continuationClassification],
+    ["Schema validation", result.schemaValidationSucceeded],
+    ["Provider refusal", result.providerRefusal],
+    ["Provider incomplete", result.providerResponseIncomplete],
+    ["Provider structured-output error", result.providerStructuredOutputError],
+    ["Latency ms", result.latencyMs],
+    ["Input tokens", result.inputTokens],
+    ["Cached input tokens", result.cachedInputTokens],
+    ["Output tokens", result.outputTokens],
+    ["Reasoning tokens", result.reasoningTokens],
+    ["Service tier", result.serviceTier],
+    ["Fallback attempted", result.fallbackAttempted],
+    ["Retry attempted", result.retryAttempted],
+    ["Repository access", result.repositoryAccessPerformed],
+    ["Approval created", result.approvalCreated],
+    ["Grant created", result.grantCreated],
+    ["Execution authority", result.executionAuthorityCreated],
+    ["Continuity written", result.continuityWritten],
+    ["Production model changed", result.activeProductionModelChanged],
+    ["Provider policy mutated", result.providerPolicyMutated],
+    ["OpenAI env mutated", result.openAIEnvMutated],
+    ["Same-input proof", sameInput],
+  ];
+  const needRows = safeObjectEntries(need)
+    .filter(([key]) => ["kind", "targetConcept", "evidenceType", "knownIdentifiers", "reason"].includes(key));
+  return `
+    <details class="prime-evidence role-evidence" open>
+      <summary>${escapeHtml(`${safeText(result.arm, "arm")} result`)}</summary>
+      <dl class="prime-evidence-grid">
+        ${rows.map(([label, value]) => `
+          <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(suitabilityDisplayValue(value))}</dd></div>
+        `).join("")}
+      </dl>
+      ${result.sanitizedAnswer ? `<h3>Sanitized answer</h3><p>${escapeHtml(result.sanitizedAnswer)}</p>` : ""}
+      ${needRows.length ? `
+        <h3>Additional evidence need</h3>
+        <dl class="prime-evidence-grid">
+          ${needRows.map(([key, value]) => `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(suitabilityDisplayValue(value))}</dd></div>`).join("")}
+        </dl>
+      ` : ""}
+    </details>
+  `;
+}
+
+function renderEngineerSuitabilityDiagnostic(options = {}) {
+  const container = document.getElementById("engineerSuitabilityDiagnostic");
+  if (!container) return;
+  const preservedCapabilityToken = options.preserveCapabilityToken ? currentSuitabilityTokenInput() : "";
+  const status = engineerSuitabilityState.status;
+  const selectedBenchmark = suitabilitySelectedBenchmarkId();
+  const benchmarkOptions = suitabilityBenchmarkIds(status);
+  const busy = Boolean(engineerSuitabilityState.inFlightAction);
+  const configured = status && status.configured === true;
+  const baselineReady = suitabilityBaselineSucceeded();
+  const localResults = engineerSuitabilityState.latestResults[selectedBenchmark] || {};
+  container.innerHTML = `
+    <section class="engineer-suitability-diagnostic" aria-label="Engineer execution model suitability diagnostic">
+      <div class="engineer-workflow-card-header">
+        <div>
+          <p class="meta">Phase 9 Diagnostic</p>
+          <h2>Engineer Execution Model Suitability</h2>
+        </div>
+        <span class="engineer-status-pill">${escapeHtml(configured ? "armed" : "status unknown")}</span>
+      </div>
+      <div class="engineer-suitability-controls">
+        <label>
+          Benchmark
+          <select id="engineerSuitabilityBenchmarkSelect"${busy ? " disabled" : ""}>
+            ${benchmarkOptions.map((benchmarkId) => `
+              <option value="${escapeHtml(benchmarkId)}"${benchmarkId === selectedBenchmark ? " selected" : ""}>${escapeHtml(benchmarkId)}</option>
+            `).join("")}
+          </select>
+        </label>
+        <label>
+          Suitability capability token
+          <input id="engineerSuitabilityCapabilityToken" type="password" autocomplete="off" spellcheck="false" placeholder="Local capability token" ${busy ? "disabled" : ""}>
+        </label>
+      </div>
+      <div class="engineer-suitability-actions">
+        <button id="engineerSuitabilityRefreshButton" type="button" class="secondary"${busy ? " disabled" : ""}>Refresh status</button>
+        <button id="engineerSuitabilityRunBaselineButton" type="button"${busy || !configured ? " disabled" : ""}>Run baseline arm</button>
+        <button id="engineerSuitabilityRunCandidateButton" type="button"${busy || !configured || !baselineReady ? " disabled" : ""}>Run candidate arm</button>
+        <button id="engineerSuitabilityClearTokenButton" type="button" class="secondary"${busy ? " disabled" : ""}>Clear token</button>
+      </div>
+      <p class="meta" role="status" aria-live="polite">${escapeHtml(engineerSuitabilityState.error || engineerSuitabilityState.message || "No provider evaluation has been started from this panel.")}</p>
+      <div class="engineer-suitability-result"${status || localResults.baseline || localResults.candidate ? "" : " hidden"}>
+        ${suitabilitySafeStatusHtml(status)}
+        ${suitabilitySafeResultHtml(localResults.baseline)}
+        ${suitabilitySafeResultHtml(localResults.candidate)}
+      </div>
+    </section>
+  `;
+  attachEngineerSuitabilityHandlers();
+  if (preservedCapabilityToken) {
+    const input = document.getElementById("engineerSuitabilityCapabilityToken");
+    if (input) input.value = preservedCapabilityToken;
+  }
+}
+
+function currentSuitabilityTokenInput() {
+  const input = document.getElementById("engineerSuitabilityCapabilityToken");
+  return input && typeof input.value === "string" ? input.value : "";
+}
+
+function clearSuitabilityTokenInput() {
+  const input = document.getElementById("engineerSuitabilityCapabilityToken");
+  if (input) input.value = "";
+}
+
+async function refreshEngineerSuitabilityStatus() {
+  engineerSuitabilityState.inFlightAction = "status";
+  engineerSuitabilityState.error = "";
+  engineerSuitabilityState.message = "Refreshing suitability status.";
+  renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
+  try {
+    const status = await renderFetch(ENGINEER_MODEL_SUITABILITY_STATUS_PATH);
+    engineerSuitabilityState.status = status;
+    engineerSuitabilityState.selectedBenchmarkId = suitabilitySelectedBenchmarkId();
+    engineerSuitabilityState.message = "Suitability status refreshed.";
+  } catch (error) {
+    engineerSuitabilityState.error = error && error.httpStatus === 401
+      ? "Operator session is required. Sign in again before using this diagnostic."
+      : safeText(error && error.message, "Suitability status could not refresh.");
+  } finally {
+    engineerSuitabilityState.inFlightAction = "";
+    renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
+  }
+}
+
+async function runEngineerSuitabilityArm(arm) {
+  const benchmarkId = suitabilitySelectedBenchmarkId();
+  const capabilityToken = currentSuitabilityTokenInput();
+  if (!capabilityToken.trim()) {
+    engineerSuitabilityState.error = "Enter the local suitability capability token before running an arm.";
+    engineerSuitabilityState.message = "";
+    renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
+    return;
+  }
+  engineerSuitabilityState.inFlightAction = arm;
+  engineerSuitabilityState.error = "";
+  engineerSuitabilityState.message = `Running ${arm} arm for ${benchmarkId}.`;
+  renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
+  let clearCapabilityAfterRun = false;
+  try {
+    const result = await renderPost(ENGINEER_MODEL_SUITABILITY_RUN_ARM_PATH, {
+      benchmarkId,
+      arm,
+      capabilityToken,
+    });
+    const currentResults = engineerSuitabilityState.latestResults[benchmarkId] || {};
+    engineerSuitabilityState.latestResults[benchmarkId] = { ...currentResults, [arm]: result };
+    engineerSuitabilityState.message = `${arm.charAt(0).toUpperCase()}${arm.slice(1)} arm returned ${safeText(result.status, "status unknown")}.`;
+    if (arm === "candidate" && result.status === "succeeded") {
+      clearCapabilityAfterRun = true;
+      clearSuitabilityTokenInput();
+    }
+    await refreshEngineerSuitabilityStatus();
+  } catch (error) {
+    engineerSuitabilityState.error = error && error.httpStatus === 401
+      ? "Operator session is required. Sign in again before using this diagnostic."
+      : safeText(error && error.message, `${arm} arm failed.`);
+  } finally {
+    engineerSuitabilityState.inFlightAction = "";
+    renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: !clearCapabilityAfterRun });
+  }
+}
+
+function attachEngineerSuitabilityHandlers() {
+  const refresh = document.getElementById("engineerSuitabilityRefreshButton");
+  const baseline = document.getElementById("engineerSuitabilityRunBaselineButton");
+  const candidate = document.getElementById("engineerSuitabilityRunCandidateButton");
+  const clear = document.getElementById("engineerSuitabilityClearTokenButton");
+  const select = document.getElementById("engineerSuitabilityBenchmarkSelect");
+  if (refresh) refresh.addEventListener("click", refreshEngineerSuitabilityStatus);
+  if (baseline) baseline.addEventListener("click", () => runEngineerSuitabilityArm("baseline"));
+  if (candidate) candidate.addEventListener("click", () => runEngineerSuitabilityArm("candidate"));
+  if (clear) clear.addEventListener("click", () => {
+    clearSuitabilityTokenInput();
+    engineerSuitabilityState.message = "Suitability capability token cleared from the page.";
+    engineerSuitabilityState.error = "";
+    renderEngineerSuitabilityDiagnostic();
+  });
+  if (select) select.addEventListener("change", () => {
+    engineerSuitabilityState.selectedBenchmarkId = select.value;
+    engineerSuitabilityState.message = `Selected benchmark ${select.value}.`;
+    engineerSuitabilityState.error = "";
+    renderEngineerSuitabilityDiagnostic({ preserveCapabilityToken: true });
+  });
+}
+
 function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
   const responseReceived = Boolean(error && error.responseReceived);
   const httpStatus = error && error.httpStatus ? error.httpStatus : (outcome === "completed" ? 200 : null);
@@ -619,6 +919,10 @@ function safeList(value) {
   return Array.isArray(value)
     ? value.filter((item) => item !== undefined && item !== null && String(item).trim()).map((item) => String(item))
     : [];
+}
+
+function safeObjectEntries(value) {
+  return isPlainObject(value) ? Object.entries(value) : [];
 }
 
 function firstOrUnknown(items) {
@@ -1586,6 +1890,7 @@ function renderRoleActivationWorkspace(options = {}) {
         <button class="role-activation-button" type="button" data-role="engineer">Engineer</button>
       </div>
       ${d1aWorkspaceFrameHtml()}
+      <div id="engineerSuitabilityDiagnostic"></div>
       <p id="roleWorkspaceHint" class="prime-composer-hint" hidden></p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
       <div id="engineerGovernedWorkflow" class="engineer-governed-workflow" hidden></div>
@@ -1598,6 +1903,7 @@ function renderRoleActivationWorkspace(options = {}) {
     </div>
   `;
   renderRoleWorkspaceTranscript();
+  renderEngineerSuitabilityDiagnostic();
   d1aAttachWorkspaceHandlers();
   document.querySelectorAll(".role-activation-button").forEach((button) => {
     button.addEventListener("click", () => {
