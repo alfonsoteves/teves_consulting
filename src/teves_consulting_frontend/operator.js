@@ -793,7 +793,7 @@ function suitabilityMissingRetainedResultHtml(arm, ledger, localResults) {
   return `
     <details class="prime-evidence role-evidence" open>
       <summary>${escapeHtml(`${arm} result unavailable`)}</summary>
-      <p class="meta">${escapeHtml("Arm completed, but sanitized result was not retained for this run.")}</p>
+      <p class="meta">${escapeHtml("Evaluation arm completed, but its retained result is unavailable for this process/run. Use a fresh evaluation run for comparison.")}</p>
     </details>
   `;
 }
