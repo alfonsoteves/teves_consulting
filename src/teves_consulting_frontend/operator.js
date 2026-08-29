@@ -772,6 +772,21 @@ function engineerResultStatusCopy(packet) {
   return statusCopy[status] || `Backend status: ${status}`;
 }
 
+function engineerRefinementDiagnosticsHtml(packet) {
+  if (!isPlainObject(packet)) return "";
+  const diagnostics = [
+    ["Refinement failure", packet.refinementFailureClassification],
+    ["Additional evidence decision", packet.additionalEvidenceDecisionClassification],
+    ["Refinement plan", packet.refinementPlanClassification],
+  ].filter(([, value]) => typeof value === "string" && value.trim());
+  if (!diagnostics.length) return "";
+  return `
+      <dl class="engineer-workflow-grid">
+        ${diagnostics.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+      </dl>
+  `;
+}
+
 function engineerWorkflowStatusHtml(workflow) {
   if (!workflow.current) return "";
   const current = workflow.current;
@@ -947,10 +962,12 @@ function engineerErrorHtml(workflow) {
   const message = typeof packet === "string" ? packet : safeText(packet.reason || packet.failure || packet.status || packet.classification, "The backend returned an error.");
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
+  const diagnostics = engineerRefinementDiagnosticsHtml(packet);
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
       <p class="prime-message-role">Engineer workflow issue</p>
       <h3>${escapeHtml(message)}</h3>
+      ${diagnostics}
       <p>${escapeHtml(execution)}</p>
       <p class="meta">${escapeHtml(next)}</p>
     </section>
