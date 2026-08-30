@@ -841,12 +841,170 @@ function engineerRefinementNeedIdentityHtml(packet) {
   `;
 }
 
+function parityStateText(value) {
+  return ["match", "differ", "unavailable"].includes(value) ? value : "unavailable";
+}
+
+function engineerParityStateRowsHtml(comparison) {
+  const states = isPlainObject(comparison) && isPlainObject(comparison.sectionStates) ? comparison.sectionStates : {};
+  const sections = [
+    ["Role contract", "roleContract"],
+    ["Objective", "objective"],
+    ["Finalization contract", "finalizationContract"],
+    ["Working/Program context", "context"],
+    ["Refinement state", "refinementState"],
+    ["Evidence packet", "evidencePacket"],
+    ["Evidence items", "evidenceItems"],
+    ["Schema", "schema"],
+    ["Assembled system message", "finalSystemMessage"],
+    ["Assembled user message", "finalUserMessage"],
+    ["Provider configuration", "providerConfiguration"],
+    ["Task 1 semantic markers", "task1SemanticMarkers"],
+  ];
+  return sections.map(([label, key]) => `
+    <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(parityStateText(states[key]))}</dd></div>
+  `).join("");
+}
+
+function engineerParityBaselineHtml(manifest) {
+  const baseline = isPlainObject(manifest) && isPlainObject(manifest.frozenBaseline) ? manifest.frozenBaseline : {};
+  const rows = [
+    ["Baseline", baseline.baselineId],
+    ["Fixture", baseline.fixtureDigest],
+    ["Prompt", baseline.promptDigest],
+    ["Schema", baseline.schemaDigest],
+  ].filter(([, value]) => typeof value === "string" && value.trim());
+  if (!rows.length) return "";
+  return `
+    <dl class="engineer-workflow-grid">
+      ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd><code>${escapeHtml(value)}</code></dd></div>`).join("")}
+    </dl>
+  `;
+}
+
+function engineerParityProviderConfigHtml(manifest) {
+  const config = isPlainObject(manifest) && isPlainObject(manifest.providerConfiguration) ? manifest.providerConfiguration : {};
+  const rows = [
+    ["Role", config.role],
+    ["Provider", config.providerId],
+    ["Adapter", config.adapterId],
+    ["Route", config.routeId],
+    ["Model", config.model],
+    ["Reasoning effort", config.reasoningEffort],
+    ["Fallback", typeof config.fallbackEnabled === "boolean" ? boolText(config.fallbackEnabled) : ""],
+    ["Task class", config.taskClass],
+  ].filter(([, value]) => typeof value === "string" && value.trim());
+  if (!rows.length) return "";
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>Provider configuration</h4>
+      <dl class="engineer-workflow-grid">
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+      </dl>
+    </div>
+  `;
+}
+
+function engineerParityMarkersHtml(markers) {
+  if (!isPlainObject(markers)) return "";
+  const rows = [
+    ["Backend request multi-path", markers.backendRequestMultiPathState],
+    ["Trace multi-path", markers.traceMultiPathState],
+    ["Frontend first-path projection", markers.frontendFirstPathProjection],
+    ["Observed one/two path mismatch", markers.observedOnePathVsTwoPathMismatch],
+  ].filter(([, value]) => typeof value === "boolean");
+  if (!rows.length) return "";
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>Task 1 semantic markers</h4>
+      <dl class="engineer-workflow-grid">
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(boolText(value))}</dd></div>`).join("")}
+      </dl>
+    </div>
+  `;
+}
+
+function engineerParityEvidenceItemsHtml(manifest, comparison) {
+  const fingerprints = isPlainObject(manifest) && Array.isArray(manifest.evidenceItemFingerprints)
+    ? manifest.evidenceItemFingerprints
+    : [];
+  const compared = isPlainObject(comparison)
+    && isPlainObject(comparison.evidenceItemComparison)
+    && Array.isArray(comparison.evidenceItemComparison.items)
+    ? comparison.evidenceItemComparison.items
+    : [];
+  if (!fingerprints.length && !compared.length) return "";
+  const comparisonByOrdinal = new Map(compared.map((item) => [item.ordinal, item]));
+  const rows = fingerprints.slice(0, 24).map((item) => {
+    const comparedItem = comparisonByOrdinal.get(item.ordinal) || {};
+    const markers = engineerParityMarkersHtml(item.semanticMarkers);
+    return `
+      <li>
+        <strong>Item ${escapeHtml(String(item.ordinal || "unknown"))}: ${escapeHtml(parityStateText(comparedItem.status))}</strong>
+        <dl class="engineer-workflow-grid">
+          <div><dt>Type</dt><dd>${escapeHtml(safeText(item.evidenceType))}</dd></div>
+          <div><dt>Category</dt><dd>${escapeHtml(safeText(item.category))}</dd></div>
+          <div><dt>Content chars</dt><dd>${escapeHtml(String(Number.isInteger(item.contentCharCount) ? item.contentCharCount : "unknown"))}</dd></div>
+          <div><dt>Content digest</dt><dd><code>${escapeHtml(safeText(item.contentDigest))}</code></dd></div>
+          <div><dt>Path digest</dt><dd><code>${escapeHtml(safeText(item.pathDigest))}</code></dd></div>
+          <div><dt>SourceRef count</dt><dd>${escapeHtml(String(Number.isInteger(item.sourceRefCount) ? item.sourceRefCount : "unknown"))}</dd></div>
+          <div><dt>SourceRef digest</dt><dd><code>${escapeHtml(safeText(item.sourceRefDigest))}</code></dd></div>
+        </dl>
+        ${markers}
+      </li>
+    `;
+  }).join("");
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>Evidence item fingerprints</h4>
+      <ol class="engineer-trace-list">${rows}</ol>
+    </div>
+  `;
+}
+
+function engineerFinalizationParityHtml(packet) {
+  if (!isPlainObject(packet)) return "";
+  const manifest = isPlainObject(packet.finalizationParityManifest) ? packet.finalizationParityManifest : null;
+  const comparison = isPlainObject(packet.finalizationParityComparison) ? packet.finalizationParityComparison : null;
+  if (!manifest && !comparison) return "";
+  const aggregate = comparison ? parityStateText(comparison.comparisonStatus) : "unavailable";
+  const allSections = comparison && typeof comparison.allSectionsMatch === "boolean" ? boolText(comparison.allSectionsMatch) : "no";
+  const unavailable = comparison && Array.isArray(comparison.unavailableSections) && comparison.unavailableSections.length
+    ? comparison.unavailableSections.map((item) => `<code>${escapeHtml(item)}</code>`).join(", ")
+    : "none";
+  const differing = comparison && Array.isArray(comparison.differingSections) && comparison.differingSections.length
+    ? comparison.differingSections.map((item) => `<code>${escapeHtml(item)}</code>`).join(", ")
+    : "none";
+  return `
+    <div class="engineer-need-identity">
+      <h4>Finalization parity</h4>
+      ${engineerParityBaselineHtml(manifest || {}) || "<p>Finalization parity diagnostics unavailable.</p>"}
+      <dl class="engineer-workflow-grid">
+        <div><dt>Aggregate</dt><dd>${escapeHtml(aggregate)}</dd></div>
+        <div><dt>All sections match</dt><dd>${escapeHtml(allSections)}</dd></div>
+        <div><dt>Unavailable sections</dt><dd>${unavailable}</dd></div>
+        <div><dt>Differing sections</dt><dd>${differing}</dd></div>
+      </dl>
+      <div class="engineer-need-identity-block">
+        <h4>Section comparison</h4>
+        <dl class="engineer-workflow-grid">
+          ${engineerParityStateRowsHtml(comparison || {})}
+        </dl>
+      </div>
+      ${engineerParityProviderConfigHtml(manifest || {})}
+      ${engineerParityMarkersHtml(manifest && manifest.task1SemanticMarkers)}
+      ${engineerParityEvidenceItemsHtml(manifest || {}, comparison || {})}
+    </div>
+  `;
+}
+
 function engineerWorkflowStatusHtml(workflow) {
   if (!workflow.current) return "";
   const current = workflow.current;
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
+  const parity = engineerFinalizationParityHtml(current.resumeResponse);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -857,6 +1015,7 @@ function engineerWorkflowStatusHtml(workflow) {
         </div>
         <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || current.resumeStatus || "pending")}</span>
       </div>
+      ${parity}
     </section>
   `;
 }
@@ -1018,12 +1177,14 @@ function engineerErrorHtml(workflow) {
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
   const diagnostics = engineerRefinementDiagnosticsHtml(packet);
   const needIdentity = engineerRefinementNeedIdentityHtml(packet);
+  const parity = engineerFinalizationParityHtml(packet);
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
       <p class="prime-message-role">Engineer workflow issue</p>
       <h3>${escapeHtml(message)}</h3>
       ${diagnostics}
       ${needIdentity}
+      ${parity}
       <p>${escapeHtml(execution)}</p>
       <p class="meta">${escapeHtml(next)}</p>
     </section>
