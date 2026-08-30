@@ -787,6 +787,60 @@ function engineerRefinementDiagnosticsHtml(packet) {
   `;
 }
 
+function engineerNeedIdentifiersHtml(identity) {
+  if (!isPlainObject(identity)) return "unknown";
+  if (identity.knownIdentifiersUnavailable === true) return "unavailable";
+  const identifiers = safeList(identity.knownIdentifiers);
+  if (!identifiers.length) return "none";
+  return identifiers.map((item) => `<code>${escapeHtml(item)}</code>`).join(", ");
+}
+
+function engineerNeedIdentityHtml(label, identity) {
+  if (!isPlainObject(identity)) return "";
+  const type = safeText(identity.evidenceType, "unknown");
+  const anchorCount = Number.isInteger(identity.sourceAnchorCount) ? String(identity.sourceAnchorCount) : "unknown";
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>${escapeHtml(label)}</h4>
+      <dl class="engineer-workflow-grid">
+        <div><dt>Type</dt><dd>${escapeHtml(type)}</dd></div>
+        <div><dt>Identifiers</dt><dd>${engineerNeedIdentifiersHtml(identity)}</dd></div>
+        <div><dt>Anchor count</dt><dd>${escapeHtml(anchorCount)}</dd></div>
+      </dl>
+    </div>
+  `;
+}
+
+function engineerNeedDifferenceHtml(difference) {
+  if (!isPlainObject(difference)) return "";
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>Difference</h4>
+      <dl class="engineer-workflow-grid">
+        <div><dt>Evidence type changed</dt><dd>${escapeHtml(boolText(difference.evidenceTypeChanged === true))}</dd></div>
+        <div><dt>Identifiers changed</dt><dd>${escapeHtml(boolText(difference.knownIdentifiersChanged === true))}</dd></div>
+        <div><dt>Anchors changed</dt><dd>${escapeHtml(boolText(difference.sourceAnchorsChanged === true))}</dd></div>
+      </dl>
+    </div>
+  `;
+}
+
+function engineerRefinementNeedIdentityHtml(packet) {
+  const identity = isPlainObject(packet) ? packet.refinementNeedIdentity : null;
+  if (!isPlainObject(identity)) return "";
+  const prior = engineerNeedIdentityHtml("Prior satisfied need", identity.priorSatisfied);
+  const final = engineerNeedIdentityHtml("Final requested need", identity.finalRequested);
+  const difference = engineerNeedDifferenceHtml(identity.difference);
+  if (!prior && !final && !difference) return "";
+  return `
+    <div class="engineer-need-identity">
+      ${prior}
+      ${final}
+      ${difference}
+    </div>
+  `;
+}
+
 function engineerWorkflowStatusHtml(workflow) {
   if (!workflow.current) return "";
   const current = workflow.current;
@@ -963,11 +1017,13 @@ function engineerErrorHtml(workflow) {
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
   const diagnostics = engineerRefinementDiagnosticsHtml(packet);
+  const needIdentity = engineerRefinementNeedIdentityHtml(packet);
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
       <p class="prime-message-role">Engineer workflow issue</p>
       <h3>${escapeHtml(message)}</h3>
       ${diagnostics}
+      ${needIdentity}
       <p>${escapeHtml(execution)}</p>
       <p class="meta">${escapeHtml(next)}</p>
     </section>
