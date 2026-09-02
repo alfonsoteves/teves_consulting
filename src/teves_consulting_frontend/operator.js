@@ -6,6 +6,9 @@ const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
 const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
+const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
+const LOCAL_ENGINEER_PENDING_PAIRINGS_PATH = "/admin/local-engineer/device-pairings/pending";
+const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
 let authClient = null;
 let identity = null;
 let actor = null;
@@ -82,6 +85,7 @@ let roleWorkspaceTranscript = [];
 let roleWorkspaceInitialized = false;
 let activeRole = "prime";
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
+let localEngineerPairingState = createLocalEngineerPairingState();
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -1765,6 +1769,175 @@ async function sendRoleWorkspaceMessage(role, message) {
   });
 }
 
+function createLocalEngineerPairingState() {
+  return {
+    status: "idle",
+    message: "",
+    pendingPairings: [],
+    actionPairingId: "",
+    connectInFlight: false,
+    refreshInFlight: false,
+  };
+}
+
+function localEngineerPairingFailureText(error) {
+  const detail = error && error.backendDetail;
+  if (isPlainObject(detail)) {
+    return safeText(detail.failure || detail.classification || detail.status || detail.reason, "Request failed.");
+  }
+  return safeText(error && error.message, "Request failed.");
+}
+
+function localEngineerPairingLaunchUrl(challenge, version) {
+  if (typeof challenge !== "string" || !challenge.trim()) {
+    throw new Error("Local Engineer launch challenge is missing.");
+  }
+  const params = new URLSearchParams();
+  params.set("challenge", challenge);
+  params.set("v", typeof version === "string" && version.trim() ? version.trim() : "1");
+  return `${LOCAL_ENGINEER_CUSTOM_SCHEME}://connect?${params.toString()}`;
+}
+
+function localEngineerPendingPairingsFromResponse(response) {
+  if (!isPlainObject(response) || !Array.isArray(response.pairings)) return [];
+  return response.pairings.filter(isPlainObject);
+}
+
+function localEngineerPairingCardHtml(pairing) {
+  const pairingId = safeText(pairing.pairingId, "");
+  const disabled = localEngineerPairingState.actionPairingId === pairingId ? " disabled" : "";
+  return `
+    <article class="engineer-workflow-card">
+      <p class="prime-message-role">Pending Local Engineer device</p>
+      <h3>${escapeHtml(safeText(pairing.deviceFingerprint, "unknown device"))}</h3>
+      <dl class="engineer-workflow-grid">
+        <div><dt>Protection</dt><dd>${escapeHtml(safeText(pairing.keyProtection, "unknown"))}</dd></div>
+        <div><dt>First seen</dt><dd>${escapeHtml(safeText(pairing.firstSeenAt, "unknown"))}</dd></div>
+        <div><dt>State</dt><dd>${escapeHtml(safeText(pairing.state, "pending"))}</dd></div>
+      </dl>
+      <p class="meta">Pairing only confirms this companion device. No execution session or repository authority is active.</p>
+      <div class="engineer-workflow-actions">
+        <button type="button" class="local-engineer-pair-button" data-pairing-id="${escapeHtml(pairingId)}"${disabled}>Pair</button>
+        <button type="button" class="secondary local-engineer-reject-button" data-pairing-id="${escapeHtml(pairingId)}"${disabled}>Reject</button>
+      </div>
+    </article>
+  `;
+}
+
+function localEngineerPairingPanelHtml() {
+  const state = localEngineerPairingState;
+  const pending = state.pendingPairings || [];
+  const status = state.message || (pending.length ? "Pending Local Engineer devices are waiting for an Owner decision." : "No pending Local Engineer device pairing.");
+  return `
+    <section class="engineer-workflow-card" aria-label="Local Engineer pairing">
+      <p class="prime-message-role">Local Engineer companion</p>
+      <h3>Connect this Mac</h3>
+      <p>${escapeHtml(status)}</p>
+      <p class="meta">Phase 9 prototype pairing may require re-pairing after backend restart.</p>
+      <div class="engineer-workflow-actions">
+        <button id="localEngineerConnectButton" type="button"${state.connectInFlight ? " disabled" : ""}>Connect Local Engineer</button>
+        <button id="localEngineerRefreshPairingsButton" type="button" class="secondary"${state.refreshInFlight ? " disabled" : ""}>Refresh</button>
+      </div>
+      ${pending.length ? pending.map(localEngineerPairingCardHtml).join("") : ""}
+    </section>
+  `;
+}
+
+function d1aRefreshLocalEngineerPairingDisplay() {
+  const container = document.getElementById("localEngineerPairing");
+  if (!container) return;
+  const html = activeRole === "engineer" ? localEngineerPairingPanelHtml().trim() : "";
+  container.hidden = !html;
+  container.innerHTML = html;
+  if (!html) return;
+  d1aAttachLocalEngineerPairingHandlers();
+}
+
+async function refreshLocalEngineerPendingPairings() {
+  localEngineerPairingState.refreshInFlight = true;
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!isOperator) {
+      throw new Error("Operator access is required.");
+    }
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    const result = await renderFetch(LOCAL_ENGINEER_PENDING_PAIRINGS_PATH);
+    localEngineerPairingState.pendingPairings = localEngineerPendingPairingsFromResponse(result);
+    localEngineerPairingState.message = localEngineerPairingState.pendingPairings.length
+      ? "Pending Local Engineer devices are waiting for an Owner decision."
+      : "No pending Local Engineer device pairing.";
+  } catch (error) {
+    localEngineerPairingState.message = localEngineerPairingFailureText(error);
+  } finally {
+    localEngineerPairingState.refreshInFlight = false;
+    d1aRefreshLocalEngineerPairingDisplay();
+  }
+}
+
+async function connectLocalEngineerCompanion() {
+  localEngineerPairingState.connectInFlight = true;
+  localEngineerPairingState.message = "Preparing Local Engineer launch challenge.";
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!isOperator) {
+      throw new Error("Operator access is required.");
+    }
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    const challengeResponse = await renderPostNoBody(LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH);
+    const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
+    window.location.href = launchUrl;
+    localEngineerPairingState.message = "Local Engineer launch requested. Approve the pending device when it appears.";
+    window.setTimeout(() => {
+      refreshLocalEngineerPendingPairings().catch(() => {});
+    }, 1500);
+  } catch (error) {
+    localEngineerPairingState.message = localEngineerPairingFailureText(error);
+  } finally {
+    localEngineerPairingState.connectInFlight = false;
+    d1aRefreshLocalEngineerPairingDisplay();
+  }
+}
+
+async function decideLocalEngineerPairing(pairingId, action) {
+  if (!pairingId) return;
+  localEngineerPairingState.actionPairingId = pairingId;
+  localEngineerPairingState.message = action === "approve" ? "Pairing Local Engineer device." : "Rejecting Local Engineer device.";
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    const result = await renderPostNoBody(`/admin/local-engineer/device-pairings/${encodeURIComponent(pairingId)}/${action}`);
+    const pairing = isPlainObject(result.pairing) ? result.pairing : {};
+    const state = safeText(pairing.state || result.pairingStage, action === "approve" ? "paired" : "rejected");
+    localEngineerPairingState.message = `Local Engineer device ${state}.`;
+    await refreshLocalEngineerPendingPairings();
+  } catch (error) {
+    localEngineerPairingState.message = localEngineerPairingFailureText(error);
+    await refreshLocalEngineerPendingPairings();
+  } finally {
+    localEngineerPairingState.actionPairingId = "";
+    d1aRefreshLocalEngineerPairingDisplay();
+  }
+}
+
+function d1aAttachLocalEngineerPairingHandlers() {
+  const connect = document.getElementById("localEngineerConnectButton");
+  const refresh = document.getElementById("localEngineerRefreshPairingsButton");
+  if (connect) connect.addEventListener("click", connectLocalEngineerCompanion);
+  if (refresh) refresh.addEventListener("click", refreshLocalEngineerPendingPairings);
+  document.querySelectorAll(".local-engineer-pair-button").forEach((button) => {
+    button.addEventListener("click", () => decideLocalEngineerPairing(button.dataset.pairingId || "", "approve"));
+  });
+  document.querySelectorAll(".local-engineer-reject-button").forEach((button) => {
+    button.addEventListener("click", () => decideLocalEngineerPairing(button.dataset.pairingId || "", "reject"));
+  });
+}
+
 function setActiveRole(role) {
   activeRole = role;
   document.querySelectorAll(".role-activation-button").forEach((button) => {
@@ -1801,6 +1974,10 @@ function setActiveRole(role) {
     roleHint.hidden = !hint;
   }
   d1aRefreshEngineerWorkflowDisplay();
+  d1aRefreshLocalEngineerPairingDisplay();
+  if (role === "engineer") {
+    refreshLocalEngineerPendingPairings().catch(() => {});
+  }
 }
 
 function activateMirrorRole() {
@@ -1826,6 +2003,7 @@ function renderRoleActivationWorkspace(options = {}) {
       ${d1aWorkspaceFrameHtml()}
       <p id="roleWorkspaceHint" class="prime-composer-hint" hidden></p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
+      <div id="localEngineerPairing" class="engineer-governed-workflow" hidden></div>
       <div id="engineerGovernedWorkflow" class="engineer-governed-workflow" hidden></div>
       <form id="primeComposer" class="prime-composer">
         <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime..."></textarea>
