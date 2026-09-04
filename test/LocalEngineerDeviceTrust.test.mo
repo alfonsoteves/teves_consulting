@@ -4,6 +4,15 @@ import Trust "../src/local_engineer_device_trust_backend/lib/LocalEngineerDevice
 
 let service = Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai");
 let other = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
+let replacement = Principal.fromBlob("\01");
+let recovery = Principal.fromBlob("\02");
+let alternateRecovery = Principal.fromBlob("\03");
+let overflowOne = Principal.fromBlob("\04");
+let overflowTwo = Principal.fromBlob("\05");
+let overflowThree = Principal.fromBlob("\06");
+let overflowFour = Principal.fromBlob("\07");
+let overflowFive = Principal.fromBlob("\08");
+let overflowSix = Principal.fromBlob("\09");
 let sessionReference = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let revokeReference = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 let digest = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
@@ -29,6 +38,34 @@ func emptyState() : Trust.State {
   {
     records = [];
     authorizedServicePrincipals = [service];
+    recoveryGovernancePrincipals = [recovery];
+    authorizationConfigVersion = Trust.initialAuthorizationConfigVersion;
+    latestAuthorizationRecovery = null;
+  };
+};
+
+func stateWithRecords(records : [Trust.TrustRecord]) : Trust.State {
+  {
+    records;
+    authorizedServicePrincipals = [service];
+    recoveryGovernancePrincipals = [recovery];
+    authorizationConfigVersion = Trust.initialAuthorizationConfigVersion;
+    latestAuthorizationRecovery = null;
+  };
+};
+
+func serviceRotationRequest(principals : [Principal], version : Nat) : Trust.ReplaceAuthorizedServicePrincipalsRequest {
+  {
+    authorizedServicePrincipals = principals;
+    expectedAuthorizationConfigVersion = version;
+  };
+};
+
+func recoveryRequest(principals : [Principal], version : Nat, reasonCode : Trust.RecoveryReasonCode) : Trust.RecoverAuthorizedServicePrincipalsRequest {
+  {
+    authorizedServicePrincipals = principals;
+    expectedAuthorizationConfigVersion = version;
+    reasonCode;
   };
 };
 
@@ -70,23 +107,86 @@ func assertUnauthorized(result : Trust.RecordResult) {
   };
 };
 
-let sanitized = Trust.sanitizeAuthorizedServicePrincipals([Principal.anonymous(), service, service]);
+assert Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [service];
+  recoveryGovernancePrincipals = [recovery];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [];
+  recoveryGovernancePrincipals = [recovery];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [service];
+  recoveryGovernancePrincipals = [];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [Principal.anonymous()];
+  recoveryGovernancePrincipals = [recovery];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [service];
+  recoveryGovernancePrincipals = [Principal.anonymous()];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [service, other, replacement, overflowOne, overflowTwo, overflowThree];
+  recoveryGovernancePrincipals = [recovery];
+});
+assert not Trust.validInitialAuthorizationConfig({
+  authorizedServicePrincipals = [service];
+  recoveryGovernancePrincipals = [recovery, alternateRecovery, overflowOne, overflowTwo];
+});
+assert emptyState().authorizationConfigVersion == 1;
+
+let sanitized = Trust.sanitizeAuthorizedServicePrincipals([service, service]);
 assert sanitized.size() == 1;
 assert sanitized[0] == service;
 
-let unauthorizedRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), other, [other]);
+let sanitizedRecovery = Trust.sanitizeRecoveryGovernancePrincipals([alternateRecovery, recovery, recovery]);
+assert sanitizedRecovery.size() == 2;
+assert sanitizedRecovery[0] == recovery;
+assert sanitizedRecovery[1] == alternateRecovery;
+
+let unauthorizedRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), other, serviceRotationRequest([other], 1));
 switch (unauthorizedRotation.result) {
   case (#err(#unauthorized)) {};
   case _ { assert false };
 };
 
-let invalidRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, [Principal.anonymous()]);
+let staleRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, serviceRotationRequest([other], 2));
+switch (staleRotation.result) {
+  case (#err(#version_conflict)) {};
+  case _ { assert false };
+};
+
+let recoveryOnlyRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), recovery, serviceRotationRequest([other], 1));
+switch (recoveryOnlyRotation.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+let invalidRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, serviceRotationRequest([Principal.anonymous()], 1));
 switch (invalidRotation.result) {
   case (#err(#invalid_record)) {};
   case _ { assert false };
 };
 
-let rotated = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, [other, other]);
+let emptyRotation = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, serviceRotationRequest([], 1));
+switch (emptyRotation.result) {
+  case (#err(#invalid_record)) {};
+  case _ { assert false };
+};
+
+let overLimitRotation = Trust.replaceAuthorizedServicePrincipals(
+  emptyState(),
+  service,
+  serviceRotationRequest([service, other, replacement, overflowOne, overflowTwo, overflowThree], 1),
+);
+switch (overLimitRotation.result) {
+  case (#err(#capacity_exceeded)) {};
+  case _ { assert false };
+};
+
+let rotated = Trust.replaceAuthorizedServicePrincipals(emptyState(), service, serviceRotationRequest([other, other], 1));
 switch (rotated.result) {
   case (#ok(principals)) {
     assert principals.size() == 1;
@@ -94,8 +194,23 @@ switch (rotated.result) {
   };
   case _ { assert false };
 };
+assert rotated.state.authorizationConfigVersion == 2;
+assert rotated.state.recoveryGovernancePrincipals.size() == 1;
+assert rotated.state.recoveryGovernancePrincipals[0] == recovery;
 switch (Trust.get(rotated.state, service, deviceId)) {
   case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+switch (Trust.authorizationConfig(rotated.state, recovery)) {
+  case (#ok(config)) {
+    assert config.authorizationConfigVersion == 2;
+    assert config.authorizedServicePrincipals.size() == 1;
+    assert config.authorizedServicePrincipals[0] == other;
+    assert config.recoveryGovernancePrincipals.size() == 1;
+    assert config.recoveryGovernancePrincipals[0] == recovery;
+    assert config.latestAuthorizationRecovery == null;
+  };
   case _ { assert false };
 };
 
@@ -330,12 +445,256 @@ switch (Trust.list(revoked.state, service, { limit = 10; cursor = null })) {
   case _ { assert false };
 };
 
+let recordsBeforeNormalRotation = revoked.state.records;
+let normalRotationWithRecords = Trust.replaceAuthorizedServicePrincipals(
+  revoked.state,
+  service,
+  serviceRotationRequest([other], 1),
+);
+switch (normalRotationWithRecords.result) {
+  case (#ok(principals)) {
+    assert principals.size() == 1;
+    assert principals[0] == other;
+  };
+  case _ { assert false };
+};
+assert normalRotationWithRecords.state.records == recordsBeforeNormalRotation;
+assert normalRotationWithRecords.state.authorizationConfigVersion == 2;
+
+let unauthorizedRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  service,
+  recoveryRequest([replacement], 1, #lost_service_principal),
+  6_000,
+);
+switch (unauthorizedRecovery.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+let anonymousRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  Principal.anonymous(),
+  recoveryRequest([replacement], 1, #lost_service_principal),
+  6_000,
+);
+switch (anonymousRecovery.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+let staleRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  recovery,
+  recoveryRequest([replacement], 2, #lost_service_principal),
+  6_000,
+);
+switch (staleRecovery.result) {
+  case (#err(#version_conflict)) {};
+  case _ { assert false };
+};
+
+let emptyRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  recovery,
+  recoveryRequest([], 1, #lost_service_principal),
+  6_000,
+);
+switch (emptyRecovery.result) {
+  case (#err(#invalid_record)) {};
+  case _ { assert false };
+};
+
+let overLimitRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  recovery,
+  recoveryRequest([service, other, replacement, overflowOne, overflowTwo, overflowThree], 1, #lost_service_principal),
+  6_000,
+);
+switch (overLimitRecovery.result) {
+  case (#err(#capacity_exceeded)) {};
+  case _ { assert false };
+};
+
+let anonymousReplacementRecovery = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  recovery,
+  recoveryRequest([Principal.anonymous()], 1, #lost_service_principal),
+  6_000,
+);
+switch (anonymousReplacementRecovery.result) {
+  case (#err(#invalid_record)) {};
+  case _ { assert false };
+};
+
+let recovered = Trust.recoverAuthorizedServicePrincipals(
+  revoked.state,
+  recovery,
+  recoveryRequest([replacement], 1, #compromised_service_principal),
+  6_000,
+);
+switch (recovered.result) {
+  case (#ok(config)) {
+    assert config.authorizedServicePrincipals.size() == 1;
+    assert config.authorizedServicePrincipals[0] == replacement;
+    assert config.recoveryGovernancePrincipals.size() == 1;
+    assert config.recoveryGovernancePrincipals[0] == recovery;
+    assert config.authorizationConfigVersion == 2;
+    switch (config.latestAuthorizationRecovery) {
+      case (?provenance) {
+        assert provenance.recoveryCaller == recovery;
+        assert provenance.recoveredAtNs == 6_000;
+        assert provenance.authorizationConfigVersion == 2;
+        assert provenance.reasonCode == #compromised_service_principal;
+        assert provenance.previousAuthorizedServicePrincipalsDigest.size() == Trust.sha256HexCharacters;
+        assert provenance.newAuthorizedServicePrincipalsDigest.size() == Trust.sha256HexCharacters;
+        assert provenance.previousAuthorizedServicePrincipalsDigest != provenance.newAuthorizedServicePrincipalsDigest;
+      };
+      case null { assert false };
+    };
+  };
+  case _ { assert false };
+};
+assert recovered.state.records == revoked.state.records;
+switch (Trust.get(recovered.state, service, deviceId)) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+switch (Trust.get(recovered.state, replacement, deviceId)) {
+  case (#ok(record)) {
+    assert record.trustState == #revoked;
+    assert record.recordVersion == 4;
+    assert record.revokedAtNs == ?4_000;
+    assert record.revocationReason == ?"owner requested";
+  };
+  case _ { assert false };
+};
+switch (Trust.get(recovered.state, recovery, deviceId)) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+switch (Trust.list(recovered.state, recovery, { limit = 10; cursor = null })) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+switch (Trust.authorizationConfig(recovered.state, Principal.anonymous())) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+let recoveryOnlyPair = Trust.pair(recovered.state, recovery, pairRequest(null), 7_000);
+switch (recoveryOnlyPair.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+let recoveryOnlyRevoke = Trust.revoke(
+  recovered.state,
+  recovery,
+  {
+    deviceId;
+    revocationReason = ?"bad";
+    revokingOperatorSessionReference = revokeReference;
+  },
+  7_000,
+);
+switch (recoveryOnlyRevoke.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+let serviceWinsRotation = Trust.replaceAuthorizedServicePrincipals(
+  emptyState(),
+  service,
+  serviceRotationRequest([other], 1),
+);
+switch (serviceWinsRotation.result) {
+  case (#ok(_)) {};
+  case _ { assert false };
+};
+let staleRecoveryAfterServiceWin = Trust.recoverAuthorizedServicePrincipals(
+  serviceWinsRotation.state,
+  recovery,
+  recoveryRequest([replacement], 1, #compromised_service_principal),
+  8_000,
+);
+switch (staleRecoveryAfterServiceWin.result) {
+  case (#err(#version_conflict)) {};
+  case _ { assert false };
+};
+let recoveredAfterReload = Trust.recoverAuthorizedServicePrincipals(
+  serviceWinsRotation.state,
+  recovery,
+  recoveryRequest([replacement], 2, #compromised_service_principal),
+  8_100,
+);
+switch (recoveredAfterReload.result) {
+  case (#ok(config)) {
+    assert config.authorizationConfigVersion == 3;
+    assert config.authorizedServicePrincipals[0] == replacement;
+  };
+  case _ { assert false };
+};
+
+let recoveryWins = Trust.recoverAuthorizedServicePrincipals(
+  emptyState(),
+  recovery,
+  recoveryRequest([replacement], 1, #compromised_service_principal),
+  8_200,
+);
+switch (recoveryWins.result) {
+  case (#ok(_)) {};
+  case _ { assert false };
+};
+let staleServiceAfterRecoveryWin = Trust.replaceAuthorizedServicePrincipals(
+  recoveryWins.state,
+  service,
+  serviceRotationRequest([other], 1),
+);
+switch (staleServiceAfterRecoveryWin.result) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
+let secondDeviceId = "dev_" # repeated("B", 43);
+let pairedAndRevoked = Trust.pair(
+  revoked.state,
+  service,
+  { pairRequest(null) with deviceId = secondDeviceId },
+  9_000,
+);
+switch (pairedAndRevoked.result) {
+  case (#ok(record)) {
+    assert record.trustState == #paired;
+    assert record.recordVersion == 1;
+  };
+  case _ { assert false };
+};
+let recordsBeforeRecovery = pairedAndRevoked.state.records;
+let recoveredPairedAndRevoked = Trust.recoverAuthorizedServicePrincipals(
+  pairedAndRevoked.state,
+  recovery,
+  recoveryRequest([replacement], 1, #lost_service_principal),
+  9_100,
+);
+switch (recoveredPairedAndRevoked.result) {
+  case (#ok(_)) {};
+  case _ { assert false };
+};
+assert recoveredPairedAndRevoked.state.records == recordsBeforeRecovery;
+switch (Trust.get(recoveredPairedAndRevoked.state, replacement, deviceId)) {
+  case (#ok(record)) { assert record.trustState == #revoked };
+  case _ { assert false };
+};
+switch (Trust.get(recoveredPairedAndRevoked.state, replacement, secondDeviceId)) {
+  case (#ok(record)) { assert record.trustState == #paired };
+  case _ { assert false };
+};
+
 var capacityRecords : [Trust.TrustRecord] = [];
 var capacityIndex = 0;
 while (capacityIndex < Trust.maximumTrustRecords) {
   let id = "dev_" # repeated("A", 41) # digitText(capacityIndex / 10) # digitText(capacityIndex % 10);
   let request = { pairRequest(null) with deviceId = id };
-  let next = Trust.pair({ records = capacityRecords; authorizedServicePrincipals = [service] }, service, request, 10_000 + capacityIndex);
+  let next = Trust.pair(stateWithRecords(capacityRecords), service, request, 10_000 + capacityIndex);
   switch (next.result) {
     case (#ok(_)) { capacityRecords := next.state.records };
     case _ { assert false };
@@ -344,7 +703,7 @@ while (capacityIndex < Trust.maximumTrustRecords) {
 };
 
 let overCapacity = Trust.pair(
-  { records = capacityRecords; authorizedServicePrincipals = [service] },
+  stateWithRecords(capacityRecords),
   service,
   { pairRequest(null) with deviceId = "dev_" # repeated("B", 43) },
   20_000,

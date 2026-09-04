@@ -2,21 +2,34 @@ import Time "mo:core/Time";
 import Trust "lib/LocalEngineerDeviceTrust";
 
 shared ({ caller = _installer }) actor class LocalEngineerDeviceTrustBackend(init : Trust.InitArgs) {
+  assert Trust.validInitialAuthorizationConfig(init);
+
   var records : [Trust.TrustRecord] = [];
   var authorizedServicePrincipals : [Principal] = Trust.sanitizeAuthorizedServicePrincipals(
     init.authorizedServicePrincipals
   );
+  var recoveryGovernancePrincipals : [Principal] = Trust.sanitizeRecoveryGovernancePrincipals(
+    init.recoveryGovernancePrincipals
+  );
+  var authorizationConfigVersion : Nat = Trust.initialAuthorizationConfigVersion;
+  var latestAuthorizationRecovery : ?Trust.AuthorizationRecoveryProvenance = null;
 
   func state() : Trust.State {
     {
       records;
       authorizedServicePrincipals;
+      recoveryGovernancePrincipals;
+      authorizationConfigVersion;
+      latestAuthorizationRecovery;
     };
   };
 
   func commit(next : Trust.State) {
     records := next.records;
     authorizedServicePrincipals := next.authorizedServicePrincipals;
+    recoveryGovernancePrincipals := next.recoveryGovernancePrincipals;
+    authorizationConfigVersion := next.authorizationConfigVersion;
+    latestAuthorizationRecovery := next.latestAuthorizationRecovery;
   };
 
   public shared query ({ caller }) func getLocalEngineerDeviceTrust(
@@ -56,10 +69,22 @@ shared ({ caller = _installer }) actor class LocalEngineerDeviceTrustBackend(ini
   };
 
   public shared ({ caller }) func replaceLocalEngineerDeviceTrustAuthorizedPrincipals(
-    principals : [Principal]
+    request : Trust.ReplaceAuthorizedServicePrincipalsRequest
   ) : async Trust.AuthorizationResult {
-    let mutation = Trust.replaceAuthorizedServicePrincipals(state(), caller, principals);
+    let mutation = Trust.replaceAuthorizedServicePrincipals(state(), caller, request);
     commit(mutation.state);
     mutation.result;
+  };
+
+  public shared ({ caller }) func recoverLocalEngineerDeviceTrustAuthorizedPrincipals(
+    request : Trust.RecoverAuthorizedServicePrincipalsRequest
+  ) : async Trust.AuthorizationConfigResult {
+    let mutation = Trust.recoverAuthorizedServicePrincipals(state(), caller, request, Time.now());
+    commit(mutation.state);
+    mutation.result;
+  };
+
+  public shared query ({ caller }) func getLocalEngineerDeviceTrustAuthorizationConfig() : async Trust.AuthorizationConfigResult {
+    Trust.authorizationConfig(state(), caller);
   };
 };

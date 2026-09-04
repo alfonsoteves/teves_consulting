@@ -1,6 +1,8 @@
 import Array "mo:core/Array";
+import Nat8 "mo:core/Nat8";
 import Principal "mo:core/Principal";
 import Text "mo:core/Text";
+import Sha256 "mo:sha2/Sha256";
 
 module {
   public let schemaVersion : Text = "local_engineer_device_trust_record_v1";
@@ -13,6 +15,9 @@ module {
   public let sha256HexCharacters : Nat = 64;
   public let fingerprintCharacters : Nat = 12;
   public let deviceIdCharacters : Nat = 47;
+  public let maximumAuthorizedServicePrincipals : Nat = 5;
+  public let maximumRecoveryGovernancePrincipals : Nat = 3;
+  public let initialAuthorizationConfigVersion : Nat = 1;
 
   public type KeyProtection = {
     #secure_enclave;
@@ -76,6 +81,42 @@ module {
     cursor : ?Nat;
   };
 
+  public type RecoveryReasonCode = {
+    #lost_service_principal;
+    #compromised_service_principal;
+    #planned_rotation_recovery;
+    #operator_requested;
+    #other;
+  };
+
+  public type ReplaceAuthorizedServicePrincipalsRequest = {
+    authorizedServicePrincipals : [Principal];
+    expectedAuthorizationConfigVersion : Nat;
+  };
+
+  public type RecoverAuthorizedServicePrincipalsRequest = {
+    authorizedServicePrincipals : [Principal];
+    expectedAuthorizationConfigVersion : Nat;
+    reasonCode : RecoveryReasonCode;
+  };
+
+  public type AuthorizationRecoveryProvenance = {
+    recoveryCaller : Principal;
+    recoveredAtNs : Int;
+    previousAuthorizedServicePrincipalsDigest : Text;
+    newAuthorizedServicePrincipalsDigest : Text;
+    authorizationConfigVersion : Nat;
+    reasonCode : RecoveryReasonCode;
+  };
+
+  public type AuthorizationConfig = {
+    authorizedServicePrincipals : [Principal];
+    // Recovery governance is intentionally install/upgrade-governed in B1R.
+    recoveryGovernancePrincipals : [Principal];
+    authorizationConfigVersion : Nat;
+    latestAuthorizationRecovery : ?AuthorizationRecoveryProvenance;
+  };
+
   public type Error = {
     #not_found;
     #unauthorized;
@@ -106,13 +147,22 @@ module {
     #err : Error;
   };
 
+  public type AuthorizationConfigResult = {
+    #ok : AuthorizationConfig;
+    #err : Error;
+  };
+
   public type State = {
     records : [TrustRecord];
     authorizedServicePrincipals : [Principal];
+    recoveryGovernancePrincipals : [Principal];
+    authorizationConfigVersion : Nat;
+    latestAuthorizationRecovery : ?AuthorizationRecoveryProvenance;
   };
 
   public type InitArgs = {
     authorizedServicePrincipals : [Principal];
+    recoveryGovernancePrincipals : [Principal];
   };
 
   public type RecordMutation = {
@@ -128,6 +178,17 @@ module {
   public type AuthorizationMutation = {
     state : State;
     result : AuthorizationResult;
+  };
+
+  public type AuthorizationConfigMutation = {
+    state : State;
+    result : AuthorizationConfigResult;
+  };
+
+  type PrincipalSetValidation = {
+    #ok : [Principal];
+    #invalid;
+    #capacity_exceeded;
   };
 
   func isHexChar(character : Char) : Bool {
@@ -177,6 +238,44 @@ module {
       index += 1;
     };
     result;
+  };
+
+  func hexDigit(value : Nat) : Text {
+    switch (value) {
+      case 0 { "0" };
+      case 1 { "1" };
+      case 2 { "2" };
+      case 3 { "3" };
+      case 4 { "4" };
+      case 5 { "5" };
+      case 6 { "6" };
+      case 7 { "7" };
+      case 8 { "8" };
+      case 9 { "9" };
+      case 10 { "a" };
+      case 11 { "b" };
+      case 12 { "c" };
+      case 13 { "d" };
+      case 14 { "e" };
+      case _ { "f" };
+    };
+  };
+
+  func blobToHex(value : Blob) : Text {
+    var result = "";
+    for (byte in value.vals()) {
+      let nat = Nat8.toNat(byte);
+      result #= hexDigit(nat / 16) # hexDigit(nat % 16);
+    };
+    result;
+  };
+
+  func principalSetDigest(principals : [Principal]) : Text {
+    var input = "local_engineer_authorized_service_principals_v1";
+    for (principal in principals.values()) {
+      input #= "\n" # Principal.toText(principal);
+    };
+    blobToHex(Sha256.fromBlob(#sha256, Text.encodeUtf8(input)));
   };
 
   func publicKeyHasUncompressedPrefix(publicKeyX963 : Blob) : Bool {
@@ -256,6 +355,22 @@ module {
     false;
   };
 
+  func recoveryAuthorized(state : State, caller : Principal) : Bool {
+    if (caller.isAnonymous()) {
+      return false;
+    };
+    for (principal in state.recoveryGovernancePrincipals.values()) {
+      if (principal == caller) {
+        return true;
+      };
+    };
+    false;
+  };
+
+  func authorizationConfigVisible(state : State, caller : Principal) : Bool {
+    authorized(state, caller) or recoveryAuthorized(state, caller);
+  };
+
   func findIndex(records : [TrustRecord], deviceId : Text) : ?Nat {
     var index = 0;
     for (record in records.values()) {
@@ -284,38 +399,155 @@ module {
     if (callerAuthorized) { #invalid_record } else { #unauthorized };
   };
 
-  public func sanitizeAuthorizedServicePrincipals(principals : [Principal]) : [Principal] {
-    var sanitized : [Principal] = [];
+  func validatePrincipals(principals : [Principal], maximumPrincipals : Nat) : PrincipalSetValidation {
+    if (principals.size() == 0) {
+      return #invalid;
+    };
+    if (principals.size() > maximumPrincipals) {
+      return #capacity_exceeded;
+    };
     for (principal in principals.values()) {
-      if (not principal.isAnonymous()) {
-        var found = false;
-        for (existing in sanitized.values()) {
-          if (existing == principal) {
-            found := true;
-          };
-        };
-        if (not found) {
-          sanitized := sanitized.concat([principal]);
-        };
+      if (principal.isAnonymous()) {
+        return #invalid;
       };
     };
-    sanitized;
+    let sorted = Array.sort<Principal>(principals, Principal.compare);
+    var sanitized : [Principal] = [];
+    for (principal in sorted.values()) {
+      var found = false;
+      for (existing in sanitized.values()) {
+        if (existing == principal) {
+          found := true;
+        };
+      };
+      if (not found) {
+        sanitized := sanitized.concat([principal]);
+      };
+    };
+    if (sanitized.size() == 0) {
+      return #invalid;
+    };
+    #ok(sanitized);
+  };
+
+  public func sanitizePrincipals(principals : [Principal], maximumPrincipals : Nat) : ?[Principal] {
+    switch (validatePrincipals(principals, maximumPrincipals)) {
+      case (#ok(sanitized)) { ?sanitized };
+      case _ { null };
+    };
+  };
+
+  public func sanitizeAuthorizedServicePrincipals(principals : [Principal]) : [Principal] {
+    switch (sanitizePrincipals(principals, maximumAuthorizedServicePrincipals)) {
+      case null { [] };
+      case (?sanitized) { sanitized };
+    };
+  };
+
+  public func sanitizeRecoveryGovernancePrincipals(principals : [Principal]) : [Principal] {
+    switch (sanitizePrincipals(principals, maximumRecoveryGovernancePrincipals)) {
+      case null { [] };
+      case (?sanitized) { sanitized };
+    };
+  };
+
+  public func validInitialAuthorizationConfig(init : InitArgs) : Bool {
+    switch (
+      sanitizePrincipals(init.authorizedServicePrincipals, maximumAuthorizedServicePrincipals),
+      sanitizePrincipals(init.recoveryGovernancePrincipals, maximumRecoveryGovernancePrincipals),
+    ) {
+      case (?_, ?_) { true };
+      case _ { false };
+    };
+  };
+
+  public func authorizationConfig(state : State, caller : Principal) : AuthorizationConfigResult {
+    if (not authorizationConfigVisible(state, caller)) {
+      return #err(#unauthorized);
+    };
+    #ok({
+      authorizedServicePrincipals = state.authorizedServicePrincipals;
+      recoveryGovernancePrincipals = state.recoveryGovernancePrincipals;
+      authorizationConfigVersion = state.authorizationConfigVersion;
+      latestAuthorizationRecovery = state.latestAuthorizationRecovery;
+    });
   };
 
   public func replaceAuthorizedServicePrincipals(
     state : State,
     caller : Principal,
-    principals : [Principal],
+    request : ReplaceAuthorizedServicePrincipalsRequest,
   ) : AuthorizationMutation {
     if (not authorized(state, caller)) {
       return { state; result = #err(#unauthorized) };
     };
-    let sanitized = sanitizeAuthorizedServicePrincipals(principals);
-    if (sanitized.size() == 0) {
-      return { state; result = #err(#invalid_record) };
+    if (request.expectedAuthorizationConfigVersion != state.authorizationConfigVersion) {
+      return { state; result = #err(#version_conflict) };
     };
-    let next = { state with authorizedServicePrincipals = sanitized };
-    { state = next; result = #ok(sanitized) };
+    switch (validatePrincipals(request.authorizedServicePrincipals, maximumAuthorizedServicePrincipals)) {
+      case (#invalid) {
+        { state; result = #err(#invalid_record) };
+      };
+      case (#capacity_exceeded) {
+        { state; result = #err(#capacity_exceeded) };
+      };
+      case (#ok(sanitized)) {
+        let next = {
+          state with
+          authorizedServicePrincipals = sanitized;
+          authorizationConfigVersion = state.authorizationConfigVersion + 1;
+        };
+        { state = next; result = #ok(sanitized) };
+      };
+    };
+  };
+
+  public func recoverAuthorizedServicePrincipals(
+    state : State,
+    caller : Principal,
+    request : RecoverAuthorizedServicePrincipalsRequest,
+    now : Int,
+  ) : AuthorizationConfigMutation {
+    if (not recoveryAuthorized(state, caller)) {
+      return { state; result = #err(#unauthorized) };
+    };
+    if (request.expectedAuthorizationConfigVersion != state.authorizationConfigVersion) {
+      return { state; result = #err(#version_conflict) };
+    };
+    switch (validatePrincipals(request.authorizedServicePrincipals, maximumAuthorizedServicePrincipals)) {
+      case (#invalid) {
+        { state; result = #err(#invalid_record) };
+      };
+      case (#capacity_exceeded) {
+        { state; result = #err(#capacity_exceeded) };
+      };
+      case (#ok(sanitized)) {
+        let nextVersion = state.authorizationConfigVersion + 1;
+        let provenance : AuthorizationRecoveryProvenance = {
+          recoveryCaller = caller;
+          recoveredAtNs = now;
+          previousAuthorizedServicePrincipalsDigest = principalSetDigest(state.authorizedServicePrincipals);
+          newAuthorizedServicePrincipalsDigest = principalSetDigest(sanitized);
+          authorizationConfigVersion = nextVersion;
+          reasonCode = request.reasonCode;
+        };
+        let next = {
+          state with
+          authorizedServicePrincipals = sanitized;
+          authorizationConfigVersion = nextVersion;
+          latestAuthorizationRecovery = ?provenance;
+        };
+        {
+          state = next;
+          result = #ok({
+            authorizedServicePrincipals = next.authorizedServicePrincipals;
+            recoveryGovernancePrincipals = next.recoveryGovernancePrincipals;
+            authorizationConfigVersion = next.authorizationConfigVersion;
+            latestAuthorizationRecovery = next.latestAuthorizationRecovery;
+          });
+        };
+      };
+    };
   };
 
   public func get(state : State, caller : Principal, deviceId : Text) : RecordResult {

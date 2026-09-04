@@ -53,6 +53,36 @@ type ListRequest = record {
   limit : nat;
   cursor : opt nat;
 };
+type RecoveryReasonCode = variant {
+  lost_service_principal;
+  compromised_service_principal;
+  planned_rotation_recovery;
+  operator_requested;
+  other;
+};
+type ReplaceAuthorizedServicePrincipalsRequest = record {
+  authorizedServicePrincipals : vec principal;
+  expectedAuthorizationConfigVersion : nat;
+};
+type RecoverAuthorizedServicePrincipalsRequest = record {
+  authorizedServicePrincipals : vec principal;
+  expectedAuthorizationConfigVersion : nat;
+  reasonCode : RecoveryReasonCode;
+};
+type AuthorizationRecoveryProvenance = record {
+  recoveryCaller : principal;
+  recoveredAtNs : int;
+  previousAuthorizedServicePrincipalsDigest : text;
+  newAuthorizedServicePrincipalsDigest : text;
+  authorizationConfigVersion : nat;
+  reasonCode : RecoveryReasonCode;
+};
+type AuthorizationConfig = record {
+  authorizedServicePrincipals : vec principal;
+  recoveryGovernancePrincipals : vec principal;
+  authorizationConfigVersion : nat;
+  latestAuthorizationRecovery : opt AuthorizationRecoveryProvenance;
+};
 type Error = variant {
   not_found;
   unauthorized;
@@ -78,14 +108,21 @@ type AuthorizationResult = variant {
   ok : vec principal;
   err : Error;
 };
+type AuthorizationConfigResult = variant {
+  ok : AuthorizationConfig;
+  err : Error;
+};
 type InitArgs = record {
   authorizedServicePrincipals : vec principal;
+  recoveryGovernancePrincipals : vec principal;
 };
 service : (InitArgs) -> {
+  getLocalEngineerDeviceTrustAuthorizationConfig : () -> (AuthorizationConfigResult) query;
   getLocalEngineerDeviceTrust : (text) -> (RecordResult) query;
   pairLocalEngineerDevice : (PairRequest) -> (RecordResult);
+  recoverLocalEngineerDeviceTrustAuthorizedPrincipals : (RecoverAuthorizedServicePrincipalsRequest) -> (AuthorizationConfigResult);
   touchLocalEngineerPairedDevice : (TouchRequest) -> (RecordResult);
   revokeLocalEngineerDevice : (RevokeRequest) -> (RecordResult);
   listLocalEngineerDeviceTrust : (ListRequest) -> (ListResult) query;
-  replaceLocalEngineerDeviceTrustAuthorizedPrincipals : (vec principal) -> (AuthorizationResult);
+  replaceLocalEngineerDeviceTrustAuthorizedPrincipals : (ReplaceAuthorizedServicePrincipalsRequest) -> (AuthorizationResult);
 }
