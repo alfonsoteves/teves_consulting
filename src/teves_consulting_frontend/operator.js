@@ -9,6 +9,9 @@ const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
 const LOCAL_ENGINEER_PENDING_PAIRINGS_PATH = "/admin/local-engineer/device-pairings/pending";
 const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
+const LOCAL_ENGINEER_PENDING_DISCOVERY_DELAYS_MS = [1500, 1500, 1500, 1500, 2000, 2000];
+const LOCAL_ENGINEER_PENDING_DISCOVERY_WAITING_MESSAGE = "Local Engineer launch requested. Waiting for pairing request to appear.";
+const LOCAL_ENGINEER_PENDING_DISCOVERY_TIMEOUT_MESSAGE = "Local Engineer launch requested. Pairing request has not appeared yet. Use Refresh if needed.";
 let authClient = null;
 let identity = null;
 let actor = null;
@@ -1778,6 +1781,7 @@ function createLocalEngineerPairingState() {
     connectAttemptId: 0,
     refreshOperationId: 0,
     stateRevision: 0,
+    pendingDiscoveryTimerId: 0,
     connectInFlight: false,
     refreshInFlight: false,
   };
@@ -1830,6 +1834,19 @@ function localEngineerPairingAdvanceStateRevision() {
 function localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision) {
   if (connectAttemptId !== null && connectAttemptId !== localEngineerPairingState.connectAttemptId) return false;
   return stateRevision === localEngineerPairingState.stateRevision;
+}
+
+function localEngineerPairingAuthFailure(error) {
+  const detail = error && error.backendDetail;
+  const failure = isPlainObject(detail) ? safeText(detail.failure || detail.classification || detail.status, "") : "";
+  return error && (error.httpStatus === 401 || error.httpStatus === 403 || failure === "operator_session_required");
+}
+
+function clearLocalEngineerPendingDiscovery() {
+  if (localEngineerPairingState.pendingDiscoveryTimerId) {
+    window.clearTimeout(localEngineerPairingState.pendingDiscoveryTimerId);
+    localEngineerPairingState.pendingDiscoveryTimerId = 0;
+  }
 }
 
 function localEngineerPairingCardHtml(pairing) {
@@ -1885,10 +1902,15 @@ function d1aRefreshLocalEngineerPairingDisplay() {
 async function refreshLocalEngineerPendingPairings(options = {}) {
   const refreshOptions = isPlainObject(options) ? options : {};
   const connectAttemptId = Number.isInteger(refreshOptions.connectAttemptId) ? refreshOptions.connectAttemptId : null;
+  if (connectAttemptId === null && !refreshOptions.discoveryRefresh) {
+    clearLocalEngineerPendingDiscovery();
+  }
   const stateRevision = Number.isInteger(refreshOptions.stateRevision)
     ? refreshOptions.stateRevision
     : localEngineerPairingAdvanceStateRevision();
-  if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+  if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) {
+    return { applied: false, superseded: true };
+  }
   const refreshOperationId = localEngineerPairingState.refreshOperationId + 1;
   localEngineerPairingState.refreshOperationId = refreshOperationId;
   localEngineerPairingState.refreshInFlight = true;
@@ -1901,15 +1923,24 @@ async function refreshLocalEngineerPendingPairings(options = {}) {
       await establishRenderOperatorSession();
     }
     const result = await renderFetch(LOCAL_ENGINEER_PENDING_PAIRINGS_PATH);
-    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) {
+      return { applied: false, superseded: true };
+    }
     localEngineerPairingState.pendingPairings = localEngineerPendingPairingsFromResponse(result);
     const successMessage = safeText(refreshOptions.successMessage, "");
     const failureMessage = safeText(refreshOptions.failureMessage, "");
-    localEngineerPairingState.message = successMessage || (failureMessage
-      ? `${failureMessage} ${localEngineerPairingCurrentStateMessage()}`
-      : localEngineerPairingCurrentStateMessage());
+    if (refreshOptions.discoveryRefresh && !localEngineerPairingState.pendingPairings.length) {
+      localEngineerPairingState.message = LOCAL_ENGINEER_PENDING_DISCOVERY_WAITING_MESSAGE;
+    } else {
+      localEngineerPairingState.message = successMessage || (failureMessage
+        ? `${failureMessage} ${localEngineerPairingCurrentStateMessage()}`
+        : localEngineerPairingCurrentStateMessage());
+    }
+    return { applied: true, pendingFound: localEngineerPairingState.pendingPairings.length > 0, authFailure: false };
   } catch (error) {
-    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) {
+      return { applied: false, superseded: true };
+    }
     const successMessage = safeText(refreshOptions.successMessage, "");
     const failureMessage = safeText(refreshOptions.failureMessage, "");
     const refreshFailure = localEngineerPairingFailureText(error);
@@ -1918,6 +1949,7 @@ async function refreshLocalEngineerPendingPairings(options = {}) {
       : failureMessage
       ? `${failureMessage} Refresh failed: ${refreshFailure}`
       : refreshFailure;
+    return { applied: true, pendingFound: false, authFailure: localEngineerPairingAuthFailure(error), error };
   } finally {
     if (refreshOperationId === localEngineerPairingState.refreshOperationId) {
       localEngineerPairingState.refreshInFlight = false;
@@ -1926,7 +1958,32 @@ async function refreshLocalEngineerPendingPairings(options = {}) {
   }
 }
 
+function scheduleLocalEngineerPendingDiscovery(connectAttemptId, stateRevision, step = 0) {
+  clearLocalEngineerPendingDiscovery();
+  if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+  if (step >= LOCAL_ENGINEER_PENDING_DISCOVERY_DELAYS_MS.length) {
+    localEngineerPairingState.message = LOCAL_ENGINEER_PENDING_DISCOVERY_TIMEOUT_MESSAGE;
+    d1aRefreshLocalEngineerPairingDisplay();
+    return;
+  }
+
+  localEngineerPairingState.pendingDiscoveryTimerId = window.setTimeout(async () => {
+    localEngineerPairingState.pendingDiscoveryTimerId = 0;
+    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+    const result = await refreshLocalEngineerPendingPairings({
+      connectAttemptId,
+      stateRevision,
+      discoveryRefresh: true,
+    });
+    if (!localEngineerPairingCanApplyRefresh(connectAttemptId, stateRevision)) return;
+    if (result && result.pendingFound) return;
+    if (result && result.authFailure) return;
+    scheduleLocalEngineerPendingDiscovery(connectAttemptId, stateRevision, step + 1);
+  }, LOCAL_ENGINEER_PENDING_DISCOVERY_DELAYS_MS[step]);
+}
+
 async function connectLocalEngineerCompanion() {
+  clearLocalEngineerPendingDiscovery();
   const connectAttemptId = localEngineerPairingState.connectAttemptId + 1;
   const stateRevision = localEngineerPairingAdvanceStateRevision();
   localEngineerPairingState.connectAttemptId = connectAttemptId;
@@ -1945,10 +2002,7 @@ async function connectLocalEngineerCompanion() {
     const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
     window.location.href = launchUrl;
     localEngineerPairingState.message = "Local Engineer launch requested. Approve the pending device when it appears.";
-    const delayedRefreshStateRevision = localEngineerPairingState.stateRevision;
-    window.setTimeout(() => {
-      refreshLocalEngineerPendingPairings({ connectAttemptId, stateRevision: delayedRefreshStateRevision }).catch(() => {});
-    }, 1500);
+    scheduleLocalEngineerPendingDiscovery(connectAttemptId, stateRevision);
   } catch (error) {
     if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
     localEngineerPairingState.message = localEngineerPairingFailureText(error);
@@ -1962,6 +2016,7 @@ async function connectLocalEngineerCompanion() {
 
 async function decideLocalEngineerPairing(pairingId, action) {
   if (!pairingId) return;
+  clearLocalEngineerPendingDiscovery();
   const stateRevision = localEngineerPairingAdvanceStateRevision();
   localEngineerPairingState.actionPairingId = pairingId;
   localEngineerPairingState.message = action === "approve" ? "Pairing Local Engineer device." : "Rejecting Local Engineer device.";
