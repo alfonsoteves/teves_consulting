@@ -9,3 +9,6 @@ canisters:
     recipe:
       type: "@dfinity/motoko@v5.0.0"
 
+  - name: local_engineer_device_trust_backend
+    recipe:
+      type: "@dfinity/motoko@v5.0.0"

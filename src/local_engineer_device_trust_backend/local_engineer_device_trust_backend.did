@@ -1,0 +1,91 @@
+type KeyProtection = variant {
+  secure_enclave;
+  keychain_software;
+  unknown;
+};
+type TrustState = variant {
+  paired;
+  revoked;
+};
+type TrustRecord = record {
+  schemaVersion : text;
+  protocolVersion : text;
+  deviceId : text;
+  publicKeyX963 : blob;
+  publicKeySha256 : text;
+  publicKeyFingerprint : text;
+  keyAlgorithm : text;
+  keyProtection : KeyProtection;
+  keyProtectionTrust : text;
+  trustState : TrustState;
+  firstSeenAtNs : int;
+  pairedAtNs : int;
+  lastSeenAtNs : int;
+  revokedAtNs : opt int;
+  revocationReason : opt text;
+  approvingOperatorSessionReference : text;
+  revokingOperatorSessionReference : opt text;
+  recordVersion : nat;
+};
+type PairRequest = record {
+  schemaVersion : text;
+  protocolVersion : text;
+  deviceId : text;
+  publicKeyX963 : blob;
+  publicKeySha256 : text;
+  publicKeyFingerprint : text;
+  keyAlgorithm : text;
+  keyProtection : KeyProtection;
+  keyProtectionTrust : text;
+  approvingOperatorSessionReference : text;
+  expectedRecordVersion : opt nat;
+};
+type TouchRequest = record {
+  deviceId : text;
+  expectedRecordVersion : nat;
+};
+type RevokeRequest = record {
+  deviceId : text;
+  revocationReason : opt text;
+  revokingOperatorSessionReference : text;
+};
+type ListRequest = record {
+  limit : nat;
+  cursor : opt nat;
+};
+type Error = variant {
+  not_found;
+  unauthorized;
+  revoked;
+  version_conflict;
+  invalid_record;
+  capacity_exceeded;
+  persistence_failure;
+};
+type RecordResult = variant {
+  ok : TrustRecord;
+  err : Error;
+};
+type ListResponse = record {
+  records : vec TrustRecord;
+  nextCursor : opt nat;
+};
+type ListResult = variant {
+  ok : ListResponse;
+  err : Error;
+};
+type AuthorizationResult = variant {
+  ok : vec principal;
+  err : Error;
+};
+type InitArgs = record {
+  authorizedServicePrincipals : vec principal;
+};
+service : (InitArgs) -> {
+  getLocalEngineerDeviceTrust : (text) -> (RecordResult) query;
+  pairLocalEngineerDevice : (PairRequest) -> (RecordResult);
+  touchLocalEngineerPairedDevice : (TouchRequest) -> (RecordResult);
+  revokeLocalEngineerDevice : (RevokeRequest) -> (RecordResult);
+  listLocalEngineerDeviceTrust : (ListRequest) -> (ListResult) query;
+  replaceLocalEngineerDeviceTrustAuthorizedPrincipals : (vec principal) -> (AuthorizationResult);
+}
