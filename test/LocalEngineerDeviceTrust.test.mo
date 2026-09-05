@@ -758,6 +758,85 @@ switch (Trust.get(recoveredPairedAndRevoked.state, replacement, secondDeviceId))
   case _ { assert false };
 };
 
+switch (Trust.installState(#fresh({ authorizedServicePrincipals = [service]; recoveryGovernancePrincipals = [recovery] }))) {
+  case (?state) {
+    assert state.records.size() == 0;
+    assert state.authorizedServicePrincipals.size() == 1;
+    assert state.authorizedServicePrincipals[0] == service;
+    assert state.recoveryGovernancePrincipals.size() == 1;
+    assert state.recoveryGovernancePrincipals[0] == recovery;
+    assert state.authorizationConfigVersion == Trust.initialAuthorizationConfigVersion;
+    assert state.latestAuthorizationRecovery == null;
+  };
+  case null { assert false };
+};
+
+assert Trust.installState(#fresh({ authorizedServicePrincipals = []; recoveryGovernancePrincipals = [recovery] })) == null;
+
+let migrationState = recoveredPairedAndRevoked.state;
+assert Trust.validStateSnapshot(migrationState);
+switch (Trust.installState(#migration({ state = migrationState }))) {
+  case (?state) {
+    assert state.records == migrationState.records;
+    assert state.authorizedServicePrincipals == migrationState.authorizedServicePrincipals;
+    assert state.recoveryGovernancePrincipals == migrationState.recoveryGovernancePrincipals;
+    assert state.authorizationConfigVersion == migrationState.authorizationConfigVersion;
+    assert state.latestAuthorizationRecovery == migrationState.latestAuthorizationRecovery;
+  };
+  case null { assert false };
+};
+
+let duplicateDeviceMigrationState = {
+  migrationState with records = [migrationState.records[0], migrationState.records[0]]
+};
+assert not Trust.validStateSnapshot(duplicateDeviceMigrationState);
+assert Trust.installState(#migration({ state = duplicateDeviceMigrationState })) == null;
+
+let malformedRecordMigrationState = {
+  migrationState with records = [{
+    migrationState.records[0] with publicKeyFingerprint = "bad"
+  }]
+};
+assert not Trust.validStateSnapshot(malformedRecordMigrationState);
+assert Trust.installState(#migration({ state = malformedRecordMigrationState })) == null;
+
+let invalidAuthorizedPrincipalsMigrationState = {
+  migrationState with authorizedServicePrincipals = []
+};
+assert not Trust.validStateSnapshot(invalidAuthorizedPrincipalsMigrationState);
+assert Trust.installState(#migration({ state = invalidAuthorizedPrincipalsMigrationState })) == null;
+
+let duplicateAuthorizedPrincipalsMigrationState = {
+  migrationState with authorizedServicePrincipals = [replacement, replacement]
+};
+assert not Trust.validStateSnapshot(duplicateAuthorizedPrincipalsMigrationState);
+assert Trust.installState(#migration({ state = duplicateAuthorizedPrincipalsMigrationState })) == null;
+
+let invalidRecoveryPrincipalsMigrationState = {
+  migrationState with recoveryGovernancePrincipals = []
+};
+assert not Trust.validStateSnapshot(invalidRecoveryPrincipalsMigrationState);
+assert Trust.installState(#migration({ state = invalidRecoveryPrincipalsMigrationState })) == null;
+
+let invalidConfigVersionMigrationState = {
+  migrationState with authorizationConfigVersion = 0
+};
+assert not Trust.validStateSnapshot(invalidConfigVersionMigrationState);
+assert Trust.installState(#migration({ state = invalidConfigVersionMigrationState })) == null;
+
+let invalidRecoveryProvenanceMigrationState = {
+  migrationState with latestAuthorizationRecovery = switch (migrationState.latestAuthorizationRecovery) {
+    case (?provenance) {
+      ?{
+        provenance with authorizationConfigVersion = provenance.authorizationConfigVersion + 1
+      };
+    };
+    case null { null };
+  }
+};
+assert not Trust.validStateSnapshot(invalidRecoveryProvenanceMigrationState);
+assert Trust.installState(#migration({ state = invalidRecoveryProvenanceMigrationState })) == null;
+
 var capacityRecords : [Trust.TrustRecord] = [];
 var capacityIndex = 0;
 while (capacityIndex < Trust.maximumTrustRecords) {

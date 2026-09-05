@@ -165,6 +165,15 @@ module {
     recoveryGovernancePrincipals : [Principal];
   };
 
+  public type MigrationInstallArgs = {
+    state : State;
+  };
+
+  public type InstallArgs = {
+    #fresh : InitArgs;
+    #migration : MigrationInstallArgs;
+  };
+
   public type RecordMutation = {
     state : State;
     result : RecordResult;
@@ -382,6 +391,21 @@ module {
     null;
   };
 
+  func hasDuplicateDeviceId(records : [TrustRecord]) : Bool {
+    var index = 0;
+    for (record in records.values()) {
+      var compareIndex = 0;
+      for (candidate in records.values()) {
+        if (index != compareIndex and record.deviceId == candidate.deviceId) {
+          return true;
+        };
+        compareIndex += 1;
+      };
+      index += 1;
+    };
+    false;
+  };
+
   func replace(records : [TrustRecord], index : Nat, replacement : TrustRecord) : [TrustRecord] {
     Array.tabulate<TrustRecord>(
       records.size(),
@@ -458,6 +482,74 @@ module {
     ) {
       case (?_, ?_) { true };
       case _ { false };
+    };
+  };
+
+  public func initialState(init : InitArgs) : ?State {
+    switch (
+      sanitizePrincipals(init.authorizedServicePrincipals, maximumAuthorizedServicePrincipals),
+      sanitizePrincipals(init.recoveryGovernancePrincipals, maximumRecoveryGovernancePrincipals),
+    ) {
+      case (?authorizedServicePrincipals, ?recoveryGovernancePrincipals) {
+        ?{
+          records = [];
+          authorizedServicePrincipals;
+          recoveryGovernancePrincipals;
+          authorizationConfigVersion = initialAuthorizationConfigVersion;
+          latestAuthorizationRecovery = null;
+        };
+      };
+      case _ { null };
+    };
+  };
+
+  func canonicalPrincipalSet(principals : [Principal], maximumPrincipals : Nat) : Bool {
+    switch (sanitizePrincipals(principals, maximumPrincipals)) {
+      case (?sanitized) { sanitized == principals };
+      case null { false };
+    };
+  };
+
+  func validAuthorizationRecoveryProvenance(state : State) : Bool {
+    switch (state.latestAuthorizationRecovery) {
+      case null { true };
+      case (?provenance) {
+        not provenance.recoveryCaller.isAnonymous() and provenance.recoveredAtNs >= 0 and provenance.authorizationConfigVersion == state.authorizationConfigVersion and provenance.authorizationConfigVersion > initialAuthorizationConfigVersion and isHexDigest(provenance.previousAuthorizedServicePrincipalsDigest) and isHexDigest(provenance.newAuthorizedServicePrincipalsDigest) and provenance.previousAuthorizedServicePrincipalsDigest != provenance.newAuthorizedServicePrincipalsDigest;
+      };
+    };
+  };
+
+  public func validStateSnapshot(state : State) : Bool {
+    if (
+      state.records.size() > maximumTrustRecords or state.authorizationConfigVersion < initialAuthorizationConfigVersion or not canonicalPrincipalSet(state.authorizedServicePrincipals, maximumAuthorizedServicePrincipals) or not canonicalPrincipalSet(state.recoveryGovernancePrincipals, maximumRecoveryGovernancePrincipals) or not validAuthorizationRecoveryProvenance(state) or hasDuplicateDeviceId(state.records)
+    ) {
+      return false;
+    };
+    for (record in state.records.values()) {
+      if (not validRecord(record)) {
+        return false;
+      };
+    };
+    true;
+  };
+
+  public func installState(init : InstallArgs) : ?State {
+    switch (init) {
+      case (#fresh(fresh)) { initialState(fresh) };
+      case (#migration(migration)) {
+        if (validStateSnapshot(migration.state)) {
+          ?migration.state;
+        } else {
+          null;
+        };
+      };
+    };
+  };
+
+  public func validInstallArgs(init : InstallArgs) : Bool {
+    switch (installState(init)) {
+      case (?_) { true };
+      case null { false };
     };
   };
 

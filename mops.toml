@@ -19,6 +19,9 @@ path = "deployed/teves_consulting_backend.most"
 [canisters.local_engineer_device_trust_backend]
 main = "src/local_engineer_device_trust_backend/main.mo"
 
+[canisters.local_engineer_device_trust_backend_persistent]
+main = "src/local_engineer_device_trust_backend_persistent/main.mo"
+
 [build]
 args = ["--release"]
 
