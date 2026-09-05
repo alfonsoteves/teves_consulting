@@ -1882,7 +1882,7 @@ function localEngineerCurrentStatusMessage(state) {
       return "Local Engineer durable-trust activation is invalid.";
     }
     if (status.trustAuthorityMode === "legacy_process_local") {
-      if (pairings.length) return "Connecting Local Engineer...";
+      if (pairings.length) return "";
       if (state.connectAttemptId > 0) return "This Mac is paired.";
       return "";
     }
@@ -1921,7 +1921,7 @@ function localEngineerPairingPanelHtml() {
       <h3>${escapeHtml(heading)}</h3>
       ${statusDetails}
       <div class="local-engineer-actions">
-        <button id="localEngineerConnectButton" type="button"${state.connectInFlight ? " disabled" : ""}>Connect this Mac</button>
+        <button id="localEngineerConnectButton" class="local-engineer-connect-button" type="button"${state.connectInFlight ? " disabled" : ""}>Connect this Mac</button>
       </div>
     </section>
   `;
@@ -1945,7 +1945,7 @@ async function connectLocalEngineerCompanion() {
   localEngineerPairingState.connectAttemptId = connectAttemptId;
   localEngineerPairingState.connectInFlight = true;
   localEngineerPairingState.statusInFlight = false;
-  localEngineerPairingState.message = "Connecting Local Engineer...";
+  localEngineerPairingState.message = "";
   d1aRefreshLocalEngineerPairingDisplay();
   try {
     if (!isOperator) {
@@ -1958,7 +1958,7 @@ async function connectLocalEngineerCompanion() {
     if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
     const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
     window.location.href = launchUrl;
-    localEngineerPairingState.message = "Connecting Local Engineer...";
+    localEngineerPairingState.message = "";
     scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision);
   } catch (error) {
     if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
@@ -1973,7 +1973,7 @@ async function connectLocalEngineerCompanion() {
 
 function scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision) {
   clearLocalEngineerStatusRefreshTimer();
-  localEngineerPairingState.deviceStatusMessage = "Waiting for Local Engineer device trust status.";
+  localEngineerPairingState.deviceStatusMessage = "";
   localEngineerPairingState.statusRefreshTimer = setTimeout(() => {
     localEngineerPairingState.statusRefreshTimer = null;
     refreshLocalEngineerDeviceStatus({ connectAttemptId, stateRevision });
