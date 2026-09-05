@@ -1781,7 +1781,6 @@ function createLocalEngineerPairingState() {
     connectInFlight: false,
     statusRequestId: 0,
     statusInFlight: false,
-    revokeInFlightDeviceId: "",
     statusRefreshTimer: null,
   };
 }
@@ -1865,7 +1864,7 @@ function localEngineerDurableStatusMessage(status, devices) {
     return "This Mac is durably paired.";
   }
   if (devices.some((device) => device.trustState === "revoked")) {
-    return "This Mac is revoked for Local Engineer.";
+    return "Device trust has been revoked.";
   }
   return "No Mac is durably paired.";
 }
@@ -1899,13 +1898,10 @@ function localEngineerDeviceStatusRows(state) {
   const showDeviceList = devices.length && !localEngineerDurableStatusIsUnavailable(status);
   if (!showDeviceList) return state.deviceStatusMessage ? `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>` : "";
   return `<ul>${devices.map((device) => {
-    const deviceId = safeText(device.deviceId, "");
-    const canRevoke = status.durableTrustActive === true && device.trustState === "paired" && deviceId;
     return `
       <li>
         <strong>${escapeHtml(localEngineerDeviceFingerprint(device))}</strong>
         <span class="meta">${escapeHtml(localEngineerDeviceStatusText(device))}</span>
-        ${canRevoke ? `<button class="local-engineer-revoke-button" type="button" data-device-id="${escapeHtml(deviceId)}"${state.revokeInFlightDeviceId === deviceId ? " disabled" : ""}>Revoke</button>` : ""}
       </li>
     `;
   }).join("")}</ul>`;
@@ -2028,43 +2024,9 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
   }
 }
 
-async function revokeLocalEngineerDeviceTrust(deviceId) {
-  if (typeof deviceId !== "string" || !deviceId.trim()) return;
-  const stateRevision = localEngineerPairingAdvanceStateRevision();
-  clearLocalEngineerStatusRefreshTimer();
-  localEngineerPairingState.statusRequestId += 1;
-  localEngineerPairingState.statusInFlight = false;
-  localEngineerPairingState.revokeInFlightDeviceId = deviceId;
-  localEngineerPairingState.message = "Revoking Local Engineer device trust.";
-  d1aRefreshLocalEngineerPairingDisplay();
-  try {
-    if (!isOperator) {
-      throw new Error("Operator access is required.");
-    }
-    if (!renderOperatorSessionToken) {
-      await establishRenderOperatorSession();
-    }
-    await renderPostNoBody(`/admin/local-engineer/device-pairings/${encodeURIComponent(deviceId)}/revoke`);
-    if (stateRevision !== localEngineerPairingState.stateRevision) return;
-    localEngineerPairingState.message = "Local Engineer device trust revoked.";
-    await refreshLocalEngineerDeviceStatus({ connectAttemptId: localEngineerPairingState.connectAttemptId, stateRevision });
-  } catch (error) {
-    if (stateRevision !== localEngineerPairingState.stateRevision) return;
-    localEngineerPairingState.message = localEngineerPairingFailureText(error);
-  } finally {
-    if (stateRevision === localEngineerPairingState.stateRevision) {
-      localEngineerPairingState.revokeInFlightDeviceId = "";
-      d1aRefreshLocalEngineerPairingDisplay();
-    }
-  }
-}
-
 function d1aAttachLocalEngineerPairingHandlers() {
   const connect = document.getElementById("localEngineerConnectButton");
   if (connect) connect.addEventListener("click", connectLocalEngineerCompanion);
-  document.querySelectorAll(".local-engineer-revoke-button").forEach((button) => {
-    button.addEventListener("click", () => revokeLocalEngineerDeviceTrust(button.dataset.deviceId || ""));
-  });
 }
 
 function setActiveRole(role) {
