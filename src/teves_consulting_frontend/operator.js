@@ -534,6 +534,7 @@ function d1aWorkspaceFrameHtml() {
         options: D1A_WORKING_CONTEXT_OPTIONS,
         selected: state.workingContext,
       })}
+      <div id="localEngineerPairing" class="local-engineer-context" hidden></div>
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
   `;
@@ -1915,14 +1916,12 @@ function localEngineerPairingPanelHtml() {
   const status = localEngineerCurrentStatusMessage(state);
   const heading = status ? `Local Engineer — ${status}` : "Local Engineer";
   const statusDetails = localEngineerDeviceStatusRows(state);
-  const showRefresh = state.connectAttemptId > 0 || state.deviceStatus || state.statusInFlight;
   return `
-    <section class="engineer-workflow-card" aria-label="Local Engineer pairing">
+    <section class="local-engineer-panel" aria-label="Local Engineer pairing">
       <h3>${escapeHtml(heading)}</h3>
       ${statusDetails}
-      <div class="engineer-workflow-actions">
+      <div class="local-engineer-actions">
         <button id="localEngineerConnectButton" type="button"${state.connectInFlight ? " disabled" : ""}>Connect this Mac</button>
-        ${showRefresh ? `<button id="localEngineerRefreshStatusButton" type="button"${state.statusInFlight ? " disabled" : ""}>Refresh</button>` : ""}
       </div>
     </section>
   `;
@@ -2016,6 +2015,7 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
       || statusRequestId !== localEngineerPairingState.statusRequestId
     ) return;
     localEngineerPairingState.deviceStatusMessage = localEngineerPairingFailureText(error);
+    localEngineerPairingState.message = "";
   } finally {
     if (
       connectAttemptId === localEngineerPairingState.connectAttemptId
@@ -2062,8 +2062,6 @@ async function revokeLocalEngineerDeviceTrust(deviceId) {
 function d1aAttachLocalEngineerPairingHandlers() {
   const connect = document.getElementById("localEngineerConnectButton");
   if (connect) connect.addEventListener("click", connectLocalEngineerCompanion);
-  const refresh = document.getElementById("localEngineerRefreshStatusButton");
-  if (refresh) refresh.addEventListener("click", () => refreshLocalEngineerDeviceStatus({ manual: true }));
   document.querySelectorAll(".local-engineer-revoke-button").forEach((button) => {
     button.addEventListener("click", () => revokeLocalEngineerDeviceTrust(button.dataset.deviceId || ""));
   });
@@ -2131,7 +2129,6 @@ function renderRoleActivationWorkspace(options = {}) {
       ${d1aWorkspaceFrameHtml()}
       <p id="roleWorkspaceHint" class="prime-composer-hint" hidden></p>
       <div id="primeConversation" class="prime-conversation" aria-live="polite"></div>
-      <div id="localEngineerPairing" class="engineer-governed-workflow" hidden></div>
       <div id="engineerGovernedWorkflow" class="engineer-governed-workflow" hidden></div>
       <form id="primeComposer" class="prime-composer">
         <textarea id="primeComposerInput" aria-label="Message Prime" placeholder="Ask Prime..."></textarea>
