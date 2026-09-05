@@ -7,6 +7,7 @@ const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
 const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
+const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
 const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
 let authClient = null;
 let identity = null;
@@ -1772,9 +1773,15 @@ function createLocalEngineerPairingState() {
   return {
     status: "idle",
     message: "",
+    deviceStatus: null,
+    deviceStatusMessage: "Device trust status not checked.",
     connectAttemptId: 0,
     stateRevision: 0,
     connectInFlight: false,
+    statusRequestId: 0,
+    statusInFlight: false,
+    revokeInFlightDeviceId: "",
+    statusRefreshTimer: null,
   };
 }
 
@@ -1801,17 +1808,144 @@ function localEngineerPairingAdvanceStateRevision() {
   return localEngineerPairingState.stateRevision;
 }
 
+function clearLocalEngineerStatusRefreshTimer() {
+  if (!localEngineerPairingState.statusRefreshTimer) return;
+  clearTimeout(localEngineerPairingState.statusRefreshTimer);
+  localEngineerPairingState.statusRefreshTimer = null;
+}
+
+function localEngineerDeviceFingerprint(device) {
+  if (!isPlainObject(device)) return "unknown device";
+  return safeText(device.deviceFingerprint || device.publicKeyFingerprint, "unknown device");
+}
+
+function localEngineerDeviceStatusText(device) {
+  if (!isPlainObject(device)) return "Unknown";
+  const trustState = safeText(device.trustState || device.state, "unknown");
+  const sessionText = device.executionSessionActive === true ? "execution session active" : "no execution session active";
+  return `${trustState}; ${sessionText}`;
+}
+
+function localEngineerDurableReadinessMessage(readinessState) {
+  const state = safeText(readinessState, "");
+  if (state === "ready") return "";
+  const messages = {
+    disabled: "Durable Local Engineer trust is not configured.",
+    misconfigured: "Durable Local Engineer trust is misconfigured.",
+    not_checked: "Durable Local Engineer trust has not been checked.",
+    unavailable: "Durable Local Engineer trust is currently unavailable.",
+    unauthorized: "The Local Engineer durable-trust service is not authorized.",
+    contract_mismatch: "The Local Engineer durable-trust contract is unavailable or incompatible.",
+    security_verification_failed: "Durable Local Engineer trust could not be verified.",
+  };
+  return messages[state] || "Durable Local Engineer trust status is unavailable.";
+}
+
+function localEngineerDurableStatusIsUnavailable(status) {
+  if (!isPlainObject(status) || status.durableTrustActive !== true) return false;
+  const readiness = isPlainObject(status.durableTrust) && isPlainObject(status.durableTrust.readiness)
+    ? status.durableTrust.readiness
+    : null;
+  const readinessState = readiness ? safeText(readiness.state, "") : "";
+  return status.status !== "local_engineer_durable_device_status_returned"
+    || Boolean(localEngineerDurableReadinessMessage(readinessState));
+}
+
+function localEngineerDurableStatusMessage(status, devices) {
+  if (!isPlainObject(status) || status.durableTrustActive !== true) return "";
+  const readiness = isPlainObject(status.durableTrust) && isPlainObject(status.durableTrust.readiness)
+    ? status.durableTrust.readiness
+    : null;
+  const readinessState = readiness ? safeText(readiness.state, "") : "";
+  if (status.status !== "local_engineer_durable_device_status_returned") {
+    return localEngineerDurableReadinessMessage(readinessState) || "Durable Local Engineer trust status is unavailable.";
+  }
+  const readinessMessage = localEngineerDurableReadinessMessage(readinessState);
+  if (readinessMessage) return readinessMessage;
+  if (devices.some((device) => device.trustState === "paired")) {
+    return "This Mac is durably paired. No execution session is active.";
+  }
+  if (devices.some((device) => device.trustState === "revoked")) {
+    return "This Mac is revoked for Local Engineer. No execution session is active.";
+  }
+  return "No Mac is durably paired. No execution session is active.";
+}
+
+function localEngineerCurrentStatusMessage(state) {
+  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
+  if (status) {
+    const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
+    const durableMessage = localEngineerDurableStatusMessage(status, devices);
+    if (durableMessage) return durableMessage;
+    if (status.trustAuthorityMode === "legacy_process_local") {
+      return "Local Engineer is using legacy process-local trust. No execution session is active.";
+    }
+  }
+  return state.message || "Connect launches the Local Engineer companion. Pairing completes in the companion.";
+}
+
+function localEngineerDeviceStatusRows(state) {
+  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
+  if (!status) {
+    return `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>`;
+  }
+  const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
+  const pairings = Array.isArray(status.pairings) ? status.pairings.filter(isPlainObject) : [];
+  const readiness = isPlainObject(status.durableTrust) && isPlainObject(status.durableTrust.readiness)
+    ? status.durableTrust.readiness
+    : null;
+  const authority = status.durableTrustActive === true ? "durable ICP trust" : "legacy process-local trust";
+  const details = [
+    ["Trust authority", authority],
+    ["Execution session", status.executionSessionActive === true ? "active" : "not active"],
+  ];
+  if (readiness) {
+    details.push(["Durable readiness", safeText(readiness.state, "unknown")]);
+  }
+  if (status.activationFailure) {
+    details.push(["Activation", safeText(status.activationFailure)]);
+  }
+  const durableStatusMessage = localEngineerDurableStatusMessage(status, devices);
+  const showDeviceList = devices.length && !localEngineerDurableStatusIsUnavailable(status);
+  const deviceList = showDeviceList
+    ? `<ul>${devices.map((device) => {
+      const deviceId = safeText(device.deviceId, "");
+      const canRevoke = status.durableTrustActive === true && device.trustState === "paired" && deviceId;
+      return `
+        <li>
+          <strong>${escapeHtml(localEngineerDeviceFingerprint(device))}</strong>
+          <span class="meta">${escapeHtml(localEngineerDeviceStatusText(device))}</span>
+          ${canRevoke ? `<button class="local-engineer-revoke-button" type="button" data-device-id="${escapeHtml(deviceId)}"${state.revokeInFlightDeviceId === deviceId ? " disabled" : ""}>Revoke</button>` : ""}
+        </li>
+      `;
+    }).join("")}</ul>`
+    : `<p class="meta">${escapeHtml(durableStatusMessage || "No durable Local Engineer device status is active.")}</p>`;
+  const legacyPending = pairings.length
+    ? `<p class="meta">Legacy pending pairing records: ${escapeHtml(String(pairings.length))}</p>`
+    : "";
+  return `
+    <dl class="prime-evidence-grid">
+      ${details.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+    </dl>
+    ${deviceList}
+    ${legacyPending}
+  `;
+}
+
 function localEngineerPairingPanelHtml() {
   const state = localEngineerPairingState;
-  const status = state.message || "Connect launches the Local Engineer companion. Pairing completes in the companion.";
+  const status = localEngineerCurrentStatusMessage(state);
   return `
     <section class="engineer-workflow-card" aria-label="Local Engineer pairing">
       <p class="prime-message-role">Local Engineer companion</p>
       <h3>Connect this Mac</h3>
       <p>${escapeHtml(status)}</p>
       <p class="meta">Pairing confirms this companion device only. No execution session or repository authority is active. Phase 9 prototype pairing may require reconnecting after backend restart.</p>
+      <h4>Device trust status</h4>
+      ${localEngineerDeviceStatusRows(state)}
       <div class="engineer-workflow-actions">
         <button id="localEngineerConnectButton" type="button"${state.connectInFlight ? " disabled" : ""}>Connect Local Engineer</button>
+        <button id="localEngineerRefreshStatusButton" type="button"${state.statusInFlight ? " disabled" : ""}>Refresh status</button>
       </div>
     </section>
   `;
@@ -1830,8 +1964,11 @@ function d1aRefreshLocalEngineerPairingDisplay() {
 async function connectLocalEngineerCompanion() {
   const connectAttemptId = localEngineerPairingState.connectAttemptId + 1;
   const stateRevision = localEngineerPairingAdvanceStateRevision();
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.statusRequestId += 1;
   localEngineerPairingState.connectAttemptId = connectAttemptId;
   localEngineerPairingState.connectInFlight = true;
+  localEngineerPairingState.statusInFlight = false;
   localEngineerPairingState.message = "Preparing Local Engineer launch challenge.";
   d1aRefreshLocalEngineerPairingDisplay();
   try {
@@ -1846,6 +1983,7 @@ async function connectLocalEngineerCompanion() {
     const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
     window.location.href = launchUrl;
     localEngineerPairingState.message = "Local Engineer launch requested. Pairing will complete in the companion. No execution session is active.";
+    scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision);
   } catch (error) {
     if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
     localEngineerPairingState.message = localEngineerPairingFailureText(error);
@@ -1857,9 +1995,101 @@ async function connectLocalEngineerCompanion() {
   }
 }
 
+function scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision) {
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.deviceStatusMessage = "Waiting for Local Engineer device trust status.";
+  localEngineerPairingState.statusRefreshTimer = setTimeout(() => {
+    localEngineerPairingState.statusRefreshTimer = null;
+    refreshLocalEngineerDeviceStatus({ connectAttemptId, stateRevision });
+  }, 2500);
+}
+
+async function refreshLocalEngineerDeviceStatus(options = {}) {
+  const manual = options.manual === true;
+  const connectAttemptId = options.connectAttemptId || localEngineerPairingState.connectAttemptId;
+  const stateRevision = manual ? localEngineerPairingAdvanceStateRevision() : options.stateRevision || localEngineerPairingState.stateRevision;
+  const statusRequestId = localEngineerPairingState.statusRequestId + 1;
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.statusRequestId = statusRequestId;
+  localEngineerPairingState.statusInFlight = true;
+  if (manual) {
+    localEngineerPairingState.deviceStatusMessage = "Checking Local Engineer device trust status.";
+  }
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!isOperator) {
+      throw new Error("Operator access is required.");
+    }
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    const status = await renderFetch(LOCAL_ENGINEER_DEVICES_PATH);
+    if (
+      connectAttemptId !== localEngineerPairingState.connectAttemptId
+      || stateRevision !== localEngineerPairingState.stateRevision
+      || statusRequestId !== localEngineerPairingState.statusRequestId
+    ) return;
+    localEngineerPairingState.deviceStatus = status;
+    localEngineerPairingState.deviceStatusMessage = "";
+    localEngineerPairingState.message = "";
+  } catch (error) {
+    if (
+      connectAttemptId !== localEngineerPairingState.connectAttemptId
+      || stateRevision !== localEngineerPairingState.stateRevision
+      || statusRequestId !== localEngineerPairingState.statusRequestId
+    ) return;
+    localEngineerPairingState.deviceStatusMessage = localEngineerPairingFailureText(error);
+  } finally {
+    if (
+      connectAttemptId === localEngineerPairingState.connectAttemptId
+      && stateRevision === localEngineerPairingState.stateRevision
+      && statusRequestId === localEngineerPairingState.statusRequestId
+    ) {
+      localEngineerPairingState.statusInFlight = false;
+      d1aRefreshLocalEngineerPairingDisplay();
+    }
+  }
+}
+
+async function revokeLocalEngineerDeviceTrust(deviceId) {
+  if (typeof deviceId !== "string" || !deviceId.trim()) return;
+  const stateRevision = localEngineerPairingAdvanceStateRevision();
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.statusRequestId += 1;
+  localEngineerPairingState.statusInFlight = false;
+  localEngineerPairingState.revokeInFlightDeviceId = deviceId;
+  localEngineerPairingState.message = "Revoking Local Engineer device trust. No execution session is active.";
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!isOperator) {
+      throw new Error("Operator access is required.");
+    }
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    await renderPostNoBody(`/admin/local-engineer/device-pairings/${encodeURIComponent(deviceId)}/revoke`);
+    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    localEngineerPairingState.message = "Local Engineer device trust revoked. No execution session is active.";
+    await refreshLocalEngineerDeviceStatus({ connectAttemptId: localEngineerPairingState.connectAttemptId, stateRevision });
+  } catch (error) {
+    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    localEngineerPairingState.message = localEngineerPairingFailureText(error);
+  } finally {
+    if (stateRevision === localEngineerPairingState.stateRevision) {
+      localEngineerPairingState.revokeInFlightDeviceId = "";
+      d1aRefreshLocalEngineerPairingDisplay();
+    }
+  }
+}
+
 function d1aAttachLocalEngineerPairingHandlers() {
   const connect = document.getElementById("localEngineerConnectButton");
   if (connect) connect.addEventListener("click", connectLocalEngineerCompanion);
+  const refresh = document.getElementById("localEngineerRefreshStatusButton");
+  if (refresh) refresh.addEventListener("click", () => refreshLocalEngineerDeviceStatus({ manual: true }));
+  document.querySelectorAll(".local-engineer-revoke-button").forEach((button) => {
+    button.addEventListener("click", () => revokeLocalEngineerDeviceTrust(button.dataset.deviceId || ""));
+  });
 }
 
 function setActiveRole(role) {
