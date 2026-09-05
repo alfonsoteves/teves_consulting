@@ -38,6 +38,12 @@ shared ({ caller = _installer }) actor class LocalEngineerDeviceTrustBackend(ini
     Trust.get(state(), caller, deviceId);
   };
 
+  public shared ({ caller }) func readLocalEngineerDeviceTrustAuthoritatively(
+    deviceId : Text
+  ) : async Trust.RecordResult {
+    Trust.authoritativeRead(state(), caller, deviceId);
+  };
+
   public shared ({ caller }) func pairLocalEngineerDevice(
     request : Trust.PairRequest
   ) : async Trust.RecordResult {

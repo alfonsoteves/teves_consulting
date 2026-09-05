@@ -560,6 +560,10 @@ module {
     };
   };
 
+  public func authoritativeRead(state : State, caller : Principal, deviceId : Text) : RecordResult {
+    get(state, caller, deviceId);
+  };
+
   public func pair(state : State, caller : Principal, request : PairRequest, now : Int) : RecordMutation {
     let callerAuthorized = authorized(state, caller);
     if (not callerAuthorized) {

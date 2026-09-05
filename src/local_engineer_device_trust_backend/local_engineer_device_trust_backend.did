@@ -120,6 +120,7 @@ service : (InitArgs) -> {
   getLocalEngineerDeviceTrustAuthorizationConfig : () -> (AuthorizationConfigResult) query;
   getLocalEngineerDeviceTrust : (text) -> (RecordResult) query;
   pairLocalEngineerDevice : (PairRequest) -> (RecordResult);
+  readLocalEngineerDeviceTrustAuthoritatively : (text) -> (RecordResult);
   recoverLocalEngineerDeviceTrustAuthorizedPrincipals : (RecoverAuthorizedServicePrincipalsRequest) -> (AuthorizationConfigResult);
   touchLocalEngineerPairedDevice : (TouchRequest) -> (RecordResult);
   revokeLocalEngineerDevice : (RevokeRequest) -> (RecordResult);

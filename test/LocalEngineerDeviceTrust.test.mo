@@ -231,6 +231,48 @@ switch (paired.result) {
   case _ { assert false };
 };
 
+let stateBeforeAuthoritativePairedRead = paired.state;
+switch (Trust.authoritativeRead(paired.state, service, deviceId)) {
+  case (#ok(record)) {
+    assert record.recordVersion == 1;
+    assert record.trustState == #paired;
+    assert record.firstSeenAtNs == 1_000;
+    assert record.pairedAtNs == 1_000;
+    assert record.lastSeenAtNs == 1_000;
+    assert record.revokedAtNs == null;
+    assert record.approvingOperatorSessionReference == sessionReference;
+  };
+  case _ { assert false };
+};
+switch (Trust.authoritativeRead(paired.state, service, deviceId)) {
+  case (#ok(record)) {
+    assert record.recordVersion == 1;
+    assert record.lastSeenAtNs == 1_000;
+  };
+  case _ { assert false };
+};
+assert paired.state.records == stateBeforeAuthoritativePairedRead.records;
+assert paired.state.authorizedServicePrincipals == stateBeforeAuthoritativePairedRead.authorizedServicePrincipals;
+assert paired.state.recoveryGovernancePrincipals == stateBeforeAuthoritativePairedRead.recoveryGovernancePrincipals;
+assert paired.state.authorizationConfigVersion == stateBeforeAuthoritativePairedRead.authorizationConfigVersion;
+assert paired.state.latestAuthorizationRecovery == stateBeforeAuthoritativePairedRead.latestAuthorizationRecovery;
+switch (Trust.authoritativeRead(emptyState(), service, deviceId)) {
+  case (#err(#not_found)) {};
+  case _ { assert false };
+};
+switch (Trust.authoritativeRead(paired.state, other, deviceId)) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+switch (Trust.authoritativeRead(paired.state, recovery, deviceId)) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+switch (Trust.authoritativeRead(paired.state, Principal.anonymous(), deviceId)) {
+  case (#err(#unauthorized)) {};
+  case _ { assert false };
+};
+
 let noVersionReconnect = Trust.pair(
   paired.state,
   service,
@@ -396,6 +438,33 @@ switch (revoked.result) {
   };
   case _ { assert false };
 };
+
+let stateBeforeAuthoritativeRevokedRead = revoked.state;
+switch (Trust.authoritativeRead(revoked.state, service, deviceId)) {
+  case (#ok(record)) {
+    assert record.trustState == #revoked;
+    assert record.recordVersion == 4;
+    assert record.lastSeenAtNs == 4_000;
+    assert record.revokedAtNs == ?4_000;
+    assert record.revocationReason == ?"owner requested";
+    assert record.approvingOperatorSessionReference == sessionReference;
+    assert record.revokingOperatorSessionReference == ?revokeReference;
+  };
+  case _ { assert false };
+};
+switch (Trust.authoritativeRead(revoked.state, service, deviceId)) {
+  case (#ok(record)) {
+    assert record.trustState == #revoked;
+    assert record.recordVersion == 4;
+    assert record.lastSeenAtNs == 4_000;
+  };
+  case _ { assert false };
+};
+assert revoked.state.records == stateBeforeAuthoritativeRevokedRead.records;
+assert revoked.state.authorizedServicePrincipals == stateBeforeAuthoritativeRevokedRead.authorizedServicePrincipals;
+assert revoked.state.recoveryGovernancePrincipals == stateBeforeAuthoritativeRevokedRead.recoveryGovernancePrincipals;
+assert revoked.state.authorizationConfigVersion == stateBeforeAuthoritativeRevokedRead.authorizationConfigVersion;
+assert revoked.state.latestAuthorizationRecovery == stateBeforeAuthoritativeRevokedRead.latestAuthorizationRecovery;
 
 let repeatedRevoke = Trust.revoke(
   revoked.state,
