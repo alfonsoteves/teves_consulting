@@ -1814,16 +1814,6 @@ function clearLocalEngineerStatusRefreshTimer() {
   localEngineerPairingState.statusRefreshTimer = null;
 }
 
-function localEngineerDeviceFingerprint(device) {
-  if (!isPlainObject(device)) return "unknown device";
-  return safeText(device.deviceFingerprint || device.publicKeyFingerprint, "unknown device");
-}
-
-function localEngineerDeviceStatusText(device) {
-  if (!isPlainObject(device)) return "Unknown";
-  return safeText(device.trustState || device.state, "unknown");
-}
-
 function localEngineerDurableReadinessMessage(readinessState) {
   const state = safeText(readinessState, "");
   if (state === "ready") return "";
@@ -1837,16 +1827,6 @@ function localEngineerDurableReadinessMessage(readinessState) {
     security_verification_failed: "Durable Local Engineer trust could not be verified.",
   };
   return messages[state] || "Durable Local Engineer trust status is unavailable.";
-}
-
-function localEngineerDurableStatusIsUnavailable(status) {
-  if (!isPlainObject(status) || status.durableTrustActive !== true) return false;
-  const readiness = isPlainObject(status.durableTrust) && isPlainObject(status.durableTrust.readiness)
-    ? status.durableTrust.readiness
-    : null;
-  const readinessState = readiness ? safeText(readiness.state, "") : "";
-  return status.status !== "local_engineer_durable_device_status_returned"
-    || Boolean(localEngineerDurableReadinessMessage(readinessState));
 }
 
 function localEngineerDurableStatusMessage(status, devices) {
@@ -1889,29 +1869,15 @@ function localEngineerCurrentStatusMessage(state) {
   return "";
 }
 
-function localEngineerDeviceStatusRows(state) {
-  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
-  if (!status) {
-    return state.deviceStatusMessage ? `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>` : "";
-  }
-  const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
-  const showDeviceList = devices.length && !localEngineerDurableStatusIsUnavailable(status);
-  if (!showDeviceList) return state.deviceStatusMessage ? `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>` : "";
-  return `<ul>${devices.map((device) => {
-    return `
-      <li>
-        <strong>${escapeHtml(localEngineerDeviceFingerprint(device))}</strong>
-        <span class="meta">${escapeHtml(localEngineerDeviceStatusText(device))}</span>
-      </li>
-    `;
-  }).join("")}</ul>`;
+function localEngineerDeviceStatusDetails(state) {
+  return state.deviceStatusMessage ? `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>` : "";
 }
 
 function localEngineerPairingPanelHtml() {
   const state = localEngineerPairingState;
   const status = localEngineerCurrentStatusMessage(state);
   const heading = status ? `Local Engineer — ${status}` : "Local Engineer";
-  const statusDetails = localEngineerDeviceStatusRows(state);
+  const statusDetails = localEngineerDeviceStatusDetails(state);
   return `
     <section class="local-engineer-panel" aria-label="Local Engineer pairing">
       <h3>${escapeHtml(heading)}</h3>
