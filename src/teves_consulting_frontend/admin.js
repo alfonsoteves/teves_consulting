@@ -788,9 +788,8 @@ window.runContinuityInspector = async function runContinuityInspector() {
   }
 
   [
+    "publicRetrievalPreviewQuery",
     "retrievalQuery",
-    "retrievalRawQuery",
-    "contextQuery",
   ].forEach((id) => {
     const advancedInput = document.getElementById(id);
     if (advancedInput) {
@@ -2061,124 +2060,6 @@ window.runRetrievalDebug = async function runRetrievalDebug() {
   } catch (err) {
     console.error("Retrieval debug failed:", err);
     container.innerHTML = "<p>Retrieval debug failed.</p>";
-  }
-};
-
-window.runRawRetrievalDebug = async function () {
-
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const query =
-    document.getElementById("retrievalRawQuery").value.trim();
-
-  if (!query) {
-    alert("Enter a query.");
-    return;
-  }
-
-  const container =
-    document.getElementById("retrievalRawResults");
-
-  container.innerHTML = "<p>Searching...</p>";
-
-  try {
-
-    const res = await fetch(
-      "https://aionic-agent-api.onrender.com/admin/retrieval-debug-raw",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ query })
-      }
-    );
-
-    const data = await res.json();
-
-    const results = data.results || [];
-
-    container.innerHTML = results
-      .map(r => `
-        <div class="memory-card">
-          <h3>Rank ${r.rank}</h3>
-
-          <p class="meta">
-            ${escapeHtml(r.document_id)}
-            |
-            Score: ${escapeHtml(r.score)}
-          </p>
-
-          <pre>${escapeHtml(r.text)}</pre>
-        </div>
-      `)
-      .join("");
-
-  } catch (err) {
-    console.error(err);
-    container.innerHTML =
-      "<p>Raw retrieval failed.</p>";
-  }
-};
-
-window.runContextDebug = async function runContextDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const query = document.getElementById("contextQuery").value.trim();
-
-  if (!query) {
-    alert("Enter a query.");
-    return;
-  }
-
-  const container = document.getElementById("contextResults");
-  container.innerHTML = "<p>Building context...</p>";
-
-  try {
-    const res = await fetch(
-      "https://aionic-agent-api.onrender.com/admin/context-debug",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ query })
-      }
-    );
-
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>Retrieved Chunks</h3>
-        <pre>${escapeHtml(JSON.stringify(data.retrieved_chunks || [], null, 2))}</pre>
-      </div>
-
-      <div class="memory-card">
-        <h3>Knowledge Context</h3>
-        <pre>${escapeHtml(data.knowledge_context || "")}</pre>
-      </div>
-
-      <div class="memory-card">
-        <h3>Final Prompt Preview</h3>
-        <pre>${escapeHtml(data.final_prompt_preview || "")}</pre>
-      </div>
-    `;
-
-  } catch (err) {
-    console.error("Context debug failed:", err);
-    container.innerHTML = "<p>Context debug failed.</p>";
   }
 };
 

@@ -2549,7 +2549,7 @@
 
     <section id="continuityInspector" class="admin-section" data-admin-view="continuity">
       <h2>Continuity & Retrieval</h2>
-      <p class="section-note">Check what Aion will use before answer generation. Advanced diagnostics remain available for investigation.</p>
+      <p class="section-note">Check the continuity and retrieval context Aion would use now.</p>
 
       <div class="admin-section-overview-grid" aria-label="Continuity shortcuts">
         <div class="admin-section-overview-card">
@@ -2558,8 +2558,8 @@
           <button type="button" data-admin-detail-jump="currentContinuityPanel">Open current</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Advanced diagnostics</strong>
-          <span>Use public retrieval, raw retrieval, and context diagnostics for deeper investigation.</span>
+          <strong>Retrieval observability</strong>
+          <span>Preview public retrieval selection without generating an answer.</span>
           <button type="button" data-admin-detail-jump="continuityAdvancedDiagnosticsPanel">Open diagnostics</button>
         </div>
       </div>
@@ -2585,10 +2585,10 @@
     </details>
     <!-- Admin continuity group end: Current continuity -->
 
-    <!-- Admin continuity group start: Advanced retrieval diagnostics -->
+    <!-- Admin continuity group start: Retrieval diagnostics -->
     <details id="continuityAdvancedDiagnosticsPanel" class="admin-continuity-group admin-section-tool-secondary">
-      <summary><strong>Advanced retrieval diagnostics</strong></summary>
-      <p class="admin-continuity-group-note">Lower-frequency retrieval and context diagnostics for deeper investigation.</p>
+      <summary><strong>Retrieval diagnostics</strong></summary>
+      <p class="admin-continuity-group-note">Current public retrieval observability without provider calls or memory writes.</p>
       <details class="advanced-operator-tool">
       <summary><strong>Grounded Public Retrieval Preview</strong></summary>
       
@@ -2606,7 +2606,7 @@
           </details>
 
       <details class="legacy-reference-tool">
-      <summary><strong>Retrieval Preview</strong></summary>
+      <summary><strong>Selected Retrieval Result</strong></summary>
       
             <p>Final post-filtered retrieval used by Aion.</p>
       
@@ -2620,42 +2620,8 @@
       
             <div id="retrievalResults"></div>
           </details>
-
-      <details class="legacy-reference-tool">
-      <summary><strong>Raw Retrieval Preview</strong></summary>
-      
-            <p>Inspect raw search results before filtering and boosting.</p>
-      
-            <input
-              id="retrievalRawQuery"
-              placeholder="Enter retrieval query..."
-              style="width: 70%; padding: 8px; margin-top: 10px;"
-            />
-      
-            <button onclick="runRawRetrievalDebug()">
-              Test Raw Retrieval
-            </button>
-      
-            <div id="retrievalRawResults"></div>
-          </details>
-
-      <details class="legacy-reference-tool">
-      <summary><strong>Context Viewer</strong></summary>
-      
-            <p>Build and inspect the context Aion would send for a query.</p>
-      
-            <input
-              id="contextQuery"
-              placeholder="Enter context query..."
-              style="width: 70%; padding: 8px; margin-top: 10px;"
-            />
-      
-            <button onclick="runContextDebug()">Build Context</button>
-      
-            <div id="contextResults"></div>
-          </details>
     </details>
-    <!-- Admin continuity group end: Advanced retrieval diagnostics -->
+    <!-- Admin continuity group end: Retrieval diagnostics -->
 
     </section>
 
