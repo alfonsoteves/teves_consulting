@@ -2545,19 +2545,9 @@
           <button type="button" data-admin-detail-jump="currentContinuityPanel">Open current</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Routine checks</strong>
-          <span>Run packet validation and handoff checks without changing public routing.</span>
-          <button type="button" data-admin-detail-jump="continuityOperationalChecksPanel">Open checks</button>
-        </div>
-        <div class="admin-section-overview-card">
           <strong>Advanced diagnostics</strong>
-          <span>Use retrieval, feature-flag, and native LLM diagnostics for deeper investigation.</span>
+          <span>Use public retrieval, raw retrieval, and context diagnostics for deeper investigation.</span>
           <button type="button" data-admin-detail-jump="continuityAdvancedDiagnosticsPanel">Open diagnostics</button>
-        </div>
-        <div class="admin-section-overview-card">
-          <strong>Archived phase work</strong>
-          <span>Keep older native LLM phase diagnostics available but out of the routine path.</span>
-          <button type="button" data-admin-detail-jump="continuityArchivedDiagnosticsPanel">Open archive</button>
         </div>
       </div>
 
@@ -2582,41 +2572,6 @@
     </details>
     <!-- Admin continuity group end: Current continuity -->
 
-    <!-- Admin continuity group start: Operational checks -->
-    <details id="continuityOperationalChecksPanel" class="admin-continuity-group admin-section-tool-routine">
-      <summary><strong>Routine checks</strong></summary>
-      <p class="admin-continuity-group-note">Validation and internal-test checks that are still useful during routine review.</p>
-      <details class="primary-operator-tool">
-      <summary><strong>Sample packet check</strong></summary>
-      
-            <p>Submit a controlled sample native packet to the Admin validation endpoint without changing routing, calling a provider, or exposing grounded context text.</p>
-      
-            <button onclick="runNativeRetrievalPacketValidationPreview()">Check sample packet</button>
-      
-            <div id="nativeRetrievalPacketValidationResults"></div>
-          </details>
-
-      <details class="primary-operator-tool">
-      <summary><strong>Handoff answer check</strong></summary>
-      
-            <p>Send an explicit native packet to the Admin handoff endpoint and verify Render uses packet context without selecting public knowledge or changing public routing.</p>
-      
-            <select
-              id="nativeRetrievalHandoffAnswerCase"
-              style="padding: 8px; margin-top: 10px;"
-            >
-              <option value="water_outage">Water outage</option>
-              <option value="food_reserve">Food reserve</option>
-              <option value="spanish_water_storage">Spanish water storage</option>
-            </select>
-      
-            <button onclick="runNativeRetrievalHandoffInternalTestAnswer()">Build handoff answer</button>
-      
-            <div id="nativeRetrievalHandoffInternalTestAnswerResults"></div>
-          </details>
-    </details>
-    <!-- Admin continuity group end: Operational checks -->
-
     <!-- Admin continuity group start: Advanced retrieval diagnostics -->
     <details id="continuityAdvancedDiagnosticsPanel" class="admin-continuity-group admin-section-tool-secondary">
       <summary><strong>Advanced retrieval diagnostics</strong></summary>
@@ -2635,147 +2590,6 @@
             <button onclick="runPublicRetrievalPreview()">Preview Public Retrieval</button>
       
             <div id="publicRetrievalPreviewResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval State</strong></summary>
-      
-            <p>Inspect the current native retrieval scope, corpus identity, evidence anchors, and route safety without adding cutover controls.</p>
-      
-            <button onclick="runNativeRetrievalState()">Refresh Native Retrieval State</button>
-      
-            <div id="nativeRetrievalStateResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Feature-Flag State</strong></summary>
-      
-            <p>Inspect the disabled retrieval handoff mode registry without adding enablement controls or changing public routing.</p>
-      
-            <button onclick="runNativeRetrievalFeatureFlagState()">Check feature-flag state</button>
-      
-            <div id="nativeRetrievalFeatureFlagStateResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Feature-Flag Transition Contract</strong></summary>
-      
-            <p>Inspect the selected internal-test transition and rollback contract without adding a setter, accepting native packets, or changing public routing.</p>
-      
-            <button onclick="runNativeRetrievalFeatureFlagTransitionContract()">Refresh Transition Contract</button>
-      
-            <div id="nativeRetrievalFeatureFlagTransitionContractResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Operator Transition Preview</strong></summary>
-      
-            <p>Preview operator transition readiness or fail-closed acknowledgement behavior without changing mode, accepting native packets, or changing public routing.</p>
-      
-            <button onclick="runNativeRetrievalOperatorTransitionPreview(false)">Preview Missing Acknowledgement</button>
-            <button onclick="runNativeRetrievalOperatorTransitionPreview(true)">Preview Ready Transition</button>
-      
-            <div id="nativeRetrievalOperatorTransitionPreviewResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Internal-Test Mode Storage</strong></summary>
-      
-            <p>Apply or rollback the operator-authorized internal-test mode without enabling public native retrieval or changing the answer provider.</p>
-      
-            <button onclick="runNativeRetrievalInternalTestModeApply()">Apply Internal-Test Mode</button>
-            <button onclick="runNativeRetrievalInternalTestModeRollback()">Rollback to Render Selection</button>
-      
-            <div id="nativeRetrievalInternalTestModeStorageResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Limited Public Window</strong></summary>
-      
-            <p>Preview or apply the signed-in approved-case limited window for native packets, with explicit expiration and immediate rollback.</p>
-      
-            <button onclick="runNativeRetrievalLimitedWindowPreview(false)">Preview Missing Acknowledgement</button>
-            <button onclick="runNativeRetrievalLimitedWindowPreview(true)">Preview Ready Window</button>
-            <button onclick="runNativeRetrievalLimitedWindowApply()">Apply Limited Window</button>
-            <button onclick="runNativeRetrievalLimitedWindowRollback()">Rollback to Render Selection</button>
-      
-            <div id="nativeRetrievalLimitedWindowResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Limited-Window Answer</strong></summary>
-      
-            <p>Generate a signed-in approved-case limited-window answer after native packet validation, without switching providers, enabling fallback, or changing continuity.</p>
-      
-            <select
-              id="nativeRetrievalLimitedWindowAnswerCase"
-              style="padding: 8px; margin-top: 10px;"
-            >
-              <option value="water_outage">Water outage</option>
-              <option value="spanish_water_storage">Spanish water storage</option>
-            </select>
-      
-            <button onclick="runNativeRetrievalLimitedWindowAnswer()">Generate Limited-Window Answer</button>
-      
-            <div id="nativeRetrievalLimitedWindowAnswerResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Retrieval Internal-Test Answer</strong></summary>
-      
-            <p>Send the controlled sample packet to the Admin internal-test answer endpoint after packet validation, without changing public routing or accepting native packets for public traffic.</p>
-      
-            <button onclick="runNativeRetrievalInternalTestAnswer()">Generate Internal-Test Answer</button>
-      
-            <div id="nativeRetrievalInternalTestAnswerResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Approved-Case Internal-Test Answer</strong></summary>
-      
-            <p>Generate an internal-test answer for a reviewed approved case after Render builds and validates the native packet, without changing public routing or accepting native packets for public traffic.</p>
-      
-            <select
-              id="nativeRetrievalApprovedCaseAnswerCase"
-              style="padding: 8px; margin-top: 10px;"
-            >
-              <option value="water_outage">Water outage</option>
-              <option value="food_reserve">Food reserve</option>
-              <option value="power_outage">Power outage</option>
-              <option value="bread_selection">Bread selection</option>
-              <option value="spanish_water_storage">Spanish water storage</option>
-              <option value="generic_sports">Generic sports</option>
-              <option value="spanish_generic_sports">Spanish generic sports</option>
-              <option value="sports_hydration_detail">Sports hydration detail</option>
-            </select>
-      
-            <button onclick="runNativeRetrievalApprovedCaseInternalTestAnswer()">Generate Approved-Case Answer</button>
-      
-            <div id="nativeRetrievalApprovedCaseInternalTestAnswerResults"></div>
-          </details>
-
-      <details class="advanced-operator-tool">
-      <summary><strong>Approved-Case Comparison</strong></summary>
-      
-            <p>Compare reviewed Render/Admin preview evidence with the native approved-case packet without changing public routing or calling a provider.</p>
-      
-            <select
-              id="nativeRetrievalComparisonFixture"
-              style="padding: 8px; margin-top: 10px;"
-            >
-              <option value="water_outage">Water outage</option>
-              <option value="food_reserve">Food reserve</option>
-              <option value="power_outage">Power outage</option>
-              <option value="bread_selection">Bread selection</option>
-              <option value="spanish_water_storage">Spanish water storage</option>
-              <option value="generic_sports">Generic sports</option>
-              <option value="spanish_generic_sports">Spanish generic sports</option>
-              <option value="sports_hydration_detail">Sports hydration detail</option>
-            </select>
-      
-            <button onclick="runNativeRetrievalFixtureComparison()">Preview Approved-Case Comparison</button>
-      
-            <div id="nativeRetrievalComparisonResults"></div>
           </details>
 
       <details class="legacy-reference-tool">
