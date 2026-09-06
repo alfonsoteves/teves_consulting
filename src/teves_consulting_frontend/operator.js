@@ -1932,6 +1932,11 @@ function clearLocalEngineerStatusRefreshTimer() {
   localEngineerPairingState.statusRefreshTimer = null;
 }
 
+function resetLocalEngineerPairingState() {
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState = createLocalEngineerPairingState();
+}
+
 function localEngineerDurableReadinessMessage(readinessState) {
   const state = safeText(readinessState, "");
   if (state === "ready") return "";
@@ -1959,12 +1964,24 @@ function localEngineerDurableStatusMessage(status, devices) {
   const readinessMessage = localEngineerDurableReadinessMessage(readinessState);
   if (readinessMessage) return readinessMessage;
   if (devices.some((device) => device.trustState === "paired")) {
-    return "This Mac is durably paired.";
+    return "Paired";
   }
   if (devices.some((device) => device.trustState === "revoked")) {
-    return "Device trust has been revoked.";
+    return "Revoked";
   }
-  return "No Mac is durably paired.";
+  return "Not paired";
+}
+
+function localEngineerConnectionStatusMessage(state) {
+  return localEngineerActiveSession(state) ? "Connected" : "Not connected";
+}
+
+function localEngineerActionAllowed(state) {
+  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
+  if (!status) return true;
+  if (status.durableTrustActive !== true) return true;
+  const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
+  return devices.some((device) => device.trustState === "paired");
 }
 
 function localEngineerCurrentStatusMessage(state) {
@@ -1974,13 +1991,23 @@ function localEngineerCurrentStatusMessage(state) {
     const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
     const pairings = Array.isArray(status.pairings) ? status.pairings.filter(isPlainObject) : [];
     const durableMessage = localEngineerDurableStatusMessage(status, devices);
-    if (durableMessage) return durableMessage;
+    if (durableMessage) {
+      if (
+        durableMessage === "Paired"
+        || durableMessage === "Revoked"
+        || durableMessage === "Not paired"
+      ) {
+        const connection = durableMessage === "Paired" ? localEngineerConnectionStatusMessage(state) : "Not connected";
+        return `${durableMessage} — ${connection}`;
+      }
+      return durableMessage;
+    }
     if (status.activationFailure) {
       return "Local Engineer durable-trust activation is invalid.";
     }
     if (status.trustAuthorityMode === "legacy_process_local") {
       if (pairings.length) return "";
-      if (state.connectAttemptId > 0) return "This Mac is paired.";
+      if (state.connectAttemptId > 0) return `Paired — ${localEngineerConnectionStatusMessage(state)}`;
       return "";
     }
   }
@@ -2012,13 +2039,18 @@ function localEngineerPairingPanelHtml() {
   const buttonId = activeSession ? "localEngineerDisconnectButton" : "localEngineerConnectButton";
   const buttonText = activeSession ? "Disconnect this Mac" : "Connect this Mac";
   const buttonDisabled = state.connectInFlight || state.disconnectInFlight || state.statusInFlight;
+  const showAction = localEngineerActionAllowed(state);
+  const actionsHtml = showAction
+    ? `
+      <div class="local-engineer-actions">
+        <button id="${buttonId}" class="local-engineer-connect-button" type="button"${buttonDisabled ? " disabled" : ""}>${buttonText}</button>
+      </div>`
+    : "";
   return `
     <section class="local-engineer-panel" aria-label="Local Engineer pairing">
       <h3>${escapeHtml(heading)}</h3>
       ${statusDetails}
-      <div class="local-engineer-actions">
-        <button id="${buttonId}" class="local-engineer-connect-button" type="button"${buttonDisabled ? " disabled" : ""}>${buttonText}</button>
-      </div>
+      ${actionsHtml}
     </section>
   `;
 }
@@ -2148,6 +2180,13 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
       || stateRevision !== localEngineerPairingState.stateRevision
       || statusRequestId !== localEngineerPairingState.statusRequestId
     ) return;
+    if (isPlainObject(localEngineerPairingState.deviceStatus)) {
+      localEngineerPairingState.deviceStatus = {
+        ...localEngineerPairingState.deviceStatus,
+        executionSessionActive: false,
+        localEngineerSessions: [],
+      };
+    }
     localEngineerPairingState.deviceStatusMessage = localEngineerPairingFailureText(error);
     localEngineerPairingState.message = "";
   } finally {
@@ -2206,6 +2245,9 @@ function setActiveRole(role) {
   }
   d1aRefreshEngineerWorkflowDisplay();
   d1aRefreshLocalEngineerPairingDisplay();
+  if (role === "engineer" && isOperator && !localEngineerPairingState.statusInFlight) {
+    refreshLocalEngineerDeviceStatus();
+  }
   refreshLocalEngineerRepositoryReadApprovals();
 }
 
@@ -3792,6 +3834,7 @@ async function loadRolesAndRules() {
 async function refreshOperatorAccess() {
   /* operator verified workspace load boundary start */
   if (!isAuthenticated || !actor) {
+    resetLocalEngineerPairingState();
     setOperatorWorkspaceWarning("");
     setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
@@ -3804,6 +3847,7 @@ async function refreshOperatorAccess() {
       isOperator = false;
       renderOperatorSessionToken = null;
       clearStoredOperatorSession();
+      resetLocalEngineerPairingState();
       setOperatorWorkspaceWarning("");
       document.getElementById("operatorWorkspace").classList.remove("is-visible");
       setOperatorShellSignedIn(false);
@@ -3815,6 +3859,7 @@ async function refreshOperatorAccess() {
     isOperator = false;
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
+    resetLocalEngineerPairingState();
     setOperatorWorkspaceWarning("");
     document.getElementById("operatorWorkspace").classList.remove("is-visible");
     setOperatorShellSignedIn(false);
@@ -3865,6 +3910,7 @@ async function handleAuth() {
     isOperator = false;
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
+    resetLocalEngineerPairingState();
     document.getElementById("operatorWorkspace").classList.remove("is-visible");
     setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";
