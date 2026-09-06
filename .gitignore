@@ -35,22 +35,18 @@ canister_ids.json
 
 site_dist/
 
-# Public repo hygiene: internal evidence and local/private state
+# Public repo hygiene: local/private state
 private/
-deployed/
 .icp/data/
-docs/
-test/
-!test/
-test/*
-!test/LocalEngineerDeviceTrust.test.mo
+deployed/*
+!deployed/README.md
+!deployed/teves_consulting_backend.baseline.json
+!deployed/teves_consulting_backend.did
+!deployed/teves_consulting_backend.most
 
 # Public repo hygiene: internal implementation and operator scripts
-*.sh
 mops.toml
 !mops.toml
-mops.lock
-src/teves_consulting_backend/
 
 # Public repo hygiene: no Operator evidence notes as frontend assets
 src/teves_consulting_frontend/operator-*-note.md

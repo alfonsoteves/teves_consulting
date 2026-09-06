@@ -1,0 +1,6 @@
+import PrivateAdminCandidateAdapterProof "../src/teves_consulting_backend/lib/PrivateAdminCandidateAdapterProof";
+
+assert PrivateAdminCandidateAdapterProof.authorizesAdminCandidateOnly();
+assert PrivateAdminCandidateAdapterProof.acceptsNormalizedTimeout();
+assert PrivateAdminCandidateAdapterProof.blocksPublicAnswer();
+assert PrivateAdminCandidateAdapterProof.blocksProviderFreeContinuity();
