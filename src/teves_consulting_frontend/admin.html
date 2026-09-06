@@ -2933,12 +2933,12 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
     <section id="providers" class="admin-section" data-admin-view="providers">
       <h2>Provider Controls</h2>
-      <p class="section-note">Start with status and audit. Route changes require operator confirmations; candidate tests do not change public answers.</p>
+      <p class="section-note">Review current provider routing, enforcement, runtime diagnostics, and audited production route changes.</p>
 
       <div class="admin-section-overview-grid" aria-label="Provider review shortcuts">
         <div class="admin-section-overview-card">
           <strong>Current baseline</strong>
-          <span>Verify the public OpenAI route and inspect the ICP candidate registry.</span>
+          <span>Inspect current provider policy, route enforcement, guard behavior, and Render-native policy status.</span>
           <button type="button" data-admin-detail-jump="providerStatusPanel">Open status</button>
         </div>
         <div class="admin-section-overview-card">
@@ -2946,32 +2946,26 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <span>Select OpenAI or native only after reviewing identity, audit, rollback, and no-deploy confirmations.</span>
           <button type="button" data-admin-detail-jump="productionRouteSwitchPanel">Open switch</button>
         </div>
-        <div class="admin-section-overview-card">
-          <strong>Advanced candidate tests</strong>
-          <span>Run Admin-only candidate checks without changing public answers.</span>
-          <button type="button" data-admin-detail-jump="candidateTestConsolePanel">Open tests</button>
-        </div>
-        <div class="admin-section-overview-card">
-          <strong>Archived diagnostics</strong>
-          <span>Keep older provider design and handoff artifacts available but out of the way.</span>
-          <button type="button" data-admin-detail-jump="archivedProviderEvidencePanel">Open archive</button>
-        </div>
       </div>
 
 <details id="providerStatusPanel" class="admin-section-tool-primary" open>
       <summary><strong>Provider status</strong></summary>
 
-      <p>Verify the public OpenAI route and inspect the ICP candidate registry before running advanced candidate tests.</p>
+      <p>Inspect current provider policy and route enforcement without invoking reasoning providers or changing routing.</p>
 
-      <button onclick="runProviderInspectionDebug()">Inspect candidate registry</button>
-      <button onclick="runIcpLlmCandidInspectionDebug()">Inspect candidate interface</button>
-      <button onclick="runParallelProviderHarnessPlanDebug()">Build test plan</button>
-      <button onclick="runCandidateModelRegistryDryRun()">Build model registry</button>
+      <button onclick="runAionProviderRoutingPolicyDebug()">Build Routing Policy</button>
+      <button onclick="runAionProviderPolicyParityDebug()">Verify Native Policy Parity</button>
+      <button onclick="runAionRouteEnforcementHandoffDebug()">Build Handoff Design</button>
+      <button onclick="runProviderAdapterGuardDebug()">Run Adapter Guard Fixtures</button>
+      <button onclick="runLiveProviderAdapterHandoffSimulationDebug()">Simulate Live Handoff</button>
+      <button onclick="runRenderNativeProviderPolicyQueryDebug()">Query Native Policy From Render</button>
 
-      <div id="providerInspectionResults"></div>
-      <div id="icpLlmCandidInspectionResults"></div>
-      <div id="parallelProviderHarnessPlanResults"></div>
-      <div id="candidateModelRegistryResults"></div>
+      <div id="aionProviderRoutingPolicyResults"></div>
+      <div id="aionProviderPolicyParityResults"></div>
+      <div id="aionRouteEnforcementHandoffResults"></div>
+      <div id="providerAdapterGuardResults"></div>
+      <div id="liveProviderAdapterHandoffResults"></div>
+      <div id="renderNativeProviderPolicyQueryResults"></div>
 
       <details>
         <summary><strong>Phase 9 Role Foundation</strong></summary>
@@ -2987,71 +2981,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         <div id="roleRulesOperatingAgreementResults"></div>
       </details>
 
-      <details>
-        <summary><strong>Live Candid Verification Notes</strong></summary>
-
-        <p>Evaluate operator verification notes without saving them or enabling candidate calls.</p>
-
-        <div class="form-grid">
-          <label>v0_chat exists
-            <select id="icpVerifyV0ChatExists">
-              <option value="">Pending</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </label>
-          <label>Method type
-            <select id="icpVerifyMethodType">
-              <option value="">Pending</option>
-              <option value="update">Update</option>
-              <option value="query">Query</option>
-            </select>
-          </label>
-          <label>Request shape verified
-            <select id="icpVerifyRequestShape">
-              <option value="">Pending</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </label>
-          <label>Response shape verified
-            <select id="icpVerifyResponseShape">
-              <option value="">Pending</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </label>
-        </div>
-
-        <label>Cost / cycles notes
-          <textarea id="icpVerifyCostCyclesNotes" rows="2"></textarea>
-        </label>
-        <label>Timeout notes
-          <textarea id="icpVerifyTimeoutNotes" rows="2"></textarea>
-        </label>
-        <label>Error notes
-          <textarea id="icpVerifyErrorNotes" rows="2"></textarea>
-        </label>
-        <label>Streaming notes
-          <textarea id="icpVerifyStreamingNotes" rows="2"></textarea>
-        </label>
-        <label>Model identity notes
-          <textarea id="icpVerifyModelIdentityNotes" rows="2"></textarea>
-        </label>
-
-        <div class="form-grid">
-          <label>Verified by
-            <input id="icpVerifyVerifiedBy" type="text">
-          </label>
-          <label>Verified at
-            <input id="icpVerifyVerifiedAt" type="text">
-          </label>
-        </div>
-
-        <button onclick="runIcpLlmCandidVerificationNotesDebug()">Evaluate Notes</button>
-
-        <div id="icpLlmCandidVerificationNotesResults"></div>
-      </details>
     </details>
     <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
       <summary><strong>Production route change</strong></summary>
@@ -3086,57 +3015,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
 
       <div id="productionRouteSwitchResults"></div>
       <div id="productionRouteSwitchAudit"></div>
-    </details>
-    <details id="candidateTestConsolePanel" class="admin-section-tool-secondary">
-      <summary><strong>Advanced candidate tests</strong></summary>
-
-      <p>Run one-off or batch ICP candidate tests. Candidate output stays in Admin and cannot affect production answers.</p>
-
-      <label>Aion notes
-        <textarea id="candidateCallContext" rows="6"></textarea>
-      </label>
-
-      <label>Candidate models to test
-        <textarea id="candidateModelList" rows="3" placeholder="One model string per line, for example llama3.1:8b"></textarea>
-      </label>
-
-      <label>Single test prompt
-        <textarea id="candidateCallPrompt" rows="4" placeholder="Ask a short test question for the ICP candidate model."></textarea>
-      </label>
-
-      <button onclick="runCertifiedCandidatePolicyPreflight()">Check Candidate Policy</button>
-      <button id="runSingleIcpTestButton" onclick="runManualCandidateCallHarness()" disabled>Run Single ICP Test</button>
-      <button id="runAionFitBatchButton" onclick="runCandidateBatchTestHarness()" disabled>Run Aion-Fit Batch</button>
-      <button id="runProductionStyleBatchButton" onclick="runProductionStyleCandidateBatchTestHarness()" disabled>Run Production-Style Batch</button>
-
-      <div id="candidatePolicyPreflightResults"></div>
-      <div id="manualCandidateCallResults"></div>
-      <div id="candidateBatchTestResults"></div>
-    </details>
-    <details id="archivedProviderEvidencePanel" class="admin-section-tool-archived">
-      <summary><strong>Archived provider diagnostics</strong></summary>
-
-      <p>Review provider design and prompt hardening artifacts without changing routing.</p>
-
-      <button onclick="runAionProviderInterfaceDesignDebug()">Build Interface Design</button>
-      <button onclick="runAionProviderRoutingPolicyDebug()">Build Routing Policy</button>
-      <button onclick="runAionProviderPolicyParityDebug()">Verify Native Policy Parity</button>
-      <button onclick="runAionRouteEnforcementHandoffDebug()">Build Handoff Design</button>
-      <button onclick="runProviderAdapterGuardDebug()">Run Adapter Guard Fixtures</button>
-      <button onclick="runLiveProviderAdapterHandoffSimulationDebug()">Simulate Live Handoff</button>
-      <button onclick="runRenderNativeProviderPolicyQueryDebug()">Query Native Policy From Render</button>
-      <button onclick="runCertifiedNativePolicyAuthorizationDebug()">Build Certified Policy Design</button>
-      <button onclick="runCandidateHardeningPlanDebug()">Build Hardening Plan</button>
-
-      <div id="aionProviderInterfaceDesignResults"></div>
-      <div id="aionProviderRoutingPolicyResults"></div>
-      <div id="aionProviderPolicyParityResults"></div>
-      <div id="aionRouteEnforcementHandoffResults"></div>
-      <div id="providerAdapterGuardResults"></div>
-      <div id="liveProviderAdapterHandoffResults"></div>
-      <div id="renderNativeProviderPolicyQueryResults"></div>
-      <div id="certifiedNativePolicyAuthorizationResults"></div>
-      <div id="candidateHardeningPlanResults"></div>
     </details>
     </section>
 
