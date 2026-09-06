@@ -1882,6 +1882,19 @@
       border-color: #2f3d4e;
     }
 
+    .admin-danger-button {
+      background: #7f1d1d;
+      border-color: #b91c1c;
+      color: #fee2e2;
+    }
+
+    .admin-danger-button:hover,
+    .admin-danger-button:focus {
+      background: #991b1b;
+      border-color: #fca5a5;
+      color: #fff7ed;
+    }
+
     .admin-section-tool-archived {
       border-color: #263241;
       opacity: 0.88;
@@ -3148,6 +3161,11 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <span>Use the HTTPS probe as a deployment validation check, not routine browsing.</span>
           <button type="button" data-admin-detail-jump="transportValidation">Open transport</button>
         </div>
+        <div class="admin-section-overview-card">
+          <strong>Local Engineer</strong>
+          <span>Review durable device trust and revoke a device identity only when needed.</span>
+          <button type="button" data-admin-detail-jump="localEngineerGovernance">Open Local Engineer</button>
+        </div>
       </div>
 
 <details id="goldenTestsPanel" class="admin-section-tool-routine" open>
@@ -3168,6 +3186,15 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <button onclick="showOperatorAuthorizationDryRun()">Refresh Operator Access</button>
 
       <div id="operatorAuthorizationResults"></div>
+    </details>
+
+    <details id="localEngineerGovernance" class="admin-section-tool-secondary">
+      <summary><strong>Local Engineer governance</strong></summary>
+
+      <p>Review durable Local Engineer trust. Revoke a device identity only when it should no longer be trusted.</p>
+      <button type="button" onclick="refreshLocalEngineerGovernance()">Refresh Local Engineer</button>
+
+      <div id="localEngineerGovernanceResults"></div>
     </details>
 
     <details id="transportValidation" class="admin-section-tool-secondary">

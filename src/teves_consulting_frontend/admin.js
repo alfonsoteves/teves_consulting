@@ -12,6 +12,8 @@ const LLM_CANDIDATE_TIMEOUT_MS = 30000;
 const LLM_CANDIDATE_MAX_RESPONSE_CHARS = 20000;
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
+const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
+const LOCAL_ENGINEER_PAIRING_REVOKE_BASE_PATH = "/admin/local-engineer/device-pairings";
 const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const OPENAI_PRODUCTION_ROUTE_ID = "openai-production-baseline";
 const NATIVE_PRODUCTION_ROUTE_ID = "icp-admin-candidate";
@@ -1948,6 +1950,188 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+function htmlAttributeJsonString(value) {
+  return escapeHtml(JSON.stringify(String(value || "")));
+}
+
+function localEngineerDeviceRevokePath(deviceId) {
+  return `${LOCAL_ENGINEER_PAIRING_REVOKE_BASE_PATH}/${encodeURIComponent(String(deviceId || ""))}/revoke`;
+}
+
+function localEngineerAdminReadinessMessage(state) {
+  const messages = {
+    disabled: "Durable Local Engineer trust is not active.",
+    misconfigured: "Durable Local Engineer trust is misconfigured.",
+    not_checked: "Durable Local Engineer trust has not been checked.",
+    unavailable: "Durable Local Engineer trust is currently unavailable.",
+    unauthorized: "The Local Engineer durable-trust service is not authorized.",
+    contract_mismatch: "The Local Engineer durable-trust contract is unavailable or incompatible.",
+    security_verification_failed: "Durable Local Engineer trust could not be verified.",
+  };
+  return messages[state] || "Durable Local Engineer trust status is unavailable.";
+}
+
+async function readLocalEngineerAdminResponse(response) {
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = null;
+  }
+  if (!response.ok) {
+    const failure = payload && payload.detail && payload.detail.failure
+      ? payload.detail.failure
+      : `http_${response.status}`;
+    throw new Error(failure);
+  }
+  return payload || {};
+}
+
+function renderLocalEngineerDeviceCard(device) {
+  const state = device && device.trustState === "revoked" ? "revoked" : "paired";
+  const title = state === "revoked"
+    ? "Local Engineer device revoked"
+    : "Local Engineer device paired";
+  const action = state === "paired"
+    ? `
+      <button
+        type="button"
+        class="admin-danger-button"
+        onclick="revokeLocalEngineerDeviceIdentity(${htmlAttributeJsonString(device.deviceId)})"
+      >Revoke this Mac</button>
+    `
+    : "";
+  return `
+    <div class="memory-card">
+      <h3>${title}</h3>
+      ${renderMetricGrid({
+        "device fingerprint": device.deviceFingerprint || "not shown",
+        "trust state": device.trustState || "unknown",
+        "key protection": device.keyProtection || "not shown",
+        "record version": String(device.recordVersion ?? "not shown"),
+        "last seen": device.lastSeenAt || "not shown",
+      })}
+      ${state === "paired" ? `<p class="meta">Revoke is permanent for this device identity and is not the same as Disconnect.</p>` : ""}
+      ${action}
+    </div>
+  `;
+}
+
+function renderLocalEngineerGovernanceStatus(payload) {
+  const durableActive = payload && payload.durableTrustActive === true;
+  const mode = payload && payload.trustAuthorityMode ? payload.trustAuthorityMode : "unknown";
+  const durableTrust = payload && payload.durableTrust && typeof payload.durableTrust === "object"
+    ? payload.durableTrust
+    : {};
+  const readiness = durableTrust.readiness && typeof durableTrust.readiness === "object"
+    ? durableTrust.readiness
+    : {};
+  const devices = Array.isArray(payload && payload.devices) ? payload.devices : [];
+  const pairedDevices = devices.filter((device) => device && device.trustState === "paired");
+  const revokedDevices = devices.filter((device) => device && device.trustState === "revoked");
+
+  if (!durableActive) {
+    return `
+      <div class="memory-card">
+        <h3>Local Engineer governance</h3>
+        <p>Durable Local Engineer trust is not active. Routine Local Engineer connection remains in Operator.</p>
+        ${renderMetricGrid({
+          "authority mode": mode,
+          "durable trust": "inactive",
+        })}
+      </div>
+    `;
+  }
+
+  if (payload.status !== "local_engineer_durable_device_status_returned" || readiness.state !== "ready") {
+    return `
+      <div class="memory-card">
+        <h3>Local Engineer governance</h3>
+        <p>${escapeHtml(localEngineerAdminReadinessMessage(readiness.state))}</p>
+        ${renderMetricGrid({
+          "authority mode": mode,
+          "durable trust": "not ready",
+          "readiness": readiness.state || payload.status || "unknown",
+        })}
+      </div>
+    `;
+  }
+
+  if (pairedDevices.length === 0 && revokedDevices.length === 0) {
+    return `
+      <div class="memory-card">
+        <h3>Local Engineer governance</h3>
+        <p>No durably paired Local Engineer device is recorded.</p>
+        ${renderMetricGrid({
+          "authority mode": mode,
+          "durable trust": "ready",
+        })}
+      </div>
+    `;
+  }
+
+  return `
+    ${pairedDevices.map(renderLocalEngineerDeviceCard).join("")}
+    ${revokedDevices.map(renderLocalEngineerDeviceCard).join("")}
+  `;
+}
+
+window.refreshLocalEngineerGovernance = async function refreshLocalEngineerGovernance() {
+  const container = document.getElementById("localEngineerGovernanceResults");
+  if (!container) return;
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before reviewing Local Engineer governance.</p>";
+    return;
+  }
+
+  container.innerHTML = "<p>Refreshing Local Engineer governance...</p>";
+  try {
+    const response = await fetch(`${AIONIC_AGENT_API_BASE_URL}${LOCAL_ENGINEER_DEVICES_PATH}`);
+    const payload = await readLocalEngineerAdminResponse(response);
+    container.innerHTML = renderLocalEngineerGovernanceStatus(payload);
+  } catch (err) {
+    console.error("Local Engineer governance refresh failed:", err);
+    container.innerHTML = "<p>Local Engineer governance status is currently unavailable.</p>";
+  }
+};
+
+window.revokeLocalEngineerDeviceIdentity = async function revokeLocalEngineerDeviceIdentity(deviceId) {
+  const container = document.getElementById("localEngineerGovernanceResults");
+  if (!container) return;
+  if (!isAuthenticated || !isOperator || !window.adminActor) {
+    container.innerHTML = "<p>Operator access is required before revoking Local Engineer trust.</p>";
+    return;
+  }
+
+  const firstConfirmation = [
+    "Revoke is not Disconnect.",
+    "This permanently revokes the current Local Engineer device identity.",
+    "This Mac cannot reconnect with that identity after revocation.",
+    "Owner-controlled re-enrollment with a new identity is required to trust this Mac again.",
+    "Historical trust evidence remains recorded.",
+    "This does not delete Program Grounding, repositories, or continuity.",
+  ].join("\n\n");
+  if (!window.confirm(firstConfirmation)) {
+    return;
+  }
+  if (!window.confirm("Revoke device identity")) {
+    return;
+  }
+
+  container.innerHTML = "<p>Revoking Local Engineer device identity...</p>";
+  try {
+    const response = await fetch(
+      `${AIONIC_AGENT_API_BASE_URL}${localEngineerDeviceRevokePath(deviceId)}`,
+      { method: "POST" }
+    );
+    await readLocalEngineerAdminResponse(response);
+    await window.refreshLocalEngineerGovernance();
+  } catch (err) {
+    console.error("Local Engineer device revoke failed:", err);
+    container.innerHTML = "<p>Local Engineer device identity could not be revoked.</p>";
+  }
+};
 window.loadGoldenTests = async function loadGoldenTests() {
   if (!isAuthenticated) {
     return;
