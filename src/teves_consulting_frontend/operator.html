@@ -1292,9 +1292,10 @@
 
     .d1a-choice-group {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       flex-wrap: wrap;
-      gap: var(--working-context-control-gap);
+      gap: 0;
       min-width: 0;
       border: 0;
       margin: 0;
@@ -1305,6 +1306,8 @@
       color: #cbd5e1;
       font-size: 0.8rem;
       font-weight: 800;
+      margin: 0 0 var(--working-context-control-gap);
+      padding: 0;
     }
 
     .d1a-choice-row {
@@ -1656,7 +1659,6 @@
       .d1a-workspace-frame,
       .d1a-choice-group {
         align-items: stretch;
-        flex-direction: column;
       }
     }
 

@@ -8,6 +8,7 @@ const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operat
 const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
 const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
+const LOCAL_ENGINEER_DISCONNECT_PATH = "/admin/local-engineer/session/disconnect";
 const LOCAL_ENGINEER_REPOSITORY_READ_CONTEXTS_PATH = "/admin/local-engineer/repository-read-contexts/pending";
 const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
 let authClient = null;
@@ -1895,6 +1896,7 @@ function createLocalEngineerPairingState() {
     connectAttemptId: 0,
     stateRevision: 0,
     connectInFlight: false,
+    disconnectInFlight: false,
     statusRequestId: 0,
     statusInFlight: false,
     statusRefreshTimer: null,
@@ -1989,17 +1991,33 @@ function localEngineerDeviceStatusDetails(state) {
   return state.deviceStatusMessage ? `<p class="meta">${escapeHtml(state.deviceStatusMessage)}</p>` : "";
 }
 
+function localEngineerActiveSession(state) {
+  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
+  const sessions = status && Array.isArray(status.localEngineerSessions)
+    ? status.localEngineerSessions.filter(isPlainObject)
+    : [];
+  return sessions.find((entry) => {
+    const session = isPlainObject(entry.localEngineerSession) ? entry.localEngineerSession : {};
+    const adapter = isPlainObject(entry.localEngineerAdapter) ? entry.localEngineerAdapter : {};
+    return session.state === "active" && adapter.state === "active" && typeof session.deviceId === "string";
+  }) || null;
+}
+
 function localEngineerPairingPanelHtml() {
   const state = localEngineerPairingState;
   const status = localEngineerCurrentStatusMessage(state);
   const heading = status ? `Local Engineer — ${status}` : "Local Engineer";
   const statusDetails = localEngineerDeviceStatusDetails(state);
+  const activeSession = localEngineerActiveSession(state);
+  const buttonId = activeSession ? "localEngineerDisconnectButton" : "localEngineerConnectButton";
+  const buttonText = activeSession ? "Disconnect this Mac" : "Connect this Mac";
+  const buttonDisabled = state.connectInFlight || state.disconnectInFlight || state.statusInFlight;
   return `
     <section class="local-engineer-panel" aria-label="Local Engineer pairing">
       <h3>${escapeHtml(heading)}</h3>
       ${statusDetails}
       <div class="local-engineer-actions">
-        <button id="localEngineerConnectButton" class="local-engineer-connect-button" type="button"${state.connectInFlight ? " disabled" : ""}>Connect this Mac</button>
+        <button id="${buttonId}" class="local-engineer-connect-button" type="button"${buttonDisabled ? " disabled" : ""}>${buttonText}</button>
       </div>
     </section>
   `;
@@ -2044,6 +2062,44 @@ async function connectLocalEngineerCompanion() {
   } finally {
     if (connectAttemptId === localEngineerPairingState.connectAttemptId) {
       localEngineerPairingState.connectInFlight = false;
+      d1aRefreshLocalEngineerPairingDisplay();
+    }
+  }
+}
+
+async function disconnectLocalEngineerCompanion() {
+  const activeSession = localEngineerActiveSession(localEngineerPairingState);
+  if (!activeSession) return;
+  const session = activeSession.localEngineerSession;
+  const stateRevision = localEngineerPairingAdvanceStateRevision();
+  clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.statusRequestId += 1;
+  localEngineerPairingState.disconnectInFlight = true;
+  localEngineerPairingState.statusInFlight = false;
+  localEngineerPairingState.message = "";
+  localEngineerPairingState.deviceStatusMessage = "";
+  d1aRefreshLocalEngineerPairingDisplay();
+  try {
+    if (!isOperator) {
+      throw new Error("Operator access is required.");
+    }
+    if (!renderOperatorSessionToken) {
+      await establishRenderOperatorSession();
+    }
+    const result = await renderPost(LOCAL_ENGINEER_DISCONNECT_PATH, { deviceId: session.deviceId });
+    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    if (isPlainObject(result.deviceStatus)) {
+      localEngineerPairingState.deviceStatus = result.deviceStatus;
+    }
+    localEngineerPairingState.message = "";
+    localEngineerPairingState.deviceStatusMessage = "";
+  } catch (error) {
+    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    localEngineerPairingState.message = localEngineerPairingFailureText(error);
+    localEngineerPairingState.deviceStatusMessage = "";
+  } finally {
+    if (stateRevision === localEngineerPairingState.stateRevision) {
+      localEngineerPairingState.disconnectInFlight = false;
       d1aRefreshLocalEngineerPairingDisplay();
     }
   }
@@ -2109,6 +2165,8 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
 function d1aAttachLocalEngineerPairingHandlers() {
   const connect = document.getElementById("localEngineerConnectButton");
   if (connect) connect.addEventListener("click", connectLocalEngineerCompanion);
+  const disconnect = document.getElementById("localEngineerDisconnectButton");
+  if (disconnect) disconnect.addEventListener("click", disconnectLocalEngineerCompanion);
 }
 
 function setActiveRole(role) {
