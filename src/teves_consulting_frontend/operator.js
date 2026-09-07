@@ -9,7 +9,6 @@ const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
 const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
 const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
 const LOCAL_ENGINEER_DISCONNECT_PATH = "/admin/local-engineer/session/disconnect";
-const LOCAL_ENGINEER_REPOSITORY_READ_CONTEXTS_PATH = "/admin/local-engineer/repository-read-contexts/pending";
 const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
 let authClient = null;
 let identity = null;
@@ -489,9 +488,6 @@ function createEmptyEngineerWorkflowState() {
     actionStatus: "",
     inFlightAction: "",
     lastError: null,
-    repositoryReadDiscoveryStatus: "not_checked",
-    repositoryReadDiscoveryError: null,
-    repositoryReadDiscoveryRequestId: 0,
   };
 }
 
@@ -707,54 +703,8 @@ function normalizeEngineerReadWorkflow(packet) {
   };
 }
 
-function normalizeLocalEngineerRepositoryReadWorkflow(packet) {
-  const payload = engineerResponsePayload(packet);
-  const card = isPlainObject(payload.approvalCard) ? payload.approvalCard : payload;
-  const repository = isPlainObject(card.repository) ? card.repository : {};
-  const contextPackage = isPlainObject(payload.contextPackage) ? payload.contextPackage : {};
-  const authorityState = safeText(card.authorityState || contextPackage.authorityState, "pending");
-  return {
-    approvalKind: "local_engineer_repository_read",
-    contextPackageId: safeText(card.contextPackageId || contextPackage.contextPackageId, ""),
-    contextPackageDigest: safeText(card.contextPackageDigest || contextPackage.contextPackageDigest, ""),
-    pendingApprovalId: safeText(card.contextPackageId || contextPackage.contextPackageId, ""),
-    workItemId: safeText(card.taskReference || contextPackage.taskReference, ""),
-    repositoryName: safeText(repository.repositoryName || (contextPackage.repositoryBinding || {}).repositoryName),
-    requestedOperations: [safeText(card.operation || contextPackage.operationType || "repository_read")],
-    requestedPaths: safeList(card.requestedPaths || contextPackage.requestedPaths),
-    requestReasons: [safeText(card.purpose || contextPackage.purpose)],
-    expiresAt: safeText(card.expiresAt || contextPackage.expiresAt),
-    expectedHeadCandidate: safeText(repository.expectedHeadCandidate),
-    approvedBranchCandidate: safeText(repository.approvedBranchCandidate),
-    cleanTreeRequired: repository.cleanTreeRequired === true,
-    bounded: card.bounded === true,
-    explicitExclusions: isPlainObject(card.explicitExclusions) ? card.explicitExclusions : {},
-    lifecycleState: authorityState === "approved" ? "approved" : "awaiting_approval",
-    canonicalStateUnavailable: false,
-    approvalResponse: payload,
-    resumeResponse: null,
-    resumeStatus: "",
-    localExecutionResult: isPlainObject(payload.localExecutionResult) ? payload.localExecutionResult : null,
-    providerPassCountSoFar: 0,
-    secondProviderPassOccurred: false,
-    repositoryAccessPerformed: false,
-    grantCreated: payload.repositoryAuthorityGranted === true,
-    continuityWritten: false,
-    evidenceAuthorizesExecution: false,
-  };
-}
-
 function mergeEngineerApprovalDetails(current, packet) {
   const detail = engineerResponsePayload(packet);
-  if (current.approvalKind === "local_engineer_repository_read") {
-    const next = normalizeLocalEngineerRepositoryReadWorkflow(detail);
-    Object.assign(current, next, {
-      approvalKind: "local_engineer_repository_read",
-      contextPackageId: current.contextPackageId || next.contextPackageId,
-      contextPackageDigest: next.contextPackageDigest || current.contextPackageDigest,
-    });
-    return;
-  }
   const repositoryBinding = isPlainObject(detail.repositoryBinding) ? detail.repositoryBinding : {};
   current.lifecycleState = safeText(detail.lifecycleState, current.lifecycleState);
   current.repositoryName = safeText(repositoryBinding.repositoryName, current.repositoryName);
@@ -827,11 +777,6 @@ function engineerResultStatusCopy(packet) {
     canonical_state_unavailable: "Canonical approval state is unavailable.",
     denied: "Denied. No approved read will execute.",
     awaiting_approval: "Waiting for your approval.",
-    local_engineer_repository_context_package_created: "Waiting for your approval.",
-    local_engineer_repository_read_grant_created: "Local Engineer repository read approved.",
-    local_engineer_repository_context_package_rejected: "Local Engineer repository read rejected.",
-    local_engineer_repository_context_digest_mismatch: "Local Engineer repository approval changed before decision.",
-    local_engineer_repository_read_grant_expired: "Local Engineer repository read approval expired.",
     pending: "Steering is pending for the next continuation.",
     applied: "Steering was applied.",
     requires_new_approval: "Steering requires a new approval.",
@@ -1093,7 +1038,7 @@ function engineerApprovalPanelHtml(workflow) {
   if (!current) return "";
   const actionable = current.canonicalStateUnavailable !== true;
   const awaiting = actionable && current.lifecycleState === "awaiting_approval";
-  const approved = actionable && current.lifecycleState === "approved" && current.approvalKind !== "local_engineer_repository_read";
+  const approved = actionable && current.lifecycleState === "approved";
   if (!awaiting && !approved) return "";
   const operation = firstOrUnknown(current.requestedOperations);
   const reason = firstOrUnknown(current.requestReasons);
@@ -1258,24 +1203,12 @@ function engineerErrorHtml(workflow) {
   `;
 }
 
-function engineerRepositoryReadDiscoveryHtml(workflow) {
-  if (workflow.current || workflow.repositoryReadDiscoveryStatus !== "unavailable") return "";
-  return `
-    <section class="engineer-workflow-card engineer-workflow-error" role="alert">
-      <p class="prime-message-role">Repository approvals</p>
-      <h3>Repository approval status unavailable.</h3>
-      <p class="meta">Pending Local Engineer repository-read approvals could not be checked. No approval was created or denied.</p>
-    </section>
-  `;
-}
-
 function d1aEngineerWorkflowHtml() {
   const workflow = engineerCurrentWorkflow();
-  if (!workflow.current && !workflow.lastError && workflow.repositoryReadDiscoveryStatus !== "unavailable") return "";
+  if (!workflow.current && !workflow.lastError) return "";
   return `
     ${engineerWorkflowStatusHtml(workflow)}
     ${engineerErrorHtml(workflow)}
-    ${engineerRepositoryReadDiscoveryHtml(workflow)}
     ${engineerApprovalPanelHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
@@ -1311,10 +1244,6 @@ function d1aRefreshEngineerWorkflowDisplay() {
 function engineerApprovalPath(action) {
   const current = engineerCurrentWorkflow().current;
   if (!current || !current.pendingApprovalId) return "";
-  if (current.approvalKind === "local_engineer_repository_read") {
-    const endpointAction = action === "deny" ? "reject" : action;
-    return `/admin/local-engineer/repository-read-context/${encodeURIComponent(current.contextPackageId || current.pendingApprovalId)}/${endpointAction}`;
-  }
   return `/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}/${action}`;
 }
 
@@ -1329,57 +1258,8 @@ async function refreshEngineerApprovalDetails() {
   const workflow = engineerCurrentWorkflow();
   const current = workflow.current;
   if (!current || !current.pendingApprovalId) return;
-  const result = current.approvalKind === "local_engineer_repository_read"
-    ? await renderFetch(`/admin/local-engineer/repository-read-context/${encodeURIComponent(current.contextPackageId || current.pendingApprovalId)}`)
-    : await renderFetch(`/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}`);
+  const result = await renderFetch(`/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}`);
   mergeEngineerApprovalDetails(current, result);
-}
-
-async function refreshLocalEngineerRepositoryReadApprovals() {
-  if (activeRole !== "engineer" || !isOperator) return;
-  const workflow = engineerCurrentWorkflow();
-  const requestId = workflow.repositoryReadDiscoveryRequestId + 1;
-  workflow.repositoryReadDiscoveryRequestId = requestId;
-  workflow.repositoryReadDiscoveryStatus = "checking";
-  workflow.repositoryReadDiscoveryError = null;
-  try {
-    if (!renderOperatorSessionToken) {
-      await establishRenderOperatorSession();
-    }
-    const result = await renderFetch(LOCAL_ENGINEER_REPOSITORY_READ_CONTEXTS_PATH);
-    if (requestId !== workflow.repositoryReadDiscoveryRequestId || activeRole !== "engineer") return;
-    const cards = Array.isArray(result.approvalCards) ? result.approvalCards.filter(isPlainObject) : [];
-    const pendingCards = cards
-      .map((card) => normalizeLocalEngineerRepositoryReadWorkflow({ approvalCard: card }))
-      .filter((card) => card.pendingApprovalId && card.lifecycleState === "awaiting_approval");
-    if (!pendingCards.length) {
-      workflow.repositoryReadDiscoveryStatus = "empty";
-      if (workflow.current && workflow.current.approvalKind === "local_engineer_repository_read" && workflow.current.lifecycleState === "awaiting_approval") {
-        workflow.current = null;
-      }
-      d1aRefreshEngineerWorkflowDisplay();
-      return;
-    }
-    workflow.repositoryReadDiscoveryStatus = "available";
-    if (
-      !workflow.current
-      || workflow.current.approvalKind === "local_engineer_repository_read"
-      || engineerWorkflowIsTerminal(workflow.current)
-    ) {
-      workflow.current = pendingCards[0];
-    }
-    workflow.lastError = null;
-    workflow.actionStatus = engineerResultStatusCopy({ status: "local_engineer_repository_context_package_created" });
-    d1aRefreshEngineerWorkflowDisplay();
-  } catch (error) {
-    if (requestId !== workflow.repositoryReadDiscoveryRequestId || activeRole !== "engineer") return;
-    workflow.repositoryReadDiscoveryStatus = "unavailable";
-    workflow.repositoryReadDiscoveryError = error;
-    if (workflow.current && workflow.current.approvalKind === "local_engineer_repository_read") {
-      workflow.lastError = error;
-    }
-    d1aRefreshEngineerWorkflowDisplay();
-  }
 }
 
 function markEngineerCanonicalStateUnavailable(error) {
@@ -1426,44 +1306,24 @@ async function runEngineerWorkflowAction(actionName, fn) {
 async function approveEngineerPendingRead() {
   await runEngineerWorkflowAction("approve", async (workflow) => {
     const current = workflow.current;
-    const result = current.approvalKind === "local_engineer_repository_read"
-      ? await renderPost(engineerApprovalPath("approve"), { contextPackageDigest: current.contextPackageDigest })
-      : await renderPostNoBody(engineerApprovalPath("approve"));
+    const result = await renderPostNoBody(engineerApprovalPath("approve"));
     workflow.current.lifecycleState = result.lifecycleState || workflow.current.lifecycleState;
-    if (workflow.current.approvalKind === "local_engineer_repository_read" && result.contextPackage) {
-      workflow.current.lifecycleState = result.contextPackage.authorityState === "approved" ? "approved" : workflow.current.lifecycleState;
-      workflow.current.approvalResponse = result;
-      workflow.current.localExecutionResult = isPlainObject(result.localExecutionResult) ? result.localExecutionResult : workflow.current.localExecutionResult;
-    }
     workflow.current.canonicalStateUnavailable = false;
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    if (workflow.current.approvalKind === "local_engineer_repository_read") {
-      await refreshEngineerApprovalDetails();
-    } else {
-      await refreshEngineerTrace();
-    }
+    await refreshEngineerTrace();
   });
 }
 
 async function denyEngineerPendingRead() {
   await runEngineerWorkflowAction("deny", async (workflow) => {
     const current = workflow.current;
-    const result = current.approvalKind === "local_engineer_repository_read"
-      ? await renderPost(engineerApprovalPath("deny"), { contextPackageDigest: current.contextPackageDigest })
-      : await renderPostNoBody(engineerApprovalPath("deny"));
+    const result = await renderPostNoBody(engineerApprovalPath("deny"));
     workflow.current.lifecycleState = result.lifecycleState || "denied";
-    if (workflow.current.approvalKind === "local_engineer_repository_read" && result.contextPackage) {
-      workflow.current.lifecycleState = result.contextPackage.authorityState === "rejected" ? "denied" : workflow.current.lifecycleState;
-    }
     workflow.current.canonicalStateUnavailable = false;
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    if (workflow.current.approvalKind === "local_engineer_repository_read") {
-      await refreshEngineerApprovalDetails();
-    } else {
-      await refreshEngineerTrace();
-    }
+    await refreshEngineerTrace();
   });
 }
 
@@ -2281,7 +2141,6 @@ function setActiveRole(role) {
   if (role === "engineer" && isOperator && !localEngineerPairingState.statusInFlight) {
     refreshLocalEngineerDeviceStatus();
   }
-  refreshLocalEngineerRepositoryReadApprovals();
 }
 
 function activateMirrorRole() {
