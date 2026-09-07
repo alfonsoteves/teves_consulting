@@ -3920,21 +3920,10 @@ window.copyAdminReviewCommands = async function copyAdminReviewCommands() {
   const button = document.getElementById("adminDashboardCopyReviewCommandsButton");
   const previousText = button ? button.textContent : "";
   const commands = [
-    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
+    "Aion Admin validation checklist",
+    "",
     "git diff --check",
-    "scripts/prepare-frontend-assets.sh",
     "node --check src/teves_consulting_frontend/admin.js",
-    "PYTHONPYCACHEPREFIX=/private/tmp/admin-pycache python3 -m py_compile /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_dashboard_polish.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_cycles_visibility.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_dashboard_quality_signals.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_section_overviews.py /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py",
-    "tmpdir=$(mktemp -d /private/tmp/admin-bundle-check.XXXXXX)",
-    'cp -R src/teves_consulting_frontend "$tmpdir/frontend"',
-    'python3 /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py "$tmpdir/frontend"',
-    'cp "$tmpdir/frontend/admin.html" "$tmpdir/admin.after1.html"',
-    'cp "$tmpdir/frontend/admin.js" "$tmpdir/admin.after1.js"',
-    'python3 /Users/sandbox2/Documents/Codex/2026-07-15/create-a-project-api-key-to/teves-update-scripts/apply_admin_evergreen_cleanup_bundle.py "$tmpdir/frontend"',
-    'cmp -s "$tmpdir/admin.after1.html" "$tmpdir/frontend/admin.html"; html_status=$?',
-    'cmp -s "$tmpdir/admin.after1.js" "$tmpdir/frontend/admin.js"; js_status=$?',
-    "printf 'tmpdir=%s\\nhtml_idempotent=%s\\njs_idempotent=%s\\n' \"$tmpdir\" \"$html_status\" \"$js_status\"",
-    'node --check "$tmpdir/frontend/admin.js"',
     "mops test",
   ].join("\n");
   try {
@@ -5652,7 +5641,6 @@ async function copyTextToClipboard(text) {
 window.copyCycleStatusCommands = async function copyCycleStatusCommands() {
   const status = document.getElementById("cycleSnapshotStatus");
   const commands = [
-    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
     "icp cycles balance -n ic",
     "icp canister status teves_consulting_frontend -e ic",
     "icp canister status teves_consulting_backend -e ic",
@@ -5682,7 +5670,6 @@ window.copyFrontendTopUpCommand = async function copyFrontendTopUpCommand() {
   }
   const amountLabel = formatTopUpAmount(amount);
   const command = [
-    "cd /Users/sandbox2/Documents/Projects/teves_consulting",
     `icp canister top-up teves_consulting_frontend --amount ${amountLabel} -e ic`,
     "icp canister status teves_consulting_frontend -e ic",
   ].join("\n");
@@ -5737,10 +5724,8 @@ function buildAdminDeployPacketText() {
     `- Suggested frontend deploy reserve: ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)}`,
   ];
   lines.push("");
-  lines.push("Deploy together");
-  lines.push("cd /Users/sandbox2/Documents/Projects/teves_consulting");
+  lines.push("Deployment checklist");
   lines.push("git diff --check");
-  lines.push("scripts/prepare-frontend-assets.sh");
   lines.push("mops test");
   lines.push("mops build");
   lines.push("icp canister start teves_consulting_backend -e ic");

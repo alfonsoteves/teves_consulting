@@ -1,5 +1,0 @@
-import PrivateProviderAdapterContractProof "../src/teves_consulting_backend/lib/PrivateProviderAdapterContractProof";
-
-assert PrivateProviderAdapterContractProof.permitsPublicHandoff();
-assert PrivateProviderAdapterContractProof.acceptsNormalizedTimeout();
-assert PrivateProviderAdapterContractProof.blocksProviderFreeContinuity();

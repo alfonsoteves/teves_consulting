@@ -1,52 +1,68 @@
-# Various IDEs and Editors
+# Various IDEs and editors
+
 .vscode/
 .idea/
 **/*~
 
-# Mac OSX temporary files
+# macOS temporary files
+
 .DS_Store
 **/.DS_Store
 
-# local canister build caches
+# Local canister build caches
+
 .dfx/
+.icp/cache/
+.icp/data/
+.mops/
 
-# generated files
+# Generated files
+
 **/declarations/
+site_dist/
 
-# rust
+# Rust
+
 target/
 
-# frontend code
+# Frontend generated/build output
+
 node_modules/
 dist/
 build/
 .svelte-kit/
 
-# environment variables
+# Environment variables
+
 .env
 
-# logs
+# Logs
+
 *.log
 
-# ICP
+# ICP local/generated state
+
 canister_ids.json
-.icp/cache/
-.mops/
 
-site_dist/
+# Private/local material
 
-# Public repo hygiene: local/private state
 private/
-.icp/data/
-deployed/*
-!deployed/README.md
-!deployed/teves_consulting_backend.baseline.json
-!deployed/teves_consulting_backend.did
-!deployed/teves_consulting_backend.most
 
-# Public repo hygiene: internal implementation and operator scripts
+# Internal engineering material — not part of the public repository
+
+deployed/
+docs/
+scripts/
+test/
+src/teves_consulting_backend/
+src/local_engineer_device_trust_backend/
+src/local_engineer_device_trust_backend_persistent/
+
+# Internal Motoko/build configuration
+
 mops.toml
-!mops.toml
+mops.lock
+icp.yaml
+# Operator evidence notes must not become public frontend assets
 
-# Public repo hygiene: no Operator evidence notes as frontend assets
 src/teves_consulting_frontend/operator-*-note.md
