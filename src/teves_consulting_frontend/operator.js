@@ -489,6 +489,9 @@ function createEmptyEngineerWorkflowState() {
     actionStatus: "",
     inFlightAction: "",
     lastError: null,
+    repositoryReadDiscoveryStatus: "not_checked",
+    repositoryReadDiscoveryError: null,
+    repositoryReadDiscoveryRequestId: 0,
   };
 }
 
@@ -1255,12 +1258,24 @@ function engineerErrorHtml(workflow) {
   `;
 }
 
+function engineerRepositoryReadDiscoveryHtml(workflow) {
+  if (workflow.current || workflow.repositoryReadDiscoveryStatus !== "unavailable") return "";
+  return `
+    <section class="engineer-workflow-card engineer-workflow-error" role="alert">
+      <p class="prime-message-role">Repository approvals</p>
+      <h3>Repository approval status unavailable.</h3>
+      <p class="meta">Pending Local Engineer repository-read approvals could not be checked. No approval was created or denied.</p>
+    </section>
+  `;
+}
+
 function d1aEngineerWorkflowHtml() {
   const workflow = engineerCurrentWorkflow();
-  if (!workflow.current && !workflow.lastError) return "";
+  if (!workflow.current && !workflow.lastError && workflow.repositoryReadDiscoveryStatus !== "unavailable") return "";
   return `
     ${engineerWorkflowStatusHtml(workflow)}
     ${engineerErrorHtml(workflow)}
+    ${engineerRepositoryReadDiscoveryHtml(workflow)}
     ${engineerApprovalPanelHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
@@ -1322,31 +1337,48 @@ async function refreshEngineerApprovalDetails() {
 
 async function refreshLocalEngineerRepositoryReadApprovals() {
   if (activeRole !== "engineer" || !isOperator) return;
+  const workflow = engineerCurrentWorkflow();
+  const requestId = workflow.repositoryReadDiscoveryRequestId + 1;
+  workflow.repositoryReadDiscoveryRequestId = requestId;
+  workflow.repositoryReadDiscoveryStatus = "checking";
+  workflow.repositoryReadDiscoveryError = null;
   try {
     if (!renderOperatorSessionToken) {
       await establishRenderOperatorSession();
     }
     const result = await renderFetch(LOCAL_ENGINEER_REPOSITORY_READ_CONTEXTS_PATH);
+    if (requestId !== workflow.repositoryReadDiscoveryRequestId || activeRole !== "engineer") return;
     const cards = Array.isArray(result.approvalCards) ? result.approvalCards.filter(isPlainObject) : [];
-    const workflow = engineerCurrentWorkflow();
-    if (!cards.length) {
+    const pendingCards = cards
+      .map((card) => normalizeLocalEngineerRepositoryReadWorkflow({ approvalCard: card }))
+      .filter((card) => card.pendingApprovalId && card.lifecycleState === "awaiting_approval");
+    if (!pendingCards.length) {
+      workflow.repositoryReadDiscoveryStatus = "empty";
       if (workflow.current && workflow.current.approvalKind === "local_engineer_repository_read" && workflow.current.lifecycleState === "awaiting_approval") {
         workflow.current = null;
       }
       d1aRefreshEngineerWorkflowDisplay();
       return;
     }
-    const pending = cards.find((card) => safeText(card.authorityState, "") === "pending") || cards[0];
-    workflow.current = normalizeLocalEngineerRepositoryReadWorkflow({ approvalCard: pending });
+    workflow.repositoryReadDiscoveryStatus = "available";
+    if (
+      !workflow.current
+      || workflow.current.approvalKind === "local_engineer_repository_read"
+      || engineerWorkflowIsTerminal(workflow.current)
+    ) {
+      workflow.current = pendingCards[0];
+    }
     workflow.lastError = null;
     workflow.actionStatus = engineerResultStatusCopy({ status: "local_engineer_repository_context_package_created" });
     d1aRefreshEngineerWorkflowDisplay();
   } catch (error) {
-    const workflow = engineerCurrentWorkflow();
+    if (requestId !== workflow.repositoryReadDiscoveryRequestId || activeRole !== "engineer") return;
+    workflow.repositoryReadDiscoveryStatus = "unavailable";
+    workflow.repositoryReadDiscoveryError = error;
     if (workflow.current && workflow.current.approvalKind === "local_engineer_repository_read") {
       workflow.lastError = error;
-      d1aRefreshEngineerWorkflowDisplay();
     }
+    d1aRefreshEngineerWorkflowDisplay();
   }
 }
 
@@ -1571,7 +1603,8 @@ function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "
 
 function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
   if (!resetConversation && roleWorkspaceInitialized) return;
-  activeRole = "prime";
+  const selectedRole = ["prime", "mirror", "engineer"].includes(activeRole) ? activeRole : "prime";
+  activeRole = selectedRole;
   primeConversationHistory = [];
   mirrorConversationHistory = [];
   engineerConversationHistory = [];
