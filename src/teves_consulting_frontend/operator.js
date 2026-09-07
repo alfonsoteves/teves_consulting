@@ -1912,6 +1912,15 @@ function localEngineerDeviceStatusDetails(state) {
 }
 
 function localEngineerActiveSession(state) {
+  const session = localEngineerBoundSession(state);
+  if (!session) return null;
+  const readiness = isPlainObject(session.localEngineerAdapterReadiness)
+    ? session.localEngineerAdapterReadiness
+    : {};
+  return readiness.available === true && readiness.recentPullObserved === true ? session : null;
+}
+
+function localEngineerBoundSession(state) {
   const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
   const sessions = status && Array.isArray(status.localEngineerSessions)
     ? status.localEngineerSessions.filter(isPlainObject)
