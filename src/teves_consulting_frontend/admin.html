@@ -2355,18 +2355,6 @@
       </details>
       <!-- Admin dashboard details end -->
 
-      <!-- Admin dashboard baseline start -->
-      <details id="adminDashboardBaseline" class="admin-dashboard-baseline-panel">
-        <summary><strong>System baseline</strong><span class="admin-dashboard-panel-summary">Approved path</span></summary>
-        <div class="admin-dashboard-baseline-grid" aria-label="System baseline">
-          <div class="admin-dashboard-baseline-item"><strong>Public provider</strong><span>OpenAI baseline</span></div>
-          <div class="admin-dashboard-baseline-item"><strong>Continuity path</strong><span>Native active</span></div>
-          <div class="admin-dashboard-baseline-item"><strong>Native shadow</strong><span>Cutover recorded</span></div>
-          <div class="admin-dashboard-baseline-item"><strong>HTTPS outcalls</strong><span>Verified</span></div>
-        </div>
-      </details>
-      <!-- Admin dashboard baseline end -->
-
       <!-- Admin dashboard cadence start -->
       <details id="adminDashboardCadence" class="admin-dashboard-cadence-panel">
         <summary><strong>Operator cadence</strong><span class="admin-dashboard-panel-summary">Daily, deploy, weekly</span></summary>
@@ -2627,7 +2615,7 @@
 
     <section id="memoryHealth" class="admin-section operator-workspace" data-admin-view="intelligence">
       <h2>Memory Reports</h2>
-      <p class="section-note">Start with the memory dashboard and maintenance plan. Component diagnostics remain available for deeper review.</p>
+      <p class="section-note">Start with the memory dashboard and maintenance plan before judging continuity quality.</p>
 
       <div class="admin-section-overview-grid" aria-label="Memory report shortcuts">
         <div class="admin-section-overview-card">
@@ -2640,40 +2628,8 @@
           <span>Generate the next operator action plan without changing memories.</span>
           <button type="button" data-admin-detail-jump="memoryMaintenancePlanPanel">Open plan</button>
         </div>
-        <div class="admin-section-overview-card">
-          <strong>Deep diagnostics</strong>
-          <span>Keep graph, consolidation, evolution, and relationship checks available below.</span>
-          <button type="button" data-admin-detail-jump="memoryHealthPreviewPanel">Open diagnostics</button>
-        </div>
       </div>
 
-<details id="memoryHealthPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Memory Health Preview</strong></summary>
-
-      <p>Inspect memory graph health without changing memories or live retrieval.</p>
-
-      <button onclick="runMemoryHealthDebug()">Analyze Memory Health</button>
-
-      <div id="memoryHealthResults"></div>
-    </details>
-    <details id="memoryConsolidationPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Memory Consolidation Preview</strong></summary>
-
-      <p>Inspect consolidation suggestions without changing memories or live retrieval.</p>
-
-      <button onclick="runMemoryConsolidationDebug()">Suggest Consolidations</button>
-
-      <div id="memoryConsolidationResults"></div>
-    </details>
-    <details id="decisionEvolutionPreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Decision Evolution Preview</strong></summary>
-
-      <p>Inspect decision evolution without changing memories or live retrieval.</p>
-
-      <button onclick="runDecisionEvolutionDebug()">Analyze Decision Evolution</button>
-
-      <div id="decisionEvolutionResults"></div>
-    </details>
     <details id="memoryHealthDashboardPanel" class="primary-operator-tool admin-section-tool-primary" open>
       <summary><strong>Memory Health Dashboard</strong></summary>
 
@@ -2692,20 +2648,11 @@
 
       <div id="memoryMaintenancePlanResults"></div>
     </details>
-    <details id="relationshipConfidencePreviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Relationship Confidence Preview</strong></summary>
-
-      <p>Inspect computed relationship confidence without changing memories or live retrieval.</p>
-
-      <button onclick="runRelationshipConfidenceDebug()">Analyze Relationship Confidence</button>
-
-      <div id="relationshipConfidenceResults"></div>
-    </details>
     </section>
 
     <section id="operatorInsights" class="admin-section operator-workspace" data-admin-view="intelligence">
       <h2>Operator Reports</h2>
-      <p class="section-note">Start with the consolidated operator report. Supporting analyses remain available for deeper review.</p>
+      <p class="section-note">Build the consolidated operator report for a calm state-of-system review.</p>
 
       <div class="admin-section-overview-grid" aria-label="Operator report shortcuts">
         <div class="admin-section-overview-card">
@@ -2722,11 +2669,6 @@
           <strong>Operator report</strong>
           <span>Build the consolidated report for a calm state-of-system review.</span>
           <button type="button" data-admin-detail-jump="operatorInsightReportPanel">Open report</button>
-        </div>
-        <div class="admin-section-overview-card">
-          <strong>Strategic review</strong>
-          <span>Use synthesis, assumptions, and reflective checks for deeper analysis.</span>
-          <button type="button" data-admin-detail-jump="strategicReasoningPanel">Open analysis</button>
         </div>
       </div>
 
@@ -2850,42 +2792,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         <div id="siteMetricsResults"></div>
       </details>
 
-<details id="knowledgeSynthesisPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Knowledge Synthesis</strong></summary>
-
-      <p>Inspect grounded memory synthesis without changing memories or live retrieval.</p>
-
-      <button onclick="runKnowledgeSynthesisDebug()">Synthesize Knowledge</button>
-
-      <div id="knowledgeSynthesisResults"></div>
-    </details>
-    <details id="strategicReasoningPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Strategic Reasoning Brief</strong></summary>
-
-      <p>Build an operator reasoning brief without changing memories or live retrieval.</p>
-
-      <button onclick="runStrategicReasoningDebug()">Build Strategic Brief</button>
-
-      <div id="strategicReasoningResults"></div>
-    </details>
-    <details id="assumptionReviewPanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Assumption Review</strong></summary>
-
-      <p>Inspect stable, evolving, and questioned assumptions without changing memories or live retrieval.</p>
-
-      <button onclick="runAssumptionEvolutionDebug()">Analyze Assumptions</button>
-
-      <div id="assumptionEvolutionResults"></div>
-    </details>
-    <details id="reflectiveIntelligencePanel" class="advanced-operator-tool admin-section-tool-secondary">
-      <summary><strong>Reflective Intelligence</strong></summary>
-
-      <p>Build a grounded reflection without changing memories or live retrieval.</p>
-
-      <button onclick="runReflectiveIntelligenceDebug()">Build Reflection</button>
-
-      <div id="reflectiveIntelligenceResults"></div>
-    </details>
     <details id="operatorInsightReportPanel" class="primary-operator-tool admin-section-tool-primary" open>
       <summary><strong>Operator Insight Report</strong></summary>
 
@@ -2923,29 +2829,13 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <button onclick="runAionProviderPolicyParityDebug()">Verify Native Policy Parity</button>
       <button onclick="runAionRouteEnforcementHandoffDebug()">Build Handoff Design</button>
       <button onclick="runProviderAdapterGuardDebug()">Run Adapter Guard Fixtures</button>
-      <button onclick="runLiveProviderAdapterHandoffSimulationDebug()">Simulate Live Handoff</button>
       <button onclick="runRenderNativeProviderPolicyQueryDebug()">Query Native Policy From Render</button>
 
       <div id="aionProviderRoutingPolicyResults"></div>
       <div id="aionProviderPolicyParityResults"></div>
       <div id="aionRouteEnforcementHandoffResults"></div>
       <div id="providerAdapterGuardResults"></div>
-      <div id="liveProviderAdapterHandoffResults"></div>
       <div id="renderNativeProviderPolicyQueryResults"></div>
-
-      <details>
-        <summary><strong>Phase 9 Role Foundation</strong></summary>
-        <p>Inspect the read-only Role-Based Intelligence foundation without calling providers, writing memory, changing public behavior, or enabling autonomous execution.</p>
-        <button onclick="runRoleBasedIntelligenceFoundationStatus()">Inspect Role Foundation</button>
-        <div id="roleBasedIntelligenceFoundationResults"></div>
-      </details>
-
-      <details>
-        <summary><strong>Phase 9.2 Roles & Rules</strong></summary>
-        <p>Inspect the operator-visible role operating agreement, including ownership, continuity, approval, transition, surface, and output-influence rules.</p>
-        <button onclick="runRoleRulesOperatingAgreementStatus()">Inspect Roles & Rules</button>
-        <div id="roleRulesOperatingAgreementResults"></div>
-      </details>
 
     </details>
     <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
