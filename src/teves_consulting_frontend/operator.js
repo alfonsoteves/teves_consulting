@@ -1282,6 +1282,27 @@ async function refreshEngineerSteering() {
   workflow.steering = await renderFetch(`/admin/engineer-work/${encodeURIComponent(current.workItemId)}/steering`);
 }
 
+async function refreshEngineerPostResumeState() {
+  const workflow = engineerCurrentWorkflow();
+  try {
+    await refreshEngineerTrace();
+  } catch (error) {
+    if (!workflow.lastError) workflow.lastError = error;
+  }
+  try {
+    await refreshEngineerSteering();
+  } catch (error) {
+    if (!workflow.lastError) workflow.lastError = error;
+  }
+  if (activeRole === "engineer" && isOperator) {
+    await refreshLocalEngineerDeviceStatus({
+      connectAttemptId: localEngineerPairingState.connectAttemptId,
+      stateRevision: localEngineerPairingState.stateRevision,
+      readinessConvergence: false,
+    });
+  }
+}
+
 async function runEngineerWorkflowAction(actionName, fn) {
   const workflow = engineerCurrentWorkflow();
   workflow.inFlightAction = actionName;
@@ -1302,6 +1323,9 @@ async function runEngineerWorkflowAction(actionName, fn) {
     }
   } finally {
     workflow.inFlightAction = "";
+    if (actionName === "resume") {
+      await refreshEngineerPostResumeState();
+    }
     d1aRefreshEngineerWorkflowDisplay();
   }
 }
