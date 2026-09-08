@@ -10,6 +10,9 @@ const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-chall
 const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
 const LOCAL_ENGINEER_DISCONNECT_PATH = "/admin/local-engineer/session/disconnect";
 const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
+const LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS = 2500;
+const LOCAL_ENGINEER_READINESS_CONVERGENCE_WINDOW_MS = 15000;
+const LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS = [1000, 1500, 2000, 2500, 3000, 3500];
 let authClient = null;
 let identity = null;
 let actor = null;
@@ -1793,6 +1796,9 @@ function createLocalEngineerPairingState() {
     statusRequestId: 0,
     statusInFlight: false,
     statusRefreshTimer: null,
+    readinessConvergenceActive: false,
+    readinessConvergenceDeadlineMs: 0,
+    readinessConvergencePollIndex: 0,
   };
 }
 
@@ -1825,8 +1831,15 @@ function clearLocalEngineerStatusRefreshTimer() {
   localEngineerPairingState.statusRefreshTimer = null;
 }
 
-function resetLocalEngineerPairingState() {
+function cancelLocalEngineerReadinessConvergence() {
   clearLocalEngineerStatusRefreshTimer();
+  localEngineerPairingState.readinessConvergenceActive = false;
+  localEngineerPairingState.readinessConvergenceDeadlineMs = 0;
+  localEngineerPairingState.readinessConvergencePollIndex = 0;
+}
+
+function resetLocalEngineerPairingState() {
+  cancelLocalEngineerReadinessConvergence();
   localEngineerPairingState = createLocalEngineerPairingState();
 }
 
@@ -1932,6 +1945,17 @@ function localEngineerBoundSession(state) {
   }) || null;
 }
 
+function localEngineerStatusNeedsReadinessConvergence(state) {
+  if (localEngineerActiveSession(state)) return false;
+  const status = isPlainObject(state.deviceStatus) ? state.deviceStatus : null;
+  if (!status) return true;
+  if (status.durableTrustActive === true) {
+    const devices = Array.isArray(status.devices) ? status.devices.filter(isPlainObject) : [];
+    return devices.some((device) => device.trustState === "paired");
+  }
+  return status.trustAuthorityMode === "legacy_process_local" && state.connectAttemptId > 0;
+}
+
 function localEngineerPairingPanelHtml() {
   const state = localEngineerPairingState;
   const status = localEngineerCurrentStatusMessage(state);
@@ -1970,7 +1994,7 @@ function d1aRefreshLocalEngineerPairingDisplay() {
 async function connectLocalEngineerCompanion() {
   const connectAttemptId = localEngineerPairingState.connectAttemptId + 1;
   const stateRevision = localEngineerPairingAdvanceStateRevision();
-  clearLocalEngineerStatusRefreshTimer();
+  cancelLocalEngineerReadinessConvergence();
   localEngineerPairingState.statusRequestId += 1;
   localEngineerPairingState.connectAttemptId = connectAttemptId;
   localEngineerPairingState.connectInFlight = true;
@@ -1989,9 +2013,10 @@ async function connectLocalEngineerCompanion() {
     const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
     window.location.href = launchUrl;
     localEngineerPairingState.message = "";
-    scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision);
+    startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision);
   } catch (error) {
     if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
+    cancelLocalEngineerReadinessConvergence();
     localEngineerPairingState.message = localEngineerPairingFailureText(error);
   } finally {
     if (connectAttemptId === localEngineerPairingState.connectAttemptId) {
@@ -2006,7 +2031,7 @@ async function disconnectLocalEngineerCompanion() {
   if (!activeSession) return;
   const session = activeSession.localEngineerSession;
   const stateRevision = localEngineerPairingAdvanceStateRevision();
-  clearLocalEngineerStatusRefreshTimer();
+  cancelLocalEngineerReadinessConvergence();
   localEngineerPairingState.statusRequestId += 1;
   localEngineerPairingState.disconnectInFlight = true;
   localEngineerPairingState.statusInFlight = false;
@@ -2039,13 +2064,59 @@ async function disconnectLocalEngineerCompanion() {
   }
 }
 
-function scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision) {
+function startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision) {
+  localEngineerPairingState.readinessConvergenceActive = true;
+  localEngineerPairingState.readinessConvergenceDeadlineMs = Date.now() + LOCAL_ENGINEER_READINESS_CONVERGENCE_WINDOW_MS;
+  localEngineerPairingState.readinessConvergencePollIndex = 0;
+  scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, {
+    delayMs: LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS,
+    readinessConvergence: true,
+  });
+}
+
+function scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, options = {}) {
   clearLocalEngineerStatusRefreshTimer();
   localEngineerPairingState.deviceStatusMessage = "";
+  const delayMs = Number.isFinite(options.delayMs) && options.delayMs >= 0
+    ? options.delayMs
+    : LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS;
   localEngineerPairingState.statusRefreshTimer = setTimeout(() => {
     localEngineerPairingState.statusRefreshTimer = null;
-    refreshLocalEngineerDeviceStatus({ connectAttemptId, stateRevision });
-  }, 2500);
+    refreshLocalEngineerDeviceStatus({
+      connectAttemptId,
+      stateRevision,
+      readinessConvergence: options.readinessConvergence === true,
+    });
+  }, delayMs);
+}
+
+function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision) {
+  if (
+    !localEngineerPairingState.readinessConvergenceActive
+    || connectAttemptId !== localEngineerPairingState.connectAttemptId
+    || stateRevision !== localEngineerPairingState.stateRevision
+    || activeRole !== "engineer"
+  ) {
+    cancelLocalEngineerReadinessConvergence();
+    return;
+  }
+  if (!localEngineerStatusNeedsReadinessConvergence(localEngineerPairingState)) {
+    cancelLocalEngineerReadinessConvergence();
+    return;
+  }
+  if (
+    Date.now() >= localEngineerPairingState.readinessConvergenceDeadlineMs
+    || localEngineerPairingState.readinessConvergencePollIndex >= LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS.length
+  ) {
+    cancelLocalEngineerReadinessConvergence();
+    return;
+  }
+  const delayMs = LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS[localEngineerPairingState.readinessConvergencePollIndex];
+  localEngineerPairingState.readinessConvergencePollIndex += 1;
+  scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, {
+    delayMs,
+    readinessConvergence: true,
+  });
 }
 
 async function refreshLocalEngineerDeviceStatus(options = {}) {
@@ -2092,6 +2163,10 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
     localEngineerPairingState.deviceStatusMessage = localEngineerPairingFailureText(error);
     localEngineerPairingState.message = "";
   } finally {
+    const shouldContinueReadinessConvergence = options.readinessConvergence === true
+      && connectAttemptId === localEngineerPairingState.connectAttemptId
+      && stateRevision === localEngineerPairingState.stateRevision
+      && statusRequestId === localEngineerPairingState.statusRequestId;
     if (
       connectAttemptId === localEngineerPairingState.connectAttemptId
       && stateRevision === localEngineerPairingState.stateRevision
@@ -2099,6 +2174,9 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
     ) {
       localEngineerPairingState.statusInFlight = false;
       d1aRefreshLocalEngineerPairingDisplay();
+    }
+    if (shouldContinueReadinessConvergence) {
+      maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision);
     }
   }
 }
@@ -2147,8 +2225,15 @@ function setActiveRole(role) {
   }
   d1aRefreshEngineerWorkflowDisplay();
   d1aRefreshLocalEngineerPairingDisplay();
+  if (role !== "engineer") {
+    cancelLocalEngineerReadinessConvergence();
+  }
   if (role === "engineer" && isOperator && !localEngineerPairingState.statusInFlight) {
-    refreshLocalEngineerDeviceStatus();
+    refreshLocalEngineerDeviceStatus({
+      connectAttemptId: localEngineerPairingState.connectAttemptId,
+      stateRevision: localEngineerPairingState.stateRevision,
+      readinessConvergence: localEngineerPairingState.readinessConvergenceActive,
+    });
   }
 }
 
