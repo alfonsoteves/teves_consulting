@@ -803,6 +803,52 @@ function engineerRefinementDiagnosticsHtml(packet) {
   `;
 }
 
+function engineerProviderFailureDiagnosticHtml(packet) {
+  if (!isPlainObject(packet)) return "";
+  const classification = safeText(packet.continuationClassification || packet.classification || packet.failure, "");
+  if (classification !== "engineer_read_continuation_provider_failed") return "";
+  const diagnostic = isPlainObject(packet.providerFailureDiagnostic)
+    ? packet.providerFailureDiagnostic
+    : isPlainObject(packet.evidence) && isPlainObject(packet.evidence.providerFailureDiagnostic)
+    ? packet.evidence.providerFailureDiagnostic
+    : null;
+  if (!isPlainObject(diagnostic)) return "";
+  const rows = [
+    ["Category", diagnostic.providerFailureCategory, true],
+    ["Provider", diagnostic.providerId, false],
+    ["Adapter", diagnostic.adapterId, false],
+    ["Route", diagnostic.routeId, false],
+    ["Model", diagnostic.requestedModel, true],
+    ["Reasoning effort", diagnostic.reasoningEffort, false],
+    ["HTTP status", diagnostic.httpStatus === "not_available" ? "" : diagnostic.httpStatus, true],
+    ["Exception", diagnostic.exceptionClass, true],
+    ["Error code", diagnostic.errorCode, true],
+    ["Provider response", typeof diagnostic.providerResponseReceived === "boolean" ? boolText(diagnostic.providerResponseReceived) : "", false],
+    ["HTTP response", typeof diagnostic.providerHttpResponseReceived === "boolean" ? boolText(diagnostic.providerHttpResponseReceived) : "", false],
+    ["Structured-output decode", typeof diagnostic.structuredOutputDecodeBegan === "boolean" ? boolText(diagnostic.structuredOutputDecodeBegan) : "", false],
+    ["Usage metadata", typeof diagnostic.usageMetadataAvailable === "boolean" ? boolText(diagnostic.usageMetadataAvailable) : "", false],
+  ].filter(([, value]) => String(value || "").trim());
+  const safetyFlags = [
+    diagnostic.promptCaptured,
+    diagnostic.rawProviderPayloadCaptured,
+    diagnostic.credentialsCaptured,
+    diagnostic.headersCaptured,
+    diagnostic.hiddenReasoningCaptured,
+  ];
+  if (safetyFlags.some((value) => typeof value === "boolean")) {
+    rows.push(["Sensitive provider data", safetyFlags.some((value) => value === true) ? "captured" : "not captured", false]);
+  }
+  if (!rows.length) return "";
+  return `
+    <div class="engineer-need-identity-block">
+      <h4>Provider continuation failure</h4>
+      <dl class="engineer-workflow-grid">
+        ${rows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}
+      </dl>
+    </div>
+  `;
+}
+
 function engineerNeedIdentifiersHtml(identity) {
   if (!isPlainObject(identity)) return "unknown";
   if (identity.knownIdentifiersUnavailable === true) return "unavailable";
@@ -1191,6 +1237,7 @@ function engineerErrorHtml(workflow) {
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
   const diagnostics = engineerRefinementDiagnosticsHtml(packet);
+  const providerFailureDiagnostic = engineerProviderFailureDiagnosticHtml(packet);
   const needIdentity = engineerRefinementNeedIdentityHtml(packet);
   const parity = engineerFinalizationParityHtml(packet);
   return `
@@ -1198,6 +1245,7 @@ function engineerErrorHtml(workflow) {
       <p class="prime-message-role">Engineer workflow issue</p>
       <h3>${escapeHtml(message)}</h3>
       ${diagnostics}
+      ${providerFailureDiagnostic}
       ${needIdentity}
       ${parity}
       <p>${escapeHtml(execution)}</p>
