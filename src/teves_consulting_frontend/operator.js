@@ -908,6 +908,66 @@ function engineerRefinementNeedIdentityHtml(packet) {
   `;
 }
 
+function engineerSelectedEvidenceDiagnosticHtml(packet) {
+  if (!isPlainObject(packet)) return "";
+  const diagnostic = isPlainObject(packet.selectedEvidenceDiagnostic)
+    ? packet.selectedEvidenceDiagnostic
+    : isPlainObject(packet.evidence) && isPlainObject(packet.evidence.selectedEvidenceDiagnostic)
+    ? packet.evidence.selectedEvidenceDiagnostic
+    : null;
+  if (!isPlainObject(diagnostic)) return "";
+  const need = isPlainObject(diagnostic.refinementNeed) ? diagnostic.refinementNeed : {};
+  const coverage = isPlainObject(diagnostic.coverage) ? diagnostic.coverage : {};
+  const items = Array.isArray(diagnostic.items) ? diagnostic.items.filter(isPlainObject) : [];
+  const needRows = [
+    ["Evidence type", need.evidenceType, true],
+    ["Target", need.targetConcept, false],
+    ["Identifiers", safeList(need.knownIdentifiers).join(", "), true],
+    ["Anchor terms", safeList(need.sourceAnchorTerms).join(", "), true],
+    ["Refinement cycle", Number.isInteger(need.refinementCycle) ? need.refinementCycle : "", true],
+  ].filter(([, value]) => String(value || "").trim());
+  const coverageRows = [
+    ["Evidence items", Number.isInteger(coverage.selectedEvidenceItemCount) ? coverage.selectedEvidenceItemCount : "", true],
+    ["Sources", Number.isInteger(coverage.selectedSourceCount) ? coverage.selectedSourceCount : "", true],
+    ["Admin represented", typeof coverage.adminSourceRepresented === "boolean" ? boolText(coverage.adminSourceRepresented) : "", false],
+    ["Operator represented", typeof coverage.operatorSourceRepresented === "boolean" ? boolText(coverage.operatorSourceRepresented) : "", false],
+    ["Style declarations", Number.isInteger(coverage.styleDeclarationEvidenceCount) ? coverage.styleDeclarationEvidenceCount : "", true],
+    ["Comparative complete", typeof coverage.comparativeEvidenceComplete === "boolean" ? boolText(coverage.comparativeEvidenceComplete) : "", false],
+    ["Truncated", typeof coverage.evidenceTruncated === "boolean" ? boolText(coverage.evidenceTruncated) : "", false],
+    ["Evidence chars", Number.isInteger(coverage.finalizationEvidenceChars) ? coverage.finalizationEvidenceChars : "", true],
+    ["Evidence budget", Number.isInteger(coverage.finalizationEvidenceBudget) ? coverage.finalizationEvidenceBudget : "", true],
+  ].filter(([, value]) => String(value || "").trim());
+  const itemRows = items
+    .map((item) => {
+      const identifiers = safeList(item.matchedIdentifiers);
+      const anchors = safeList(item.matchedAnchors);
+      const detailRows = [
+        ["Path", item.path, true],
+        ["Source SHA-256", item.sourceSha256, true],
+        ["Category", item.category, true],
+        ["Type", item.evidenceType, true],
+        ["Chars", Number.isInteger(item.selectedCharCount) ? item.selectedCharCount : "", true],
+        ["Identifiers", identifiers.join(", "), true],
+        ["Anchors", anchors.join(", "), true],
+        ["Proof", item.proofClassification, true],
+        ["Selector", item.selectorType, true],
+      ].filter(([, value]) => String(value || "").trim());
+      if (!detailRows.length) return "";
+      return `<li><dl class="engineer-workflow-grid">${detailRows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}</dl></li>`;
+    })
+    .filter(Boolean)
+    .join("");
+  if (!needRows.length && !coverageRows.length && !itemRows) return "";
+  return `
+    <div class="engineer-need-identity">
+      <h4>Selected evidence</h4>
+      ${needRows.length ? `<div class="engineer-need-identity-block"><h4>Refinement need</h4><dl class="engineer-workflow-grid">${needRows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}</dl></div>` : ""}
+      ${coverageRows.length ? `<div class="engineer-need-identity-block"><h4>Coverage</h4><dl class="engineer-workflow-grid">${coverageRows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}</dl></div>` : ""}
+      ${itemRows ? `<div class="engineer-need-identity-block"><h4>Sources selected</h4><ol class="engineer-trace-list">${itemRows}</ol></div>` : ""}
+    </div>
+  `;
+}
+
 function parityStateText(value) {
   return ["match", "differ", "unavailable"].includes(value) ? value : "unavailable";
 }
@@ -1072,6 +1132,7 @@ function engineerWorkflowStatusHtml(workflow) {
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
   const parity = engineerFinalizationParityHtml(current.resumeResponse);
+  const selectedEvidence = engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -1083,6 +1144,7 @@ function engineerWorkflowStatusHtml(workflow) {
         <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || current.resumeStatus || "pending")}</span>
       </div>
       ${parity}
+      ${selectedEvidence}
     </section>
   `;
 }
@@ -1244,6 +1306,7 @@ function engineerErrorHtml(workflow) {
   const diagnostics = engineerRefinementDiagnosticsHtml(packet);
   const providerFailureDiagnostic = engineerProviderFailureDiagnosticHtml(packet);
   const needIdentity = engineerRefinementNeedIdentityHtml(packet);
+  const selectedEvidence = engineerSelectedEvidenceDiagnosticHtml(packet);
   const parity = engineerFinalizationParityHtml(packet);
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
@@ -1252,6 +1315,7 @@ function engineerErrorHtml(workflow) {
       ${diagnostics}
       ${providerFailureDiagnostic}
       ${needIdentity}
+      ${selectedEvidence}
       ${parity}
       <p>${escapeHtml(execution)}</p>
       <p class="meta">${escapeHtml(next)}</p>
