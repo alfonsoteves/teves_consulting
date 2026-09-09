@@ -791,6 +791,7 @@ function engineerResultStatusCopy(packet) {
 function engineerRefinementDiagnosticsHtml(packet) {
   if (!isPlainObject(packet)) return "";
   const diagnostics = [
+    ["Selection proof failure", packet.selectionProofFailureClassification],
     ["Refinement failure", packet.refinementFailureClassification],
     ["Additional evidence decision", packet.additionalEvidenceDecisionClassification],
     ["Refinement plan", packet.refinementPlanClassification],
