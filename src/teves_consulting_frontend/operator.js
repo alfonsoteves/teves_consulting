@@ -968,6 +968,56 @@ function engineerSelectedEvidenceDiagnosticHtml(packet) {
   `;
 }
 
+function engineerEvidenceNeedMappingDiagnosticHtml(packet) {
+  if (!isPlainObject(packet)) return "";
+  const diagnostic = isPlainObject(packet.evidenceNeedMappingDiagnostic)
+    ? packet.evidenceNeedMappingDiagnostic
+    : isPlainObject(packet.evidence) && isPlainObject(packet.evidence.evidenceNeedMappingDiagnostic)
+    ? packet.evidence.evidenceNeedMappingDiagnostic
+    : null;
+  if (!isPlainObject(diagnostic)) return "";
+  const need = isPlainObject(diagnostic.needIdentity) ? diagnostic.needIdentity : {};
+  const sources = Array.isArray(diagnostic.candidateSourceIdentities)
+    ? diagnostic.candidateSourceIdentities.filter(isPlainObject)
+    : [];
+  const rows = [
+    ["Reason", diagnostic.ambiguityReason, true],
+    ["Evidence type", need.evidenceType, true],
+    ["Target", need.targetConcept, false],
+    ["Identifiers", safeList(need.knownIdentifiers).join(", "), true],
+    ["Anchor terms", safeList(need.sourceAnchorTerms).join(", "), true],
+    ["Refinement cycle", Number.isInteger(need.refinementCycle) ? need.refinementCycle : "", true],
+    ["Inspected sources", Number.isInteger(diagnostic.alreadyInspectedSourceCount) ? diagnostic.alreadyInspectedSourceCount : "", true],
+    ["Candidate mappings", Number.isInteger(diagnostic.candidateMappingCount) ? diagnostic.candidateMappingCount : "", true],
+    ["Matched terms", Number.isInteger(diagnostic.selectionProofMatchedTermCount) ? diagnostic.selectionProofMatchedTermCount : "", true],
+    ["Selection proof", typeof diagnostic.selectionProofPresent === "boolean" ? boolText(diagnostic.selectionProofPresent) : "", false],
+    ["Selection candidate", typeof diagnostic.selectionCandidatePresent === "boolean" ? boolText(diagnostic.selectionCandidatePresent) : "", false],
+    ["Acquisition mapping", typeof diagnostic.acquisitionCandidateMapped === "boolean" ? boolText(diagnostic.acquisitionCandidateMapped) : "", false],
+  ].filter(([, value]) => String(value || "").trim());
+  const sourceRows = sources
+    .map((source) => {
+      const sourceDetailRows = [
+        ["Path", source.path, true],
+        ["Source SHA-256", source.sourceSha256, true],
+        ["Admin", typeof source.adminSource === "boolean" ? boolText(source.adminSource) : "", false],
+        ["Operator", typeof source.operatorSource === "boolean" ? boolText(source.operatorSource) : "", false],
+        ["Anchor terms", safeList(source.sourceAnchorTerms).join(", "), true],
+      ].filter(([, value]) => String(value || "").trim());
+      if (!sourceDetailRows.length) return "";
+      return `<li><dl class="engineer-workflow-grid">${sourceDetailRows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}</dl></li>`;
+    })
+    .filter(Boolean)
+    .join("");
+  if (!rows.length && !sourceRows) return "";
+  return `
+    <div class="engineer-need-identity">
+      <h4>Evidence need mapping</h4>
+      ${rows.length ? `<div class="engineer-need-identity-block"><dl class="engineer-workflow-grid">${rows.map(([label, value, code]) => `<div><dt>${escapeHtml(label)}</dt><dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd></div>`).join("")}</dl></div>` : ""}
+      ${sourceRows ? `<div class="engineer-need-identity-block"><h4>Candidate sources</h4><ol class="engineer-trace-list">${sourceRows}</ol></div>` : ""}
+    </div>
+  `;
+}
+
 function parityStateText(value) {
   return ["match", "differ", "unavailable"].includes(value) ? value : "unavailable";
 }
@@ -1307,6 +1357,7 @@ function engineerErrorHtml(workflow) {
   const providerFailureDiagnostic = engineerProviderFailureDiagnosticHtml(packet);
   const needIdentity = engineerRefinementNeedIdentityHtml(packet);
   const selectedEvidence = engineerSelectedEvidenceDiagnosticHtml(packet);
+  const mappingDiagnostic = engineerEvidenceNeedMappingDiagnosticHtml(packet);
   const parity = engineerFinalizationParityHtml(packet);
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
@@ -1316,6 +1367,7 @@ function engineerErrorHtml(workflow) {
       ${providerFailureDiagnostic}
       ${needIdentity}
       ${selectedEvidence}
+      ${mappingDiagnostic}
       ${parity}
       <p>${escapeHtml(execution)}</p>
       <p class="meta">${escapeHtml(next)}</p>
