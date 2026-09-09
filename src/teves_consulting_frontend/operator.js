@@ -1847,7 +1847,7 @@ async function loadEngineerPacket() {
   return renderFetch("/admin/engineer-workflow");
 }
 
-async function sendRoleWorkspaceMessage(role, message) {
+async function sendRoleWorkspaceMessage(role, message, priorMessages = null) {
   const histories = {
     prime: primeConversationHistory,
     mirror: mirrorConversationHistory,
@@ -1855,7 +1855,7 @@ async function sendRoleWorkspaceMessage(role, message) {
   };
   return renderPost(d1aRoleEndpoint(role), {
     message,
-    priorMessages: (histories[role] || primeConversationHistory).slice(-8),
+    priorMessages: Array.isArray(priorMessages) ? priorMessages.slice(-8) : (histories[role] || primeConversationHistory).slice(-8),
     workingContext: d1aWorkingContextValue(d1aWorkspaceState.workingContext),
   });
 }
@@ -2397,7 +2397,7 @@ function renderRoleActivationWorkspace(options = {}) {
       const pending = appendPrimeMessage("assistant", `${roleLabel} is thinking...`, "", roleLabel);
       if (pending) pending.classList.add("pending");
       try {
-        const packet = await sendRoleWorkspaceMessage(role, message);
+        const packet = await sendRoleWorkspaceMessage(role, message, priorMessages);
         d1aWorkspaceState.lastRoleSendDiagnostic = d1aBuildRoleSendDiagnostic({
           role,
           endpointPath,
