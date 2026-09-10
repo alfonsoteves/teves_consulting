@@ -392,10 +392,17 @@ function setOperatingAgreementUnavailable(message) {
 function setOperatorShellSignedIn(signedIn) {
   document.body.classList.toggle("operator-signed-in", signedIn);
   document.body.classList.toggle("operator-signed-out", !signedIn);
+  if (!signedIn) hideOperatorAuthenticatedWorkspace();
+}
+
+function hideOperatorAuthenticatedWorkspace() {
   const workspace = document.getElementById("operatorWorkspace");
-  if (workspace && !signedIn) {
-    workspace.classList.remove("is-visible");
-  }
+  if (workspace) workspace.classList.remove("is-visible");
+}
+
+function showOperatorAuthenticatedWorkspace() {
+  const workspace = document.getElementById("operatorWorkspace");
+  if (workspace) workspace.classList.add("is-visible");
 }
 
 function clearOperatorWorkspaceElement(id, options = {}) {
@@ -406,6 +413,7 @@ function clearOperatorWorkspaceElement(id, options = {}) {
 }
 
 function resetOperatorAuthenticatedWorkspaceState() {
+  hideOperatorAuthenticatedWorkspace();
   primeConversationHistory = [];
   mirrorConversationHistory = [];
   engineerConversationHistory = [];
@@ -437,8 +445,7 @@ function invalidateOperatorAuthenticatedWorkspaceLifecycle(options = {}) {
   resetOperatorAuthenticatedWorkspaceState();
   setOperatorWorkspaceWarning("");
   if (options.hideWorkspace === true) {
-    const workspace = document.getElementById("operatorWorkspace");
-    if (workspace) workspace.classList.remove("is-visible");
+    hideOperatorAuthenticatedWorkspace();
   }
 }
 
@@ -4175,6 +4182,8 @@ async function refreshOperatorAccess() {
     return;
   }
 
+  hideOperatorAuthenticatedWorkspace();
+
   try {
     const status = await actor.getOperatorStatus();
     if (!status.allowlistConfigured || !status.isOperator) {
@@ -4205,15 +4214,14 @@ async function refreshOperatorAccess() {
     await establishRenderOperatorSession({ sessionRevision });
     await loadRolesAndRules(sessionRevision);
     if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
-    document.getElementById("operatorWorkspace").classList.add("is-visible");
+    showOperatorAuthenticatedWorkspace();
   } catch (error) {
     if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     console.error("Operator workspace refresh failed", error);
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
     resetOperatorAuthenticatedWorkspaceState();
-    const workspace = document.getElementById("operatorWorkspace");
-    if (workspace) workspace.classList.remove("is-visible");
+    hideOperatorAuthenticatedWorkspace();
     setAccess("Operator access verified. Session service is temporarily unavailable.", "verified");
     setOperatorWorkspaceWarning("Aion session service is temporarily unavailable. Messages may be unavailable until it refreshes.");
   }
