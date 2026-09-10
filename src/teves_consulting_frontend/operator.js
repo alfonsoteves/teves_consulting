@@ -1685,6 +1685,25 @@ function primeEvidenceList(items) {
   return `<ul>${items.map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")}</ul>`;
 }
 
+function engineerGrantStatusText(status) {
+  const value = typeof status === "string" && status.trim() ? status.trim() : "unknown";
+  const labels = {
+    repository_read_not_requested: "not requested",
+    repository_observation_completed_no_repository_read: "repository observation only",
+    generated_frontend_observation_completed_no_repository_read: "generated observation only",
+    generated_and_deployment_observation_completed_no_repository_read: "generated and deployment observation only",
+    deployment_observation_completed_no_repository_read: "deployment observation only",
+    governed_repository_read_not_yet_approved: "approval required",
+    read_approval_required: "approval required",
+    governed_repository_read_approved: "approved",
+    governed_repository_read_completed: "read completed",
+    repository_read_status_unavailable: "unavailable",
+    repository_read_status_unknown: "unknown",
+    unknown: "unknown",
+  };
+  return labels[value] || value;
+}
+
 function primeEvidenceHtml(packet) {
   const execution = packet.executionIdentity || {};
   const context = packet.contextEvidence || {};
@@ -1744,7 +1763,7 @@ function primeEvidenceHtml(packet) {
         </div>
         <div>
           <dt>Grant status</dt>
-          <dd>${escapeHtml(readinessAccess.grantStatus || "unknown")}</dd>
+          <dd>${escapeHtml(engineerGrantStatusText(readinessAccess.grantStatus))}</dd>
         </div>
         <div>
           <dt>Project work done</dt>
