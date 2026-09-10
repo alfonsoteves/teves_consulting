@@ -454,6 +454,20 @@ function quarantineOperatorAuthenticatedWorkspacePresentation() {
   setOperatorShellSignedIn(false);
 }
 
+function waitForOperatorLogoutPresentationPaint() {
+  if (
+    typeof requestAnimationFrame !== "function"
+    || (typeof document !== "undefined" && document.visibilityState === "hidden")
+  ) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+}
+
 async function restoreOperatorAuthenticatedWorkspacePresentationAfterBrowserLifecycle() {
   const sessionRevision = currentOperatorSessionRevision();
   hideOperatorAuthenticatedWorkspace();
@@ -4310,6 +4324,7 @@ async function handleAuth() {
     setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";
     setAccess("Sign in with Internet Identity to continue.");
+    await waitForOperatorLogoutPresentationPaint();
     const logoutPromise = authClient.logout();
     await logoutPromise;
     return;
