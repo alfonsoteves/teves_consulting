@@ -13,6 +13,12 @@ const LOCAL_ENGINEER_CUSTOM_SCHEME = "aion-engineer";
 const LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS = 2500;
 const LOCAL_ENGINEER_READINESS_CONVERGENCE_WINDOW_MS = 15000;
 const LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS = [1000, 1500, 2000, 2500, 3000, 3500];
+const AION_CLIENT_REQUEST_ID_HEADER = "X-Aion-Client-Request-Id";
+const AION_PROTECTED_ROLE_POST_PATHS = new Set([
+  "/admin/prime-workspace-message",
+  "/admin/mirror-workspace-message",
+  "/admin/engineer-workspace-message",
+]);
 let authClient = null;
 let identity = null;
 let actor = null;
@@ -20,6 +26,7 @@ let isAuthenticated = false;
 let isOperator = false;
 let renderOperatorSessionToken = null;
 let operatorSessionRevision = 0;
+const pageInstanceId = createOptionalPageInstanceId();
 const browserFetch = window.fetch.bind(window);
 /* shared operator session helpers start */
 function operatorSessionNowSeconds() {
@@ -226,6 +233,78 @@ function isStaleOperatorSessionRevisionError(error) {
   return Boolean(error && error.staleOperatorSessionRevision === true);
 }
 
+function createOptionalPageInstanceId() {
+  try {
+    return createOpaqueDiagnosticId();
+  } catch (_) {
+    return "page_instance_id_unavailable";
+  }
+}
+
+function createOpaqueDiagnosticId() {
+  const browserCrypto = globalThis.crypto;
+  if (browserCrypto && typeof browserCrypto.randomUUID === "function") {
+    return browserCrypto.randomUUID();
+  }
+  if (!browserCrypto || typeof browserCrypto.getRandomValues !== "function") {
+    throw new Error("secure_random_unavailable");
+  }
+  const bytes = new Uint8Array(16);
+  browserCrypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function safeBrowserExceptionName(error) {
+  const name = error && typeof error.name === "string" && error.name.trim()
+    ? error.name.trim()
+    : "UnknownError";
+  return name.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 80) || "UnknownError";
+}
+
+function browserVisibilityState() {
+  if (typeof document === "undefined" || typeof document.visibilityState !== "string") return "unknown";
+  return document.visibilityState.replace(/[^a-z_]/gi, "_").slice(0, 40) || "unknown";
+}
+
+function browserOnlineState() {
+  if (typeof navigator === "undefined" || typeof navigator.onLine !== "boolean") return null;
+  return navigator.onLine;
+}
+
+function classifyBrowserFetchRejection(error, signal = null) {
+  const exceptionName = safeBrowserExceptionName(error);
+  if ((signal && signal.aborted === true) || exceptionName === "AbortError") {
+    return "browser_fetch_abort";
+  }
+  if (exceptionName === "TypeError") {
+    return "browser_fetch_network_or_policy_rejection";
+  }
+  return "browser_fetch_exception_other";
+}
+
+function buildBrowserFetchRejectionDiagnostics({ error, clientRequestId, startedAtMs, sessionRevision, signal = null }) {
+  const now = Date.now();
+  return {
+    classification: "browser_fetch_rejected_before_http_response",
+    category: classifyBrowserFetchRejection(error, signal),
+    clientRequestId: clientRequestId || "not_available",
+    elapsedMs: Math.max(0, Math.round(now - startedAtMs)),
+    exceptionName: safeBrowserExceptionName(error),
+    documentVisibilityState: browserVisibilityState(),
+    navigatorOnline: browserOnlineState(),
+    sessionRevisionAtSend: sessionRevision,
+    sessionRevisionAtRejection: currentOperatorSessionRevision(),
+    pageInstanceId,
+    abortSignalPresent: Boolean(signal),
+    abortSignalAborted: Boolean(signal && signal.aborted === true),
+    rawExceptionMessageExposed: false,
+    stackTraceExposed: false,
+  };
+}
+
 function encodeOperatorGrant(nonce) {
   let binary = "";
   nonce.forEach((value) => {
@@ -313,6 +392,7 @@ function buildRenderRequestError(response, data) {
   requestError.httpStatus = response.status;
   requestError.backendDetail = detail;
   requestError.responseData = data;
+  requestError.transportCorrelation = isPlainObject(data && data.transportCorrelation) ? data.transportCorrelation : null;
   return requestError;
 }
 
@@ -325,6 +405,12 @@ async function renderPostWithOptions(path, options = {}) {
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
   }
+  const clientRequestId = AION_PROTECTED_ROLE_POST_PATHS.has(path) ? createOpaqueDiagnosticId() : "";
+  if (clientRequestId) {
+    headers.set(AION_CLIENT_REQUEST_ID_HEADER, clientRequestId);
+  }
+  const signal = options.request && options.request.signal ? options.request.signal : null;
+  const startedAtMs = Date.now();
   let response;
   try {
     response = await browserFetch(`${AIONIC_AGENT_API_BASE_URL}${path}`, {
@@ -337,6 +423,21 @@ async function renderPostWithOptions(path, options = {}) {
       error.fetchStarted = true;
       error.fetchRejected = true;
       error.responseReceived = false;
+      error.transportCorrelation = {
+        clientRequestId: clientRequestId || "not_available",
+        clientRequestIdHeader: clientRequestId ? AION_CLIENT_REQUEST_ID_HEADER : "",
+        responseCorrelationAvailable: false,
+        diagnosticOnly: true,
+        idempotencyKey: false,
+        authorityMeaning: false,
+      };
+      error.browserFetchRejection = buildBrowserFetchRejectionDiagnostics({
+        error,
+        clientRequestId,
+        startedAtMs,
+        sessionRevision,
+        signal,
+      });
     }
     throw error;
   }
@@ -736,6 +837,13 @@ function d1aRoleDiagnosticHtml(diagnostic) {
           <div><dt>Response received</dt><dd>${diagnostic.responseReceived ? "yes" : "no"}</dd></div>
           <div><dt>HTTP status</dt><dd>${escapeHtml(String(diagnostic.httpStatus || "not available"))}</dd></div>
           <div><dt>Detail</dt><dd>${escapeHtml(detail)}</dd></div>
+          <div><dt>Client request ID</dt><dd>${escapeHtml(diagnostic.clientRequestId || "not available")}</dd></div>
+          <div><dt>Fetch rejection category</dt><dd>${escapeHtml(diagnostic.fetchRejectionCategory || "not available")}</dd></div>
+          <div><dt>Elapsed</dt><dd>${Number.isInteger(diagnostic.elapsedMs) ? escapeHtml(String(diagnostic.elapsedMs)) : "not available"} ms</dd></div>
+          <div><dt>Visibility</dt><dd>${escapeHtml(diagnostic.documentVisibilityState || "unknown")}</dd></div>
+          <div><dt>Browser online</dt><dd>${typeof diagnostic.navigatorOnline === "boolean" ? (diagnostic.navigatorOnline ? "yes" : "no") : "unknown"}</dd></div>
+          <div><dt>Session revision</dt><dd>${escapeHtml(String(diagnostic.sessionRevisionAtSend ?? "unknown"))} -> ${escapeHtml(String(diagnostic.sessionRevisionAtRejection ?? "unknown"))}</dd></div>
+          <div><dt>Abort signal</dt><dd>${diagnostic.abortSignalPresent ? (diagnostic.abortSignalAborted ? "aborted" : "present") : "not present"}</dd></div>
           <div><dt>Timestamp</dt><dd>${escapeHtml(diagnostic.timestamp)}</dd></div>
           <div><dt>Retry attempted</dt><dd>${diagnostic.retryAttempted ? "yes" : "no"}</dd></div>
         </dl>
@@ -757,11 +865,19 @@ function d1aAttachWorkspaceHandlers() {
   });
 }
 
-function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome }) {
+function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome, responsePacket = null }) {
   const responseReceived = Boolean(error && error.responseReceived);
   const httpStatus = error && error.httpStatus ? error.httpStatus : (outcome === "completed" ? 200 : null);
   const backendDetail = error && error.backendDetail ? error.backendDetail : "";
   const fetchRejected = Boolean(error && error.fetchRejected);
+  const rejection = isPlainObject(error && error.browserFetchRejection) ? error.browserFetchRejection : {};
+  const responseCorrelation = isPlainObject(responsePacket && responsePacket.transportCorrelation)
+    ? responsePacket.transportCorrelation
+    : isPlainObject(error && error.transportCorrelation)
+      ? error.transportCorrelation
+      : isPlainObject(error && error.responseData && error.responseData.transportCorrelation)
+        ? error.responseData.transportCorrelation
+        : {};
   return {
     role,
     endpointPath,
@@ -773,6 +889,21 @@ function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages
     httpStatus,
     sanitizedBackendDetail: typeof backendDetail === "string" ? backendDetail : JSON.stringify(backendDetail || ""),
     fetchRejectionClassification: fetchRejected ? "browser_fetch_rejected_before_http_response" : "",
+    fetchRejectionCategory: rejection.category || "",
+    clientRequestId: responseCorrelation.clientRequestId || rejection.clientRequestId || "not_available",
+    clientRequestIdAccepted: responseCorrelation.clientRequestIdAccepted === true,
+    responseCorrelationAvailable: responseCorrelation.clientRequestIdAccepted === true || responseCorrelation.responseCorrelationAvailable === true,
+    elapsedMs: Number.isInteger(rejection.elapsedMs) ? rejection.elapsedMs : null,
+    exceptionName: rejection.exceptionName || "",
+    documentVisibilityState: rejection.documentVisibilityState || "",
+    navigatorOnline: typeof rejection.navigatorOnline === "boolean" ? rejection.navigatorOnline : null,
+    sessionRevisionAtSend: Number.isInteger(rejection.sessionRevisionAtSend) ? rejection.sessionRevisionAtSend : null,
+    sessionRevisionAtRejection: Number.isInteger(rejection.sessionRevisionAtRejection) ? rejection.sessionRevisionAtRejection : null,
+    pageInstanceId: rejection.pageInstanceId || pageInstanceId,
+    abortSignalPresent: rejection.abortSignalPresent === true,
+    abortSignalAborted: rejection.abortSignalAborted === true,
+    rawExceptionMessageExposed: false,
+    stackTraceExposed: false,
     timestamp: new Date().toISOString(),
     retryAttempted: false,
     outcome,
@@ -2746,6 +2877,7 @@ function renderRoleActivationWorkspace(options = {}) {
           message,
           priorMessages,
           outcome: "completed",
+          responsePacket: packet,
         });
         d1aRefreshDiagnosticDisplay();
         if (pending) pending.remove();
