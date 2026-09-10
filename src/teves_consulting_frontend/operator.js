@@ -19,6 +19,7 @@ let actor = null;
 let isAuthenticated = false;
 let isOperator = false;
 let renderOperatorSessionToken = null;
+let operatorSessionRevision = 0;
 const browserFetch = window.fetch.bind(window);
 /* shared operator session helpers start */
 function operatorSessionNowSeconds() {
@@ -193,6 +194,38 @@ function boolText(value) {
   return value ? "Yes" : "No";
 }
 
+function currentOperatorSessionRevision() {
+  return operatorSessionRevision;
+}
+
+function advanceOperatorSessionRevision() {
+  operatorSessionRevision += 1;
+  return operatorSessionRevision;
+}
+
+function isCurrentOperatorSessionRevision(revision) {
+  return revision === operatorSessionRevision;
+}
+
+function staleOperatorSessionRevisionError() {
+  const error = new Error("Stale Operator workspace response ignored.");
+  error.staleOperatorSessionRevision = true;
+  error.fetchStarted = false;
+  error.fetchRejected = true;
+  error.responseReceived = false;
+  return error;
+}
+
+function throwIfStaleOperatorSessionRevision(revision) {
+  if (!isCurrentOperatorSessionRevision(revision)) {
+    throw staleOperatorSessionRevisionError();
+  }
+}
+
+function isStaleOperatorSessionRevisionError(error) {
+  return Boolean(error && error.staleOperatorSessionRevision === true);
+}
+
 function encodeOperatorGrant(nonce) {
   let binary = "";
   nonce.forEach((value) => {
@@ -201,9 +234,14 @@ function encodeOperatorGrant(nonce) {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-async function establishRenderOperatorSession() {
+async function establishRenderOperatorSession(options = {}) {
+  const sessionRevision = Number.isInteger(options.sessionRevision)
+    ? options.sessionRevision
+    : currentOperatorSessionRevision();
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   const storedSession = readStoredOperatorSession();
   if (storedSession) {
+    throwIfStaleOperatorSessionRevision(sessionRevision);
     renderOperatorSessionToken = storedSession.sessionToken;
     return;
   }
@@ -211,6 +249,7 @@ async function establishRenderOperatorSession() {
   const nonce = new Uint8Array(32);
   crypto.getRandomValues(nonce);
   const issued = await actor.issueOperatorSessionGrant(Array.from(nonce));
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   if (!issued) throw new Error("Operator session grant was not issued.");
 
   const response = await browserFetch(OPERATOR_SESSION_EXCHANGE_URL, {
@@ -218,8 +257,10 @@ async function establishRenderOperatorSession() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nonce: encodeOperatorGrant(nonce) }),
   });
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   if (!response.ok) throw new Error("Operator session exchange was rejected.");
   const session = await response.json();
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   if (!session || typeof session.sessionToken !== "string" || !session.sessionToken) {
     throw new Error("Operator session exchange returned an invalid session.");
   }
@@ -227,7 +268,11 @@ async function establishRenderOperatorSession() {
   writeStoredOperatorSession(session);
 }
 
-async function renderFetch(path) {
+async function renderFetch(path, options = {}) {
+  const sessionRevision = Number.isInteger(options.sessionRevision)
+    ? options.sessionRevision
+    : currentOperatorSessionRevision();
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   const headers = new Headers();
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
@@ -244,6 +289,7 @@ async function renderFetch(path) {
     throw error;
   }
   const data = await readRenderResponse(response);
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   if (!response.ok) throw buildRenderRequestError(response, data);
   return data;
 }
@@ -271,6 +317,10 @@ function buildRenderRequestError(response, data) {
 }
 
 async function renderPostWithOptions(path, options = {}) {
+  const sessionRevision = Number.isInteger(options.sessionRevision)
+    ? options.sessionRevision
+    : currentOperatorSessionRevision();
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   const headers = new Headers(options.headers || {});
   if (renderOperatorSessionToken) {
     headers.set("Authorization", `Bearer ${renderOperatorSessionToken}`);
@@ -291,19 +341,21 @@ async function renderPostWithOptions(path, options = {}) {
     throw error;
   }
   const data = await readRenderResponse(response);
+  throwIfStaleOperatorSessionRevision(sessionRevision);
   if (!response.ok) throw buildRenderRequestError(response, data);
   return data;
 }
 
-async function renderPost(path, payload) {
+async function renderPost(path, payload, options = {}) {
   return renderPostWithOptions(path, {
-    headers: { "Content-Type": "application/json" },
-    request: { body: JSON.stringify(payload) },
+    ...options,
+    headers: { ...(options.headers || {}), "Content-Type": "application/json" },
+    request: { ...(options.request || {}), body: JSON.stringify(payload) },
   });
 }
 
-async function renderPostNoBody(path) {
-  return renderPostWithOptions(path);
+async function renderPostNoBody(path, options = {}) {
+  return renderPostWithOptions(path, options);
 }
 
 function setAccess(message, state = "") {
@@ -343,6 +395,50 @@ function setOperatorShellSignedIn(signedIn) {
   const workspace = document.getElementById("operatorWorkspace");
   if (workspace && !signedIn) {
     workspace.classList.remove("is-visible");
+  }
+}
+
+function clearOperatorWorkspaceElement(id, options = {}) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.innerHTML = "";
+  if (options.hide === true) node.hidden = true;
+}
+
+function resetOperatorAuthenticatedWorkspaceState() {
+  primeConversationHistory = [];
+  mirrorConversationHistory = [];
+  engineerConversationHistory = [];
+  roleWorkspaceTranscript = [];
+  activeRole = "prime";
+  roleWorkspaceInitialized = false;
+  d1aWorkspaceState = createEmptyD1AWorkspaceState();
+  resetLocalEngineerPairingState();
+  clearOperatorWorkspaceElement("primeHomeResults");
+  clearOperatorWorkspaceElement("primeConversation");
+  clearOperatorWorkspaceElement("engineerGovernedWorkflow", { hide: true });
+  clearOperatorWorkspaceElement("localEngineerPairing", { hide: true });
+  clearOperatorWorkspaceElement("d1aRoleDiagnostic");
+  const input = document.getElementById("primeComposerInput");
+  if (input) {
+    input.value = "";
+    input.disabled = false;
+  }
+  const composer = document.getElementById("primeComposer");
+  if (composer) composer.hidden = true;
+}
+
+function invalidateOperatorAuthenticatedWorkspaceLifecycle(options = {}) {
+  advanceOperatorSessionRevision();
+  if (options.clearStoredSession === true) {
+    renderOperatorSessionToken = null;
+    clearStoredOperatorSession();
+  }
+  resetOperatorAuthenticatedWorkspaceState();
+  setOperatorWorkspaceWarning("");
+  if (options.hideWorkspace === true) {
+    const workspace = document.getElementById("operatorWorkspace");
+    if (workspace) workspace.classList.remove("is-visible");
   }
 }
 
@@ -1421,18 +1517,21 @@ function engineerApprovalPath(action) {
   return `/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}/${action}`;
 }
 
-async function refreshEngineerTrace() {
+async function refreshEngineerTrace(sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   const current = workflow.current;
   if (!current || !current.workItemId) return;
-  workflow.trace = await renderFetch(`/admin/engineer-working-trace/${encodeURIComponent(current.workItemId)}`);
+  const trace = await renderFetch(`/admin/engineer-working-trace/${encodeURIComponent(current.workItemId)}`, { sessionRevision });
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+  workflow.trace = trace;
 }
 
-async function refreshEngineerApprovalDetails() {
+async function refreshEngineerApprovalDetails(sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   const current = workflow.current;
   if (!current || !current.pendingApprovalId) return;
-  const result = await renderFetch(`/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}`);
+  const result = await renderFetch(`/admin/engineer-pending-read-approval/${encodeURIComponent(current.pendingApprovalId)}`, { sessionRevision });
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
   mergeEngineerApprovalDetails(current, result);
 }
 
@@ -1446,42 +1545,49 @@ function markEngineerCanonicalStateUnavailable(error) {
   workflow.lastError = error;
 }
 
-async function refreshEngineerSteering() {
+async function refreshEngineerSteering(sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   const current = workflow.current;
   if (!current || !current.workItemId) return;
-  workflow.steering = await renderFetch(`/admin/engineer-work/${encodeURIComponent(current.workItemId)}/steering`);
+  const steering = await renderFetch(`/admin/engineer-work/${encodeURIComponent(current.workItemId)}/steering`, { sessionRevision });
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+  workflow.steering = steering;
 }
 
-async function refreshEngineerPostResumeState() {
+async function refreshEngineerPostResumeState(sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   try {
-    await refreshEngineerTrace();
+    await refreshEngineerTrace(sessionRevision);
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (!workflow.lastError) workflow.lastError = error;
   }
   try {
-    await refreshEngineerSteering();
+    await refreshEngineerSteering(sessionRevision);
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (!workflow.lastError) workflow.lastError = error;
   }
-  if (activeRole === "engineer" && isOperator) {
+  if (activeRole === "engineer" && isOperator && isCurrentOperatorSessionRevision(sessionRevision)) {
     await refreshLocalEngineerDeviceStatus({
       connectAttemptId: localEngineerPairingState.connectAttemptId,
       stateRevision: localEngineerPairingState.stateRevision,
       readinessConvergence: false,
+      sessionRevision,
     });
   }
 }
 
 async function runEngineerWorkflowAction(actionName, fn) {
+  const sessionRevision = currentOperatorSessionRevision();
   const workflow = engineerCurrentWorkflow();
   workflow.inFlightAction = actionName;
   workflow.lastError = null;
   d1aRefreshEngineerWorkflowDisplay();
   try {
-    await fn(workflow);
+    await fn(workflow, sessionRevision);
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.lastError = error;
     const responseData = error && error.responseData ? engineerResponsePayload(error.responseData) : null;
     if (responseData && workflow.current) {
@@ -1493,49 +1599,55 @@ async function runEngineerWorkflowAction(actionName, fn) {
       workflow.actionStatus = "Resume result is ambiguous. Do not retry automatically.";
     }
   } finally {
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.inFlightAction = "";
     if (actionName === "resume") {
-      await refreshEngineerPostResumeState();
+      await refreshEngineerPostResumeState(sessionRevision);
     }
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     d1aRefreshEngineerWorkflowDisplay();
   }
 }
 
 async function approveEngineerPendingRead() {
-  await runEngineerWorkflowAction("approve", async (workflow) => {
+  await runEngineerWorkflowAction("approve", async (workflow, sessionRevision) => {
     const current = workflow.current;
-    const result = await renderPostNoBody(engineerApprovalPath("approve"));
+    const result = await renderPostNoBody(engineerApprovalPath("approve"), { sessionRevision });
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.current.lifecycleState = result.lifecycleState || workflow.current.lifecycleState;
     workflow.current.canonicalStateUnavailable = false;
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    await refreshEngineerTrace();
+    await refreshEngineerTrace(sessionRevision);
   });
 }
 
 async function denyEngineerPendingRead() {
-  await runEngineerWorkflowAction("deny", async (workflow) => {
+  await runEngineerWorkflowAction("deny", async (workflow, sessionRevision) => {
     const current = workflow.current;
-    const result = await renderPostNoBody(engineerApprovalPath("deny"));
+    const result = await renderPostNoBody(engineerApprovalPath("deny"), { sessionRevision });
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.current.lifecycleState = result.lifecycleState || "denied";
     workflow.current.canonicalStateUnavailable = false;
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    await refreshEngineerTrace();
+    await refreshEngineerTrace(sessionRevision);
   });
 }
 
 async function resumeEngineerPendingRead() {
   engineerCurrentWorkflow().actionStatus = "Approved execution in progress.";
-  await runEngineerWorkflowAction("resume", async (workflow) => {
+  await runEngineerWorkflowAction("resume", async (workflow, sessionRevision) => {
     workflow.current.resumeSubmitted = true;
-    const result = await renderPostNoBody(engineerApprovalPath("resume"));
+    const result = await renderPostNoBody(engineerApprovalPath("resume"), { sessionRevision });
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.current.resumeResponse = result;
     workflow.current.resumeStatus = result.status || "";
     workflow.current.lifecycleState = result.workItemLifecycle || workflow.current.lifecycleState;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    await refreshEngineerTrace();
-    await refreshEngineerSteering();
+    await refreshEngineerTrace(sessionRevision);
+    await refreshEngineerSteering(sessionRevision);
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (result.answer) {
       const evidenceHtml = result.engineerResponse ? primeEvidenceHtml(result.engineerResponse) : "";
       appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", { persist: true });
@@ -1549,7 +1661,7 @@ async function submitEngineerSteering(event) {
   const type = document.getElementById("engineerSteeringType");
   const text = document.getElementById("engineerSteeringText");
   if (!type || !text || !text.value.trim()) return;
-  await runEngineerWorkflowAction("steering", async (workflow) => {
+  await runEngineerWorkflowAction("steering", async (workflow, sessionRevision) => {
     const payload = {
       directiveType: type.value,
       text: text.value.trim(),
@@ -1565,10 +1677,11 @@ async function submitEngineerSteering(event) {
         path: path ? path.value.trim() : "",
       };
     }
-    const result = await renderPost(`/admin/engineer-work/${encodeURIComponent(workflow.current.workItemId)}/steering`, payload);
+    const result = await renderPost(`/admin/engineer-work/${encodeURIComponent(workflow.current.workItemId)}/steering`, payload, { sessionRevision });
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.actionStatus = engineerResultStatusCopy(result);
-    await refreshEngineerSteering();
-    await refreshEngineerTrace();
+    await refreshEngineerSteering(sessionRevision);
+    await refreshEngineerTrace(sessionRevision);
   });
 }
 
@@ -1589,8 +1702,8 @@ function d1aAttachEngineerWorkflowHandlers() {
   if (approve) approve.addEventListener("click", approveEngineerPendingRead);
   if (deny) deny.addEventListener("click", denyEngineerPendingRead);
   if (resume) resume.addEventListener("click", resumeEngineerPendingRead);
-  if (refreshTrace) refreshTrace.addEventListener("click", () => runEngineerWorkflowAction("trace", refreshEngineerTrace));
-  if (refreshSteering) refreshSteering.addEventListener("click", () => runEngineerWorkflowAction("steeringRefresh", refreshEngineerSteering));
+  if (refreshTrace) refreshTrace.addEventListener("click", () => runEngineerWorkflowAction("trace", (_workflow, sessionRevision) => refreshEngineerTrace(sessionRevision)));
+  if (refreshSteering) refreshSteering.addEventListener("click", () => runEngineerWorkflowAction("steeringRefresh", (_workflow, sessionRevision) => refreshEngineerSteering(sessionRevision)));
   if (form) form.addEventListener("submit", submitEngineerSteering);
   if (type) {
     type.addEventListener("change", toggleEngineerScopeFields);
@@ -1598,7 +1711,7 @@ function d1aAttachEngineerWorkflowHandlers() {
   }
 }
 
-async function captureEngineerPendingRead(packet) {
+async function captureEngineerPendingRead(packet, sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   workflow.current = normalizeEngineerReadWorkflow(packet);
   workflow.trace = null;
@@ -1606,11 +1719,13 @@ async function captureEngineerPendingRead(packet) {
   workflow.actionStatus = "Waiting for your approval.";
   workflow.lastError = null;
   try {
-    await refreshEngineerApprovalDetails();
-    await refreshEngineerTrace();
+    await refreshEngineerApprovalDetails(sessionRevision);
+    await refreshEngineerTrace(sessionRevision);
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     markEngineerCanonicalStateUnavailable(error);
   }
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
   d1aRefreshEngineerWorkflowDisplay();
 }
 
@@ -1661,13 +1776,12 @@ function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "
 
 function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
   if (!resetConversation && roleWorkspaceInitialized) return;
-  const selectedRole = ["prime", "mirror", "engineer"].includes(activeRole) ? activeRole : "prime";
-  activeRole = selectedRole;
   primeConversationHistory = [];
   mirrorConversationHistory = [];
   engineerConversationHistory = [];
   roleWorkspaceTranscript = [];
-  d1aWorkspaceState.engineerWorkflow = createEmptyEngineerWorkflowState();
+  activeRole = "prime";
+  d1aWorkspaceState = createEmptyD1AWorkspaceState();
   roleWorkspaceInitialized = true;
 }
 
@@ -1984,7 +2098,7 @@ async function loadEngineerPacket() {
   return renderFetch("/admin/engineer-workflow");
 }
 
-async function sendRoleWorkspaceMessage(role, message, priorMessages = null) {
+async function sendRoleWorkspaceMessage(role, message, priorMessages = null, sessionRevision = currentOperatorSessionRevision()) {
   const histories = {
     prime: primeConversationHistory,
     mirror: mirrorConversationHistory,
@@ -1994,7 +2108,7 @@ async function sendRoleWorkspaceMessage(role, message, priorMessages = null) {
     message,
     priorMessages: Array.isArray(priorMessages) ? priorMessages.slice(-8) : (histories[role] || primeConversationHistory).slice(-8),
     workingContext: d1aWorkingContextValue(d1aWorkspaceState.workingContext),
-  });
+  }, { sessionRevision });
 }
 
 function createLocalEngineerPairingState() {
@@ -2206,6 +2320,7 @@ function d1aRefreshLocalEngineerPairingDisplay() {
 }
 
 async function connectLocalEngineerCompanion() {
+  const sessionRevision = currentOperatorSessionRevision();
   const connectAttemptId = localEngineerPairingState.connectAttemptId + 1;
   const stateRevision = localEngineerPairingAdvanceStateRevision();
   cancelLocalEngineerReadinessConvergence();
@@ -2220,20 +2335,20 @@ async function connectLocalEngineerCompanion() {
       throw new Error("Operator access is required.");
     }
     if (!renderOperatorSessionToken) {
-      await establishRenderOperatorSession();
+      await establishRenderOperatorSession({ sessionRevision });
     }
-    const challengeResponse = await renderPostNoBody(LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH);
-    if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
+    const challengeResponse = await renderPostNoBody(LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH, { sessionRevision });
+    if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     const launchUrl = localEngineerPairingLaunchUrl(challengeResponse.launchChallenge, challengeResponse.version);
     window.location.href = launchUrl;
     localEngineerPairingState.message = "";
-    startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision);
+    startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision, sessionRevision);
   } catch (error) {
-    if (connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision) return;
+    if (isStaleOperatorSessionRevisionError(error) || connectAttemptId !== localEngineerPairingState.connectAttemptId || stateRevision !== localEngineerPairingState.stateRevision || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     cancelLocalEngineerReadinessConvergence();
     localEngineerPairingState.message = localEngineerPairingFailureText(error);
   } finally {
-    if (connectAttemptId === localEngineerPairingState.connectAttemptId) {
+    if (connectAttemptId === localEngineerPairingState.connectAttemptId && isCurrentOperatorSessionRevision(sessionRevision)) {
       localEngineerPairingState.connectInFlight = false;
       d1aRefreshLocalEngineerPairingDisplay();
     }
@@ -2241,6 +2356,7 @@ async function connectLocalEngineerCompanion() {
 }
 
 async function disconnectLocalEngineerCompanion() {
+  const sessionRevision = currentOperatorSessionRevision();
   const activeSession = localEngineerActiveSession(localEngineerPairingState);
   if (!activeSession) return;
   const session = activeSession.localEngineerSession;
@@ -2257,34 +2373,35 @@ async function disconnectLocalEngineerCompanion() {
       throw new Error("Operator access is required.");
     }
     if (!renderOperatorSessionToken) {
-      await establishRenderOperatorSession();
+      await establishRenderOperatorSession({ sessionRevision });
     }
-    const result = await renderPost(LOCAL_ENGINEER_DISCONNECT_PATH, { deviceId: session.deviceId });
-    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    const result = await renderPost(LOCAL_ENGINEER_DISCONNECT_PATH, { deviceId: session.deviceId }, { sessionRevision });
+    if (stateRevision !== localEngineerPairingState.stateRevision || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (isPlainObject(result.deviceStatus)) {
       localEngineerPairingState.deviceStatus = result.deviceStatus;
     }
     localEngineerPairingState.message = "";
     localEngineerPairingState.deviceStatusMessage = "";
   } catch (error) {
-    if (stateRevision !== localEngineerPairingState.stateRevision) return;
+    if (isStaleOperatorSessionRevisionError(error) || stateRevision !== localEngineerPairingState.stateRevision || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     localEngineerPairingState.message = localEngineerPairingFailureText(error);
     localEngineerPairingState.deviceStatusMessage = "";
   } finally {
-    if (stateRevision === localEngineerPairingState.stateRevision) {
+    if (stateRevision === localEngineerPairingState.stateRevision && isCurrentOperatorSessionRevision(sessionRevision)) {
       localEngineerPairingState.disconnectInFlight = false;
       d1aRefreshLocalEngineerPairingDisplay();
     }
   }
 }
 
-function startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision) {
+function startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision, sessionRevision = currentOperatorSessionRevision()) {
   localEngineerPairingState.readinessConvergenceActive = true;
   localEngineerPairingState.readinessConvergenceDeadlineMs = Date.now() + LOCAL_ENGINEER_READINESS_CONVERGENCE_WINDOW_MS;
   localEngineerPairingState.readinessConvergencePollIndex = 0;
   scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, {
     delayMs: LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS,
     readinessConvergence: true,
+    sessionRevision,
   });
 }
 
@@ -2300,16 +2417,18 @@ function scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevisio
       connectAttemptId,
       stateRevision,
       readinessConvergence: options.readinessConvergence === true,
+      sessionRevision: options.sessionRevision,
     });
   }, delayMs);
 }
 
-function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision) {
+function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision, sessionRevision = currentOperatorSessionRevision()) {
   if (
     !localEngineerPairingState.readinessConvergenceActive
     || connectAttemptId !== localEngineerPairingState.connectAttemptId
     || stateRevision !== localEngineerPairingState.stateRevision
     || activeRole !== "engineer"
+    || !isCurrentOperatorSessionRevision(sessionRevision)
   ) {
     cancelLocalEngineerReadinessConvergence();
     return;
@@ -2330,10 +2449,14 @@ function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateR
   scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, {
     delayMs,
     readinessConvergence: true,
+    sessionRevision,
   });
 }
 
 async function refreshLocalEngineerDeviceStatus(options = {}) {
+  const sessionRevision = Number.isInteger(options.sessionRevision)
+    ? options.sessionRevision
+    : currentOperatorSessionRevision();
   const manual = options.manual === true;
   const connectAttemptId = options.connectAttemptId || localEngineerPairingState.connectAttemptId;
   const stateRevision = manual ? localEngineerPairingAdvanceStateRevision() : options.stateRevision || localEngineerPairingState.stateRevision;
@@ -2350,18 +2473,20 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
       throw new Error("Operator access is required.");
     }
     if (!renderOperatorSessionToken) {
-      await establishRenderOperatorSession();
+      await establishRenderOperatorSession({ sessionRevision });
     }
-    const status = await renderFetch(LOCAL_ENGINEER_DEVICES_PATH);
+    const status = await renderFetch(LOCAL_ENGINEER_DEVICES_PATH, { sessionRevision });
     if (
       connectAttemptId !== localEngineerPairingState.connectAttemptId
       || stateRevision !== localEngineerPairingState.stateRevision
       || statusRequestId !== localEngineerPairingState.statusRequestId
+      || !isCurrentOperatorSessionRevision(sessionRevision)
     ) return;
     localEngineerPairingState.deviceStatus = status;
     localEngineerPairingState.deviceStatusMessage = "";
     localEngineerPairingState.message = "";
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (
       connectAttemptId !== localEngineerPairingState.connectAttemptId
       || stateRevision !== localEngineerPairingState.stateRevision
@@ -2380,17 +2505,19 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
     const shouldContinueReadinessConvergence = options.readinessConvergence === true
       && connectAttemptId === localEngineerPairingState.connectAttemptId
       && stateRevision === localEngineerPairingState.stateRevision
-      && statusRequestId === localEngineerPairingState.statusRequestId;
+      && statusRequestId === localEngineerPairingState.statusRequestId
+      && isCurrentOperatorSessionRevision(sessionRevision);
     if (
       connectAttemptId === localEngineerPairingState.connectAttemptId
       && stateRevision === localEngineerPairingState.stateRevision
       && statusRequestId === localEngineerPairingState.statusRequestId
+      && isCurrentOperatorSessionRevision(sessionRevision)
     ) {
       localEngineerPairingState.statusInFlight = false;
       d1aRefreshLocalEngineerPairingDisplay();
     }
     if (shouldContinueReadinessConvergence) {
-      maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision);
+      maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateRevision, sessionRevision);
     }
   }
 }
@@ -2447,6 +2574,7 @@ function setActiveRole(role) {
       connectAttemptId: localEngineerPairingState.connectAttemptId,
       stateRevision: localEngineerPairingState.stateRevision,
       readinessConvergence: localEngineerPairingState.readinessConvergenceActive,
+      sessionRevision: currentOperatorSessionRevision(),
     });
   }
 }
@@ -2508,6 +2636,7 @@ function renderRoleActivationWorkspace(options = {}) {
   if (form && input) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      const sessionRevision = currentOperatorSessionRevision();
       const role = activeRole || "prime";
       const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
       const histories = {
@@ -2534,7 +2663,8 @@ function renderRoleActivationWorkspace(options = {}) {
       const pending = appendPrimeMessage("assistant", `${roleLabel} is thinking...`, "", roleLabel);
       if (pending) pending.classList.add("pending");
       try {
-        const packet = await sendRoleWorkspaceMessage(role, message, priorMessages);
+        const packet = await sendRoleWorkspaceMessage(role, message, priorMessages, sessionRevision);
+        if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
         d1aWorkspaceState.lastRoleSendDiagnostic = d1aBuildRoleSendDiagnostic({
           role,
           endpointPath,
@@ -2545,7 +2675,8 @@ function renderRoleActivationWorkspace(options = {}) {
         d1aRefreshDiagnosticDisplay();
         if (pending) pending.remove();
         if (role === "engineer" && packet.status === "read_approval_required") {
-          await captureEngineerPendingRead(packet);
+          await captureEngineerPendingRead(packet, sessionRevision);
+          if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
           const requestSummary = "Engineer needs repository evidence before answering. Review the requested authority below.";
           appendPrimeMessage("assistant", requestSummary, "", roleLabel, { persist: true });
           history.push({ role, content: requestSummary });
@@ -2555,6 +2686,7 @@ function renderRoleActivationWorkspace(options = {}) {
         appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel, { persist: true });
         history.push({ role, content: answer });
       } catch (error) {
+        if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
         if (pending) pending.remove();
         d1aWorkspaceState.lastRoleSendDiagnostic = d1aBuildRoleSendDiagnostic({
           role,
@@ -2569,6 +2701,7 @@ function renderRoleActivationWorkspace(options = {}) {
         appendPrimeMessage("assistant", `${roleLabel} could not complete that request. ${detail}`, "", roleLabel, { persist: true });
         console.error(`${roleLabel} workspace message failed`, error);
       } finally {
+        if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
         input.disabled = false;
         if (submitButton) {
           submitButton.disabled = false;
@@ -2585,7 +2718,8 @@ function renderRoleActivationWorkspace(options = {}) {
 
 
 
-async function loadPrimeHome() {
+async function loadPrimeHome(sessionRevision = currentOperatorSessionRevision()) {
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
   renderRoleActivationWorkspace({ resetConversation: true });
 }
 
@@ -4019,11 +4153,12 @@ async function loadRoleEvaluation() {
   renderRoleEvaluation(result);
 }
 
-async function loadRolesAndRules() {
+async function loadRolesAndRules(sessionRevision = currentOperatorSessionRevision()) {
   /* prime-only final operator surface start */
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
   setOperatorWorkspaceWarning("");
   setAccess("Operator access verified. Aion is ready.", "verified");
-  await loadPrimeHome();
+  await loadPrimeHome(sessionRevision);
   /* prime-only final operator surface end */
 }
 
@@ -4034,8 +4169,7 @@ async function loadRolesAndRules() {
 async function refreshOperatorAccess() {
   /* operator verified workspace load boundary start */
   if (!isAuthenticated || !actor) {
-    resetLocalEngineerPairingState();
-    setOperatorWorkspaceWarning("");
+    invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
     setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
     return;
@@ -4046,10 +4180,7 @@ async function refreshOperatorAccess() {
     if (!status.allowlistConfigured || !status.isOperator) {
       isOperator = false;
       renderOperatorSessionToken = null;
-      clearStoredOperatorSession();
-      resetLocalEngineerPairingState();
-      setOperatorWorkspaceWarning("");
-      document.getElementById("operatorWorkspace").classList.remove("is-visible");
+      invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
       setOperatorShellSignedIn(false);
       setAccess("Access denied. This workspace is restricted to the Teves Consulting operator.", "denied");
       return;
@@ -4058,27 +4189,31 @@ async function refreshOperatorAccess() {
     console.error("Operator principal verification failed", error);
     isOperator = false;
     renderOperatorSessionToken = null;
-    clearStoredOperatorSession();
-    resetLocalEngineerPairingState();
-    setOperatorWorkspaceWarning("");
-    document.getElementById("operatorWorkspace").classList.remove("is-visible");
+    invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
     setOperatorShellSignedIn(false);
     setAccess("Operator access could not be verified. Refresh after the identity service is available.", "denied");
     return;
   }
 
+  const sessionRevision = advanceOperatorSessionRevision();
+  resetOperatorAuthenticatedWorkspaceState();
   isOperator = true;
-  document.getElementById("operatorWorkspace").classList.add("is-visible");
   setOperatorShellSignedIn(true);
   setAccess("Operator access verified. Loading workspace...", "verified");
 
   try {
-    await establishRenderOperatorSession();
-    await loadRolesAndRules();
+    await establishRenderOperatorSession({ sessionRevision });
+    await loadRolesAndRules(sessionRevision);
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+    document.getElementById("operatorWorkspace").classList.add("is-visible");
   } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
     console.error("Operator workspace refresh failed", error);
     renderOperatorSessionToken = null;
     clearStoredOperatorSession();
+    resetOperatorAuthenticatedWorkspaceState();
+    const workspace = document.getElementById("operatorWorkspace");
+    if (workspace) workspace.classList.remove("is-visible");
     setAccess("Operator access verified. Session service is temporarily unavailable.", "verified");
     setOperatorWorkspaceWarning("Aion session service is temporarily unavailable. Messages may be unavailable until it refreshes.");
   }
@@ -4096,6 +4231,7 @@ async function initAuth() {
     await refreshOperatorAccess();
   } else {
     actor = createActor();
+    invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
     setOperatorShellSignedIn(false);
     setAccess("Sign in with Internet Identity to continue.");
   }
@@ -4105,16 +4241,15 @@ async function initAuth() {
 async function handleAuth() {
   if (!authClient) authClient = await AuthClient.create();
   if (isAuthenticated) {
-    await authClient.logout();
+    const logoutPromise = authClient.logout();
     isAuthenticated = false;
     isOperator = false;
     renderOperatorSessionToken = null;
-    clearStoredOperatorSession();
-    resetLocalEngineerPairingState();
-    document.getElementById("operatorWorkspace").classList.remove("is-visible");
+    invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
     setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";
     setAccess("Sign in with Internet Identity to continue.");
+    await logoutPromise;
     return;
   }
   await authClient.login({
