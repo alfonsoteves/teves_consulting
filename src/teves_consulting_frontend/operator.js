@@ -449,6 +449,60 @@ function invalidateOperatorAuthenticatedWorkspaceLifecycle(options = {}) {
   }
 }
 
+function quarantineOperatorAuthenticatedWorkspacePresentation() {
+  hideOperatorAuthenticatedWorkspace();
+  setOperatorShellSignedIn(false);
+}
+
+async function restoreOperatorAuthenticatedWorkspacePresentationAfterBrowserLifecycle() {
+  const sessionRevision = currentOperatorSessionRevision();
+  hideOperatorAuthenticatedWorkspace();
+  try {
+    if (!authClient) authClient = await AuthClient.create();
+    const authenticated = await authClient.isAuthenticated();
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+    isAuthenticated = authenticated;
+    if (!isAuthenticated) {
+      invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
+      setOperatorShellSignedIn(false);
+      document.getElementById("authButton").textContent = "Sign In";
+      setAccess("Sign in with Internet Identity to continue.");
+      return;
+    }
+
+    identity = authClient.getIdentity();
+    actor = createActor(identity);
+    await actor.whoami();
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+    const status = await actor.getOperatorStatus();
+    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+    if (!status.allowlistConfigured || !status.isOperator) {
+      isOperator = false;
+      renderOperatorSessionToken = null;
+      invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
+      setOperatorShellSignedIn(false);
+      document.getElementById("authButton").textContent = "Sign In";
+      setAccess("Access denied. This workspace is restricted to the Teves Consulting operator.", "denied");
+      return;
+    }
+
+    isOperator = true;
+    document.getElementById("authButton").textContent = "Logout";
+    setOperatorShellSignedIn(true);
+    setAccess("Operator access verified. Aion is ready.", "verified");
+    showOperatorAuthenticatedWorkspace();
+  } catch (error) {
+    if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
+    console.error("Operator browser lifecycle restoration failed", error);
+    isOperator = false;
+    renderOperatorSessionToken = null;
+    invalidateOperatorAuthenticatedWorkspaceLifecycle({ clearStoredSession: true, hideWorkspace: true });
+    setOperatorShellSignedIn(false);
+    document.getElementById("authButton").textContent = "Sign In";
+    setAccess("Operator access could not be verified. Refresh after the identity service is available.", "denied");
+  }
+}
+
 function table(headers, rows) {
   return `
     <table>
@@ -4249,7 +4303,6 @@ async function initAuth() {
 async function handleAuth() {
   if (!authClient) authClient = await AuthClient.create();
   if (isAuthenticated) {
-    const logoutPromise = authClient.logout();
     isAuthenticated = false;
     isOperator = false;
     renderOperatorSessionToken = null;
@@ -4257,6 +4310,7 @@ async function handleAuth() {
     setOperatorShellSignedIn(false);
     document.getElementById("authButton").textContent = "Sign In";
     setAccess("Sign in with Internet Identity to continue.");
+    const logoutPromise = authClient.logout();
     await logoutPromise;
     return;
   }
@@ -4271,6 +4325,17 @@ async function handleAuth() {
     },
   });
 }
+
+window.addEventListener("pagehide", () => {
+  quarantineOperatorAuthenticatedWorkspacePresentation();
+});
+
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted === true) {
+    quarantineOperatorAuthenticatedWorkspacePresentation();
+    restoreOperatorAuthenticatedWorkspacePresentationAfterBrowserLifecycle();
+  }
+});
 
 document.getElementById("authButton").addEventListener("click", handleAuth);
 initAuth();
