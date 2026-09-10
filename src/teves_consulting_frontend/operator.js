@@ -790,9 +790,11 @@ function engineerResultStatusCopy(packet) {
 
 function engineerRefinementDiagnosticsHtml(packet) {
   if (!isPlainObject(packet)) return "";
+  const evidence = isPlainObject(packet.evidence) ? packet.evidence : {};
   const diagnostics = [
     ["Selection proof failure", packet.selectionProofFailureClassification],
     ["Refinement failure", packet.refinementFailureClassification],
+    ["Finalization insufficiency", packet.finalizationInsufficiencyReason || evidence.finalizationInsufficiencyReason],
     ["Additional evidence decision", packet.additionalEvidenceDecisionClassification],
     ["Refinement plan", packet.refinementPlanClassification],
   ].filter(([, value]) => typeof value === "string" && value.trim());
