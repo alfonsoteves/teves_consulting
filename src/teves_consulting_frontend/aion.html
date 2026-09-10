@@ -414,10 +414,48 @@
       color: #1f2937;
     }
 
+    .message-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .message-action-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 8px 12px;
+      border: 1px solid #111827;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.2;
+      text-decoration: none;
+      white-space: normal;
+    }
+
+    .message-action-link:hover {
+      background: #f3f4f6;
+    }
+
     body.dark-mode .message.assistant {
       background: #1a1d21;
       border: 1px solid #2c3138;
       color: #f3f4f6;
+    }
+
+    body.dark-mode .message-action-link {
+      border-color: #d1d5db;
+      background: #27303a;
+      color: #f9fafb;
+    }
+
+    body.dark-mode .message-action-link:hover {
+      background: #334155;
     }
     @keyframes pulseT {
       0% {
@@ -1044,12 +1082,74 @@
 
     initAuth();
 
-    function appendMessage(role, text) {
+    const AION_GAMES_SUGGESTED_ACTION = Object.freeze({
+      actionId: "open_aion_games",
+      intent: "recreational_game_play",
+      label: "Open Aion Games",
+      href: "/aion_games.html",
+      target: "_blank",
+      rel: "noopener noreferrer",
+      requiresUserClick: true,
+      autoNavigation: false,
+      contextTransferred: false,
+    });
+
+    function normalizeAionSuggestedActions(actions) {
+      if (!Array.isArray(actions)) {
+        return [];
+      }
+
+      return actions.flatMap((action) => {
+        if (!action || typeof action !== "object") {
+          return [];
+        }
+        if (action.actionId !== AION_GAMES_SUGGESTED_ACTION.actionId) {
+          return [];
+        }
+        if (action.intent !== AION_GAMES_SUGGESTED_ACTION.intent) {
+          return [];
+        }
+        if (action.requiresUserClick !== true) {
+          return [];
+        }
+        if (action.autoNavigation !== false) {
+          return [];
+        }
+        if (action.contextTransferred !== false) {
+          return [];
+        }
+
+        return [{ ...AION_GAMES_SUGGESTED_ACTION }];
+      });
+    }
+
+    function appendMessage(role, text, options = {}) {
       const conversation = document.getElementById("conversation");
 
       const message = document.createElement("div");
       message.className = `message ${role}`;
-      message.textContent = text;
+
+      const messageBody = document.createElement("span");
+      messageBody.textContent = text;
+      message.appendChild(messageBody);
+
+      const actions = normalizeAionSuggestedActions(options.actions);
+      if (role === "assistant" && actions.length > 0) {
+        const actionContainer = document.createElement("div");
+        actionContainer.className = "message-actions";
+
+        actions.forEach((action) => {
+          const link = document.createElement("a");
+          link.className = "message-action-link";
+          link.href = action.href;
+          link.target = action.target;
+          link.rel = action.rel;
+          link.textContent = action.label;
+          actionContainer.appendChild(link);
+        });
+
+        message.appendChild(actionContainer);
+      }
 
       conversation.appendChild(message);
 
@@ -1195,7 +1295,9 @@
         appendMessage("assistant", data.detail || "Request limit reached. Please try again later.");
         return;
       }
-      appendMessage("assistant", data.answer || "No answer returned.");
+      appendMessage("assistant", data.answer || "No answer returned.", {
+        actions: data.actions
+      });
       document.getElementById("feedback").style.display = "block";
 
       window.lastInteraction = {
