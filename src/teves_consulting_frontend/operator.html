@@ -1317,6 +1317,7 @@
     }
 
     .d1a-choice-row label,
+    .d1a-debug-button,
     .local-engineer-connect-button {
       display: inline-flex;
       align-items: center;
@@ -1332,7 +1333,12 @@
       cursor: pointer;
     }
 
-    .d1a-choice-row label:has(input:checked) {
+    .d1a-debug-button {
+      appearance: none;
+    }
+
+    .d1a-choice-row label:has(input:checked),
+    .d1a-debug-button.is-active {
       border-color: #93c5fd;
       background: #1d4ed8;
     }

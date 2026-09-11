@@ -6,6 +6,7 @@ const BACKEND_CANISTER_ID = "lzsyn-biaaa-aaaai-rakea-cai";
 const AIONIC_AGENT_API_BASE_URL = "https://aionic-agent-api.onrender.com";
 const OPERATOR_SESSION_EXCHANGE_URL = `${AIONIC_AGENT_API_BASE_URL}/admin/operator-session`;
 const OPERATOR_SESSION_STORAGE_KEY = "aion_operator_session_v1";
+const ENGINEER_DEBUG_MODE_STORAGE_KEY = "aion_operator_engineer_debug_mode_v1";
 const LOCAL_ENGINEER_LAUNCH_CHALLENGE_PATH = "/admin/local-engineer-launch-challenge";
 const LOCAL_ENGINEER_DEVICES_PATH = "/admin/local-engineer/devices";
 const LOCAL_ENGINEER_DISCONNECT_PATH = "/admin/local-engineer/session/disconnect";
@@ -66,6 +67,22 @@ function clearStoredOperatorSession() {
 }
 /* shared operator session helpers end */
 
+function readStoredEngineerDebugMode() {
+  try {
+    return localStorage.getItem(ENGINEER_DEBUG_MODE_STORAGE_KEY) === "on";
+  } catch (_) {
+    return false;
+  }
+}
+
+function writeStoredEngineerDebugMode(enabled) {
+  try {
+    localStorage.setItem(ENGINEER_DEBUG_MODE_STORAGE_KEY, enabled ? "on" : "off");
+  } catch (_) {
+    // Debug mode is a visual preference only; storage failure should not affect the run.
+  }
+}
+
 const PRIME_TRIAL_CAPTURE_STORAGE_KEY = "aion_prime_trial_capture_draft_v1";
 const D1A_WORKSPACE_STATE_KIND = "role_workspace_session_state_non_canonical";
 const D1A_WORKING_CONTEXT_OPTIONS = [
@@ -98,6 +115,7 @@ let roleWorkspaceInitialized = false;
 let activeRole = "prime";
 let d1aWorkspaceState = createEmptyD1AWorkspaceState();
 let localEngineerPairingState = createLocalEngineerPairingState();
+let engineerDebugEnabled = readStoredEngineerDebugMode();
 
 function idlFactory({ IDL }) {
   const OperatorStatus = IDL.Record({
@@ -787,6 +805,23 @@ function d1aChoiceGroupHtml({ name, legend, options, selected }) {
   `;
 }
 
+function isEngineerDebugOn() {
+  return engineerDebugEnabled === true;
+}
+
+function d1aEngineerDebugControlHtml() {
+  const debugOn = isEngineerDebugOn();
+  return `
+    <fieldset class="d1a-choice-group d1a-debug-toggle" aria-label="Engineer debug projection">
+      <legend>Debug</legend>
+      <div class="d1a-choice-row d1a-debug-row">
+        <button id="engineerDebugOffButton" class="d1a-debug-button${debugOn ? "" : " is-active"}" type="button" aria-pressed="${debugOn ? "false" : "true"}" data-engineer-debug-mode="off">Off</button>
+        <button id="engineerDebugOnButton" class="d1a-debug-button${debugOn ? " is-active" : ""}" type="button" aria-pressed="${debugOn ? "true" : "false"}" data-engineer-debug-mode="on">On</button>
+      </div>
+    </fieldset>
+  `;
+}
+
 function d1aRoleEndpoint(role) {
   const routes = {
     prime: "/admin/prime-workspace-message",
@@ -810,6 +845,7 @@ function d1aWorkspaceFrameHtml() {
         options: D1A_WORKING_CONTEXT_OPTIONS,
         selected: state.workingContext,
       })}
+      ${d1aEngineerDebugControlHtml()}
       <div id="localEngineerPairing" class="local-engineer-context" hidden></div>
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
@@ -822,9 +858,11 @@ function d1aRoleDiagnosticHtml(diagnostic) {
     ? "The backend returned an error."
     : "Request failed before an HTTP response was received.";
   const detail = diagnostic.sanitizedBackendDetail || diagnostic.fetchRejectionClassification || "No additional detail available.";
+  const showDetails = diagnostic.role !== "engineer" || isEngineerDebugOn();
   return `
     <section class="d1a-role-diagnostic is-error" aria-live="polite">
       <p class="d1a-diagnostic-summary">${escapeHtml(responseCopy)}</p>
+      ${showDetails ? `
       <details>
         <summary>Request details</summary>
         <dl class="d1a-diagnostic-grid">
@@ -848,6 +886,7 @@ function d1aRoleDiagnosticHtml(diagnostic) {
           <div><dt>Retry attempted</dt><dd>${diagnostic.retryAttempted ? "yes" : "no"}</dd></div>
         </dl>
       </details>
+      ` : ""}
     </section>
   `;
 }
@@ -857,12 +896,43 @@ function d1aRefreshDiagnosticDisplay() {
   if (container) container.innerHTML = d1aRoleDiagnosticHtml(d1aWorkspaceState.lastRoleSendDiagnostic);
 }
 
+function d1aRefreshDebugModeDisplay() {
+  document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
+    const enabled = button.dataset.engineerDebugMode === "on";
+    const active = enabled === isEngineerDebugOn();
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function d1aRefreshRoleConversationProjection() {
+  const conversation = document.getElementById("primeConversation");
+  if (!conversation || conversation.querySelector(".prime-message.pending")) return;
+  conversation.innerHTML = "";
+  renderRoleWorkspaceTranscript();
+}
+
+function setEngineerDebugMode(enabled) {
+  engineerDebugEnabled = enabled === true;
+  writeStoredEngineerDebugMode(engineerDebugEnabled);
+  d1aRefreshDebugModeDisplay();
+  d1aRefreshDiagnosticDisplay();
+  d1aRefreshEngineerWorkflowDisplay();
+  d1aRefreshRoleConversationProjection();
+}
+
 function d1aAttachWorkspaceHandlers() {
   document.querySelectorAll('input[name="d1aWorkingContext"]').forEach((input) => {
     input.addEventListener("change", () => {
       if (input.checked) d1aWorkspaceState.workingContext = input.value;
     });
   });
+  document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setEngineerDebugMode(button.dataset.engineerDebugMode === "on");
+    });
+  });
+  d1aRefreshDebugModeDisplay();
 }
 
 function d1aBuildRoleSendDiagnostic({ role, endpointPath, message, priorMessages, error = null, outcome, responsePacket = null }) {
@@ -1485,8 +1555,9 @@ function engineerWorkflowStatusHtml(workflow) {
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
-  const parity = engineerFinalizationParityHtml(current.resumeResponse);
-  const selectedEvidence = engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse);
+  const parity = isEngineerDebugOn() ? engineerFinalizationParityHtml(current.resumeResponse) : "";
+  const selectedEvidence = isEngineerDebugOn() ? engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse) : "";
+  const compactEvidence = isEngineerDebugOn() ? "" : engineerCompactWorkflowEvidenceHtml(current);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -1497,6 +1568,7 @@ function engineerWorkflowStatusHtml(workflow) {
         </div>
         <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || current.resumeStatus || "pending")}</span>
       </div>
+      ${compactEvidence}
       ${parity}
       ${selectedEvidence}
     </section>
@@ -1558,6 +1630,19 @@ function engineerTraceHtml(workflow) {
   if (!engineerWorkflowHasActiveWork(current)) return "";
   const entries = workflow.trace && Array.isArray(workflow.trace.entries) ? workflow.trace.entries : [];
   const currentStage = workflow.trace && workflow.trace.currentStage ? workflow.trace.currentStage : "waiting_for_approval";
+  if (!isEngineerDebugOn()) {
+    return `
+      <section class="engineer-workflow-card">
+        <div class="engineer-workflow-card-header">
+          <div>
+            <p class="prime-message-role">Engineer progress</p>
+            <h3>${escapeHtml(engineerTraceLabel(currentStage))}</h3>
+          </div>
+          <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || "pending")}</span>
+        </div>
+      </section>
+    `;
+  }
   const rows = entries.length ? entries.map((entry) => `
     <li>
       <strong>${escapeHtml(engineerTraceLabel(entry.stage))}</strong>
@@ -1590,6 +1675,7 @@ function engineerTraceHtml(workflow) {
 function engineerSteeringHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
+  if (!isEngineerDebugOn()) return "";
   const terminal = engineerWorkflowIsTerminal(current);
   if (terminal || current.lifecycleState !== "approved") return "";
   const busy = Boolean(workflow.inFlightAction);
@@ -1657,12 +1743,12 @@ function engineerErrorHtml(workflow) {
   const message = typeof packet === "string" ? packet : safeText(packet.reason || packet.failure || packet.status || packet.classification, "The backend returned an error.");
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
-  const diagnostics = engineerRefinementDiagnosticsHtml(packet);
-  const providerFailureDiagnostic = engineerProviderFailureDiagnosticHtml(packet);
-  const needIdentity = engineerRefinementNeedIdentityHtml(packet);
-  const selectedEvidence = engineerSelectedEvidenceDiagnosticHtml(packet);
-  const mappingDiagnostic = engineerEvidenceNeedMappingDiagnosticHtml(packet);
-  const parity = engineerFinalizationParityHtml(packet);
+  const diagnostics = isEngineerDebugOn() ? engineerRefinementDiagnosticsHtml(packet) : "";
+  const providerFailureDiagnostic = isEngineerDebugOn() ? engineerProviderFailureDiagnosticHtml(packet) : "";
+  const needIdentity = isEngineerDebugOn() ? engineerRefinementNeedIdentityHtml(packet) : "";
+  const selectedEvidence = isEngineerDebugOn() ? engineerSelectedEvidenceDiagnosticHtml(packet) : "";
+  const mappingDiagnostic = isEngineerDebugOn() ? engineerEvidenceNeedMappingDiagnosticHtml(packet) : "";
+  const parity = isEngineerDebugOn() ? engineerFinalizationParityHtml(packet) : "";
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
       <p class="prime-message-role">Engineer workflow issue</p>
@@ -1688,7 +1774,7 @@ function d1aEngineerWorkflowHtml() {
     ${engineerApprovalPanelHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
-    ${engineerSessionLimitsHtml(workflow)}
+    ${isEngineerDebugOn() ? engineerSessionLimitsHtml(workflow) : ""}
   `;
 }
 
@@ -1855,8 +1941,12 @@ async function resumeEngineerPendingRead() {
     await refreshEngineerSteering(sessionRevision);
     if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     if (result.answer) {
-      const evidenceHtml = result.engineerResponse ? primeEvidenceHtml(result.engineerResponse) : "";
-      appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", { persist: true });
+      const evidenceHtml = result.engineerResponse ? roleEvidenceHtml(result.engineerResponse, "Engineer") : "";
+      appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", {
+        persist: true,
+        evidencePacket: result.engineerResponse || null,
+        evidenceRole: "Engineer",
+      });
       engineerConversationHistory.push({ role: "engineer", content: result.answer });
     }
   });
@@ -1975,6 +2065,8 @@ function appendPrimeMessage(role, message, evidenceHtml = "", assistantLabel = "
       evidenceHtml,
       assistantLabel,
       extraClass: options.extraClass || "",
+      evidencePacket: options.evidencePacket || null,
+      evidenceRole: options.evidenceRole || assistantLabel,
     });
   }
   return article;
@@ -1993,7 +2085,10 @@ function initializeRoleWorkspaceState({ resetConversation = false } = {}) {
 
 function renderRoleWorkspaceTranscript() {
   roleWorkspaceTranscript.forEach((entry) => {
-    appendPrimeMessage(entry.role, entry.message, entry.evidenceHtml, entry.assistantLabel, {
+    const evidenceHtml = entry.evidencePacket
+      ? roleEvidenceHtml(entry.evidencePacket, entry.evidenceRole || entry.assistantLabel)
+      : entry.evidenceHtml;
+    appendPrimeMessage(entry.role, entry.message, evidenceHtml, entry.assistantLabel, {
       extraClass: entry.extraClass,
       persist: false,
     });
@@ -2022,6 +2117,72 @@ function engineerGrantStatusText(status) {
     unknown: "unknown",
   };
   return labels[value] || value;
+}
+
+function engineerCompactEvidenceRows(packet) {
+  const execution = isPlainObject(packet && packet.executionIdentity) ? packet.executionIdentity : {};
+  const context = isPlainObject(packet && packet.contextEvidence) ? packet.contextEvidence : {};
+  const readiness = isPlainObject(packet && packet.engineerImplementationReadinessPacket) ? packet.engineerImplementationReadinessPacket : null;
+  const readinessAccess = readiness && isPlainObject(readiness.projectAccessRequirements) ? readiness.projectAccessRequirements : {};
+  const readinessBoundary = readiness && isPlainObject(readiness.boundaryConfirmation) ? readiness.boundaryConfirmation : {};
+  const rows = [
+    ["Execution route", execution.executionRoute || "unknown"],
+    ["Provider", execution.providerIdentity || "unknown"],
+    ["Timestamp", execution.executionTimestamp || "unknown"],
+    ["Engineer context", context.contextPacketIdentity || "unknown"],
+    ["Context accepted", context.engineerContextPacketAccepted === true || context.roleContextPacketAccepted === true ? "yes" : "unknown"],
+  ];
+  if (readiness) {
+    rows.push(
+      ["Repository access", engineerGrantStatusText(readinessAccess.grantStatus)],
+      ["Project work done", readinessBoundary.projectFilesRead === false && readinessBoundary.filesEdited === false && readinessBoundary.commandsRun === false ? "no" : "unknown"],
+      ["Commit / push / deploy", readinessBoundary.committed === false && readinessBoundary.pushed === false && readinessBoundary.deployed === false ? "not authorized" : "unknown"],
+    );
+  }
+  return rows;
+}
+
+function engineerCompactWorkflowEvidenceHtml(current) {
+  if (!current) return "";
+  const rows = [
+    ["Repository", current.repositoryName],
+    ["Operation", firstOrUnknown(current.requestedOperations)],
+    ["Paths", safeList(current.requestedPaths).join(", ") || "unknown"],
+    ["Expected HEAD", current.expectedHeadCandidate],
+    ["Branch", current.approvedBranchCandidate],
+    ["Authority", current.grantCreated === true ? "created after approval" : "not created yet"],
+    ["Repository access", current.repositoryAccessPerformed === true ? "performed after approval" : "not performed"],
+    ["Continuity", current.continuityWritten === true ? "written" : "not written"],
+  ].filter(([, value]) => String(value || "").trim());
+  return `
+    <dl class="engineer-workflow-grid engineer-compact-evidence">
+      ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+    </dl>
+  `;
+}
+
+function engineerCompactEvidenceHtml(packet) {
+  const rows = engineerCompactEvidenceRows(packet);
+  return `
+    <details class="prime-evidence engineer-compact-evidence">
+      <summary>Evidence</summary>
+      <dl class="prime-evidence-grid">
+        ${rows.map(([label, value]) => `
+          <div>
+            <dt>${escapeHtml(label)}</dt>
+            <dd>${escapeHtml(value)}</dd>
+          </div>
+        `).join("")}
+      </dl>
+    </details>
+  `;
+}
+
+function roleEvidenceHtml(packet, assistantLabel = "Prime") {
+  if (assistantLabel === "Engineer" && !isEngineerDebugOn()) {
+    return engineerCompactEvidenceHtml(packet);
+  }
+  return primeEvidenceHtml(packet);
 }
 
 function primeEvidenceHtml(packet) {
@@ -2890,7 +3051,11 @@ function renderRoleActivationWorkspace(options = {}) {
           return;
         }
         const answer = packet.answer || `${roleLabel} did not return an answer.`;
-        appendPrimeMessage("assistant", answer, primeEvidenceHtml(packet), roleLabel, { persist: true });
+        appendPrimeMessage("assistant", answer, roleEvidenceHtml(packet, roleLabel), roleLabel, {
+          persist: true,
+          evidencePacket: packet,
+          evidenceRole: roleLabel,
+        });
         history.push({ role, content: answer });
       } catch (error) {
         if (isStaleOperatorSessionRevisionError(error) || !isCurrentOperatorSessionRevision(sessionRevision)) return;
