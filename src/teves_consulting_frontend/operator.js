@@ -1096,12 +1096,12 @@ function mergeEngineerApprovalDetails(current, packet) {
 function engineerSafetyListHtml() {
   return `
     <ul class="engineer-authority-list">
-      <li>other files</li>
-      <li>writes</li>
-      <li>commit</li>
-      <li>push</li>
-      <li>deploy</li>
-      <li>continuity promotion</li>
+      <li>no other files</li>
+      <li>no writes</li>
+      <li>no commit</li>
+      <li>no push</li>
+      <li>no deploy</li>
+      <li>no continuity promotion</li>
     </ul>
   `;
 }
@@ -1158,6 +1158,12 @@ function engineerResultStatusCopy(packet) {
     stopped: "Steering stopped the continuation.",
   };
   return statusCopy[status] || `Backend status: ${status}`;
+}
+
+function engineerWorkflowHasActionableApproval(current) {
+  return isPlainObject(current)
+    && current.canonicalStateUnavailable !== true
+    && ["awaiting_approval", "approved"].includes(current.lifecycleState);
 }
 
 function engineerRefinementDiagnosticsHtml(packet) {
@@ -1552,6 +1558,7 @@ function engineerFinalizationParityHtml(packet) {
 function engineerWorkflowStatusHtml(workflow) {
   if (!workflow.current) return "";
   const current = workflow.current;
+  if (!isEngineerDebugOn() && engineerWorkflowHasActionableApproval(current)) return "";
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
@@ -1608,6 +1615,7 @@ function engineerApprovalPanelHtml(workflow) {
         <div><dt>Operation</dt><dd>${escapeHtml(operation)}</dd></div>
         <div><dt>Paths</dt>${engineerRequestedPathsHtml(current.requestedPaths)}</div>
         <div><dt>Reason</dt><dd>${escapeHtml(reason)}</dd></div>
+        <div><dt>Approval scope</dt><dd>one bounded repository read</dd></div>
         <div><dt>Expected HEAD</dt><dd>${escapeHtml(current.expectedHeadCandidate)}</dd></div>
         <div><dt>Expires</dt><dd>${escapeHtml(current.expiresAt)}</dd></div>
       </dl>
@@ -1620,6 +1628,7 @@ function engineerApprovalPanelHtml(workflow) {
         ${approvalButtons}
         ${resumeButton}
       </div>
+      ${awaiting ? '<p class="meta">Waiting for your approval.</p>' : ""}
       ${approved ? '<p class="meta">Resume continues the workflow using only the approved repository read. It does not expand authority.</p>' : ""}
     </section>
   `;
@@ -1630,19 +1639,7 @@ function engineerTraceHtml(workflow) {
   if (!engineerWorkflowHasActiveWork(current)) return "";
   const entries = workflow.trace && Array.isArray(workflow.trace.entries) ? workflow.trace.entries : [];
   const currentStage = workflow.trace && workflow.trace.currentStage ? workflow.trace.currentStage : "waiting_for_approval";
-  if (!isEngineerDebugOn()) {
-    return `
-      <section class="engineer-workflow-card">
-        <div class="engineer-workflow-card-header">
-          <div>
-            <p class="prime-message-role">Engineer progress</p>
-            <h3>${escapeHtml(engineerTraceLabel(currentStage))}</h3>
-          </div>
-          <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || "pending")}</span>
-        </div>
-      </section>
-    `;
-  }
+  if (!isEngineerDebugOn()) return "";
   const rows = entries.length ? entries.map((entry) => `
     <li>
       <strong>${escapeHtml(engineerTraceLabel(entry.stage))}</strong>
@@ -1769,9 +1766,9 @@ function d1aEngineerWorkflowHtml() {
   const workflow = engineerCurrentWorkflow();
   if (!workflow.current && !workflow.lastError) return "";
   return `
-    ${engineerWorkflowStatusHtml(workflow)}
     ${engineerErrorHtml(workflow)}
     ${engineerApprovalPanelHtml(workflow)}
+    ${engineerWorkflowStatusHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
     ${isEngineerDebugOn() ? engineerSessionLimitsHtml(workflow) : ""}
