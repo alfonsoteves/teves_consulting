@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sovereign Tweets — Teves Consulting</title>
+<meta name="description" content="Short social-style notes from Teves Consulting on AI sovereignty, control, continuity, context, and authority."/>
+<meta name="author" content="Teves Consulting"/>
+<link rel="canonical" href="https://www.tevesconsulting.com/article-ai-sovereign-tweets.html"/>
+
+<meta property="og:type" content="article"/>
+<meta property="og:title" content="Sovereign Tweets — Teves Consulting"/>
+<meta property="og:description" content="Short social-style notes on AI sovereignty, control, continuity, context, and authority."/>
+<meta property="og:url" content="https://www.tevesconsulting.com/article-ai-sovereign-tweets.html"/>
+<meta property="og:site_name" content="Teves Consulting"/>
+<meta property="og:image" content="https://www.tevesconsulting.com/assets/images/og-insights.jpg"/>
+<meta property="article:published_time" content="2026-09-11"/>
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Sovereign Tweets — Teves Consulting"/>
+<meta name="twitter:description" content="A compact owned thread on AI sovereignty, control, continuity, context, and authority."/>
+<meta name="twitter:image" content="https://www.tevesconsulting.com/assets/images/og-insights.jpg"/>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WMZ9MD4EY4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WMZ9MD4EY4');
+</script>
+
+<style>
+  :root {
+    --page: #f8fafc;
+    --surface: #ffffff;
+    --surface-soft: #f1f5f9;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #dbe3ef;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --source-bg: #f8fafc;
+    --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  }
+
+  html[data-theme="dark"] {
+    --page: #000000;
+    --surface: #101418;
+    --surface-soft: #161d24;
+    --ink: #e7edf3;
+    --muted: #8b98a5;
+    --line: #2f3336;
+    --accent: #1d9bf0;
+    --accent-soft: rgba(29, 155, 240, 0.18);
+    --source-bg: #0b0f13;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+  body > header {
+    background: var(--surface) !important;
+    border-color: var(--line) !important;
+    color: var(--ink) !important;
+  }
+  html[data-theme="dark"] body > header {
+    background: #000000 !important;
+    border-color: #000000 !important;
+    color: #000000 !important;
+  }
+  html[data-theme="dark"] body > header a,
+  html[data-theme="dark"] .site-footer,
+  html[data-theme="dark"] .site-footer a,
+  html[data-theme="dark"] .back-link {
+    color: #000000 !important;
+  }
+  html[data-theme="dark"] body > header a:hover { color: #000000 !important; }
+  html[data-theme="dark"] body > header .header-theme-toggle { color: #ffffff !important; }
+  html[data-theme="dark"] .site-footer {
+    border-color: #000000 !important;
+  }
+  body > header a:hover { color: var(--accent); }
+  a { color: inherit; }
+  .shell {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 56px;
+  }
+  .feed-frame {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .feed-top {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(16px);
+  }
+  .feed-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #000000;
+  }
+  .avatar img,
+  .post-avatar img {
+    width: 68%;
+    height: 68%;
+    object-fit: contain;
+    display: block;
+  }
+  h1 {
+    margin: 0;
+    font-size: 1.85rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .theme-toggle {
+    margin: 0;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .header-theme-toggle {
+    margin-left: -8px;
+    color: #1f2937;
+    transform: translateY(-4px);
+  }
+  html[data-theme="dark"] .header-theme-toggle { color: #ffffff; }
+  .post {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .post:last-child { border-bottom: 0; }
+  .post-avatar {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #000000;
+  }
+  .post-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+  .post-head strong { color: var(--ink); }
+  .post-head + p { margin-top: 10px; }
+  .post p {
+    margin: 0;
+    color: var(--ink);
+    font-size: 1.04rem;
+    line-height: 1.5;
+  }
+  .source-preview {
+    display: block;
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--source-bg);
+    text-decoration: none;
+  }
+  .source-preview:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .source-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--surface-soft);
+  }
+  .source-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .incident-card .source-media {
+    background: #000000;
+  }
+  .incident-card .source-media img {
+    object-fit: contain;
+  }
+  .undp-card .source-media {
+    background: #ffffff;
+  }
+  .undp-card .source-media img {
+    object-fit: cover;
+    object-position: center top;
+    transform: scale(1.14);
+    transform-origin: center top;
+  }
+  .openai-card .source-media {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 270px;
+    padding: 34px;
+    background:
+      radial-gradient(circle at 18% 14%, rgba(255, 238, 218, 0.92), transparent 28%),
+      linear-gradient(135deg, #ffb589 0%, #f47b32 48%, #b8332e 100%);
+  }
+  .openai-card .preview-title {
+    color: #ffffff;
+    font-size: 2.7rem;
+    line-height: 1.25;
+    font-weight: 800;
+    text-align: center;
+    text-shadow: 0 2px 18px rgba(89, 31, 11, 0.2);
+  }
+  .source-from {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 0.94rem;
+    line-height: 1.35;
+  }
+  .source-chip {
+    display: inline-flex;
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 12px;
+    color: var(--accent);
+    background: var(--source-bg);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .source-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .post-actions {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    margin-top: 13px;
+    color: var(--muted);
+  }
+  .post-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .post-action:hover,
+  .post-action.liked,
+  .post-action.share-open {
+    color: var(--accent);
+  }
+  .post-action.liked svg {
+    fill: currentColor;
+  }
+  .post-action svg {
+    width: 21px;
+    height: 21px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .back-link {
+    display: inline-flex;
+    margin: 34px 18px 0;
+    color: var(--ink);
+    font-size: 0.95rem;
+    font-weight: 400;
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--muted); }
+  .share-box {
+    display: none;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--source-bg);
+  }
+  .share-box.open { display: grid; }
+  .share-box input {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.88rem;
+  }
+  .share-box button {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--ink);
+    color: var(--surface);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .site-footer {
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+  }
+  @media (max-width: 640px) {
+    .shell { padding: 12px 0 40px; }
+    .feed-frame {
+      border-left: 0;
+      border-right: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .source-media { aspect-ratio: 16 / 9; }
+    .feed-top { align-items: flex-start; }
+    .theme-toggle { flex-shrink: 0; }
+    .header-theme-toggle {
+      margin-left: 0;
+    }
+    .post {
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 12px;
+    }
+    .post-avatar {
+      width: 44px;
+      height: 44px;
+    }
+    .openai-card .source-media {
+      min-height: 210px;
+      padding: 24px;
+    }
+    .openai-card .preview-title {
+      font-size: 1.58rem;
+    }
+    .share-box {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"/>
+<link rel="icon" href="/android-chrome-192x192.png" sizes="192x192"/>
+</head>
+
+<body>
+<header class="border-b border-slate-200 bg-white text-slate-800">
+  <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-end">
+    <nav class="hidden sm:flex gap-6 text-sm">
+      <a class="hover:text-slate-600" href="/index.html">Aion</a>
+      <a class="hover:text-slate-600" href="/insights.html">Insights</a>
+      <a class="hover:text-slate-600" href="/about.html">About</a>
+      <span class="ml-4"></span>
+      <a class="hover:underline" href="https://www.tevesconsulting.com/es/article-ai-sovereign-tweets.html">ES</a>
+      <button class="theme-toggle header-theme-toggle" type="button" aria-label="Toggle light or dark view">&#9790;</button>
+    </nav>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="feed-frame" aria-labelledby="page-title">
+    <div class="feed-top">
+      <div class="feed-title">
+        <div>
+          <h1 id="page-title">Sovereign Tweets</h1>
+        </div>
+      </div>
+    </div>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@TevesConsulting</span><span>·</span><span>Aug 29</span></div>
+        <p>A working AI capability can be interrupted by changes in ownership, contract, or provider policy.<br/><br/><br/>Access is not control when another party can withdraw it.<br/><br/><br/>Capability can be rented; control, continuity, and authority should not be ceded.</p>
+        <a class="source-preview openai-card" href="https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/" target="_blank" rel="noopener noreferrer" aria-label="OpenAI source: Our decision on Cursor following its acquisition by SpaceX">
+          <div class="source-media">
+            <span class="preview-title">Our decision<br/>on Cursor following its<br/>acquisition by SpaceX</span>
+          </div>
+        </a>
+        <p class="source-from">From openai.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Aug 31</span></div>
+        <p>Anthropic will globally watermark supported Claude text outputs using a provider-controlled statistical signature.<br/><br/><br/>Users retain ownership, but lose control over whether the output carries Anthropic's mark, and Anthropic holds the key used to detect it.</p>
+        <a class="source-preview" href="https://www.anthropic.com/news/claude-text-watermark" target="_blank" rel="noopener noreferrer">
+          <div class="source-media">
+            <img src="https://www.anthropic.com/api/opengraph-illustration?name=Hand%20Quill&amp;backgroundColor=heather" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From anthropic.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Sep 2</span></div>
+        <p>AI guardrails are also an authority structure.<br/><br/><br/>OpenAI places provider-controlled Root and System instructions above developers and users on stated safety grounds, but final control remains with the provider.<br/><br/><br/>Who defines what benefits all humanity?</p>
+        <a class="source-preview" href="https://model-spec.openai.com/2026-08-18.html" target="_blank" rel="noopener noreferrer">
+          <div class="source-media">
+            <img src="https://images.ctfassets.net/kftzwdyauwt9/3KGOHkSXu53naMuSFNaiwv/aa2f914943c839ce6b75b8620a46b340/SEO_Banner_2560x1440_02.png?w=1600&amp;h=900&amp;fit=fill" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From model-spec.openai.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Sep 4</span></div>
+        <p>The failure of provider-controlled safeguards is evidence that both the AI capability and the institution controlling it require independent assurance, not that greater unilateral authority should automatically be granted to the same provider.</p>
+        <a class="source-preview incident-card" href="https://openai.com/index/hugging-face-incident-and-the-road-ahead/" target="_blank" rel="noopener noreferrer" aria-label="OpenAI source: The Hugging Face incident and the road ahead">
+          <div class="source-media">
+            <img src="assets/images/openai-incident-particles.jpg" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From openai.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Sep 6</span></div>
+        <p>Enterprise AI sovereignty is becoming a procurement requirement.<br/><br/><br/>OpenAI's Private Safety Processing and Anthropic's Enterprise Frontier Safeguards aim to preserve safeguards while shifting data custody toward customers.<br/><br/><br/>Safety need not mean surrendering data control.</p>
+        <a class="source-chip" href="https://openai.com/index/offering-zero-data-retention-for-frontier-models/#how-private-safety-processing-works" target="_blank" rel="noopener noreferrer">OpenAI Private Safety Processing</a>
+        <a class="source-preview" href="https://www.anthropic.com/news/enterprise-frontier-safeguards" target="_blank" rel="noopener noreferrer">
+          <div class="source-media">
+            <img src="https://www.anthropic.com/api/opengraph-illustration?name=Hand%20City&amp;backgroundColor=sky" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From anthropic.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Sep 8</span></div>
+        <p>The UNDP-DFINITY partnership is an important first step toward sovereign AI infrastructure for governments.<br/><br/><br/>Sovereign cloud protects the foundation.<br/><br/><br/>Sovereign intelligence must also protect models, context, continuity, governance, and authority.</p>
+        <a class="source-preview undp-card" href="https://innovation.eurasia.undp.org/undp-dfinity-partnership/" target="_blank" rel="noopener noreferrer">
+          <div class="source-media">
+            <img src="https://innovation.eurasia.undp.org/wp-content/uploads/2026/08/UNDP-DIFINITY-Partnership-Announcement.png" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From innovation.eurasia.undp.org</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="post-avatar" aria-hidden="true"><img src="assets/images/t-logo-white.png" alt=""/></div>
+      <div>
+        <div class="post-head"><strong>Teves Consulting</strong><span>@tevesconsulting</span><span>·</span><span>Sep 10</span></div>
+        <p>NVIDIA is acquiring Hugging Face, a central platform for the open AI ecosystem.<br/><br/><br/>NVIDIA says it will remain open and hardware-neutral.<br/><br/><br/>That matters, but ownership still concentrates strategic authority.<br/><br/><br/>Openness and control are not the same.</p>
+        <a class="source-preview" href="https://blogs.nvidia.com/blog/nvidia-to-acquire-hugging-face/" target="_blank" rel="noopener noreferrer">
+          <div class="source-media">
+            <img src="https://blogs.nvidia.com/wp-content/uploads/2026/09/hf-nvidia-partner_hf-nvidia-partner-press-1920x1080-2.png" alt="" loading="lazy"/>
+          </div>
+        </a>
+        <p class="source-from">From blogs.nvidia.com</p>
+        <div class="post-actions" aria-label="Post actions"><button class="post-action" type="button" data-action="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6c-1.8-1.8-4.7-1.7-6.4.1L12 7.1 9.6 4.7C7.9 2.9 5 2.8 3.2 4.6c-1.9 1.9-1.8 5 .1 6.9L12 20l8.7-8.5c1.9-1.9 2-5 .1-6.9Z"/></svg></button><button class="post-action" type="button" data-action="share" aria-label="Share" data-copy-label="Copy" data-copied-label="Copied"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+      </div>
+    </article>
+  </section>
+  <a class="back-link" href="/insights.html">Back to Insights</a>
+</main>
+
+<footer class="site-footer py-10">
+  <div class="mx-auto max-w-6xl px-4 text-sm flex flex-col md:flex-row items-center justify-between gap-2">
+    <p>&copy; <span id="year"></span> Teves Consulting LLC. All rights reserved.</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:underline" href="/about-aion.html">About Aion</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const root = document.documentElement;
+  const toggle = document.querySelector('.theme-toggle');
+  const savedTheme = localStorage.getItem('sovereignTweetsTheme');
+  const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+  function setTheme(theme) {
+    root.dataset.theme = theme;
+    localStorage.setItem('sovereignTweetsTheme', theme);
+    toggle.textContent = theme === 'dark' ? '\u2600\uFE0E' : '\u263E';
+  }
+
+  setTheme(savedTheme || preferredTheme);
+  toggle.addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+  document.querySelectorAll('.post').forEach((post, index) => {
+    post.id = post.id || `post-${index + 1}`;
+  });
+
+  document.querySelectorAll('[data-action="like"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const isLiked = button.classList.toggle('liked');
+      button.setAttribute('aria-pressed', String(isLiked));
+    });
+  });
+
+  document.querySelectorAll('[data-action="share"]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const post = button.closest('.post');
+      const url = `https://www.tevesconsulting.com/article-ai-sovereign-tweets.html#${post.id}`;
+      let box = post.querySelector('.share-box');
+
+      document.querySelectorAll('.share-box.open').forEach((openBox) => {
+        if (openBox !== box) openBox.classList.remove('open');
+      });
+
+      if (!box) {
+        box = document.createElement('div');
+        box.className = 'share-box';
+        box.innerHTML = `<input type="text" readonly value="${url}" aria-label="Share URL"/><button type="button">${button.dataset.copyLabel}</button>`;
+        button.closest('.post-actions').after(box);
+        box.querySelector('button').addEventListener('click', async () => {
+          try {
+            await navigator.clipboard?.writeText(box.querySelector('input').value);
+          } catch (_error) {
+            box.querySelector('input').select();
+          }
+          box.querySelector('button').textContent = button.dataset.copiedLabel;
+        });
+      }
+
+      box.querySelector('input').value = url;
+      const isOpen = box.classList.toggle('open');
+      document.querySelectorAll('[data-action="share"].share-open').forEach((openButton) => {
+        if (openButton !== button) openButton.classList.remove('share-open');
+      });
+      button.classList.toggle('share-open', isOpen);
+      try {
+        await navigator.clipboard?.writeText(url);
+      } catch (_error) {
+        box.querySelector('input').select();
+      }
+    });
+  });
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script type="module" src="/assets/js/site-metrics.js"></script>
+</body>
+</html>
