@@ -778,7 +778,6 @@ function createEmptyEngineerWorkflowState() {
     current: null,
     trace: null,
     steering: null,
-    debugOnForRun: null,
     actionStatus: "",
     inFlightAction: "",
     lastError: null,
@@ -812,9 +811,8 @@ function isEngineerDebugOn() {
 
 function d1aEngineerDebugControlHtml() {
   const debugOn = isEngineerDebugOn();
-  const hidden = activeRole === "engineer" ? "" : " hidden";
   return `
-    <fieldset id="engineerDebugControl" class="d1a-choice-group d1a-debug-toggle" aria-label="Engineer debug projection"${hidden}>
+    <fieldset id="engineerDebugControl" class="d1a-choice-group d1a-debug-toggle" aria-label="Engineer debug projection">
       <legend>Debug</legend>
       <div class="d1a-choice-row d1a-debug-row">
         <button id="engineerDebugOffButton" class="d1a-debug-button${debugOn ? "" : " is-active"}" type="button" aria-pressed="${debugOn ? "false" : "true"}" data-engineer-debug-mode="off">Off</button>
@@ -847,7 +845,7 @@ function d1aWorkspaceFrameHtml() {
         options: D1A_WORKING_CONTEXT_OPTIONS,
         selected: state.workingContext,
       })}
-      ${d1aEngineerDebugControlHtml()}
+      <div id="engineerDebugControlHost">${activeRole === "engineer" ? d1aEngineerDebugControlHtml() : ""}</div>
       <div id="localEngineerPairing" class="local-engineer-context" hidden></div>
       <div id="d1aRoleDiagnostic">${d1aRoleDiagnosticHtml(state.lastRoleSendDiagnostic)}</div>
     </section>
@@ -899,14 +897,17 @@ function d1aRefreshDiagnosticDisplay() {
 }
 
 function d1aRefreshDebugModeDisplay() {
-  const control = document.getElementById("engineerDebugControl");
-  if (control) control.hidden = activeRole !== "engineer";
+  const host = document.getElementById("engineerDebugControlHost");
+  if (host) {
+    host.innerHTML = activeRole === "engineer" ? d1aEngineerDebugControlHtml() : "";
+  }
   document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
     const enabled = button.dataset.engineerDebugMode === "on";
     const active = enabled === isEngineerDebugOn();
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
+  d1aAttachEngineerDebugHandlers();
 }
 
 function d1aRefreshRoleConversationProjection() {
@@ -925,17 +926,21 @@ function setEngineerDebugMode(enabled) {
   d1aRefreshRoleConversationProjection();
 }
 
+function d1aAttachEngineerDebugHandlers() {
+  document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setEngineerDebugMode(button.dataset.engineerDebugMode === "on");
+    });
+  });
+}
+
 function d1aAttachWorkspaceHandlers() {
   document.querySelectorAll('input[name="d1aWorkingContext"]').forEach((input) => {
     input.addEventListener("change", () => {
       if (input.checked) d1aWorkspaceState.workingContext = input.value;
     });
   });
-  document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setEngineerDebugMode(button.dataset.engineerDebugMode === "on");
-    });
-  });
+  d1aAttachEngineerDebugHandlers();
   d1aRefreshDebugModeDisplay();
 }
 
@@ -1019,7 +1024,6 @@ function engineerCurrentWorkflow() {
 }
 
 function engineerWorkflowDebugOn(workflow) {
-  if (workflow && typeof workflow.debugOnForRun === "boolean") return workflow.debugOnForRun;
   return isEngineerDebugOn();
 }
 
@@ -1626,15 +1630,17 @@ function engineerCompactApprovalPanelHtml(workflow) {
   const approved = actionable && current.lifecycleState === "approved";
   if (!awaiting && !approved) return "";
   const busy = Boolean(workflow.inFlightAction);
+  const inProgress = approved && (workflow.inFlightAction === "approve" || workflow.inFlightAction === "resume");
   const approvalButtons = awaiting
     ? `
         <button id="engineerApproveReadButton" type="button"${busy ? " disabled" : ""}>Approve once</button>
         <button id="engineerDenyReadButton" class="secondary" type="button"${busy ? " disabled" : ""}>Deny</button>
       `
     : "";
-  const resumeButton = approved
+  const resumeButton = approved && !inProgress
     ? `<button id="engineerResumeReadButton" type="button"${busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>`
     : "";
+  const progress = inProgress ? '<p class="meta">Engineer is reviewing the approved repository evidence...</p>' : "";
   return `
     <section class="engineer-workflow-card engineer-approval-card">
       <h3>${escapeHtml(engineerCompactApprovalQuestion(current))}</h3>
@@ -1643,6 +1649,7 @@ function engineerCompactApprovalPanelHtml(workflow) {
         ${approvalButtons}
         ${resumeButton}
       </div>
+      ${progress}
     </section>
   `;
 }
@@ -1968,6 +1975,7 @@ async function runEngineerWorkflowAction(actionName, fn) {
 async function approveEngineerPendingRead() {
   await runEngineerWorkflowAction("approve", async (workflow, sessionRevision) => {
     const current = workflow.current;
+    const shouldAutoResume = !isEngineerDebugOn();
     const result = await renderPostNoBody(engineerApprovalPath("approve"), { sessionRevision });
     if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.current.lifecycleState = result.lifecycleState || workflow.current.lifecycleState;
@@ -1975,6 +1983,19 @@ async function approveEngineerPendingRead() {
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
     await refreshEngineerTrace(sessionRevision);
+    if (shouldAutoResume && workflow.current.lifecycleState === "approved") {
+      workflow.actionStatus = "Engineer is reviewing the approved repository evidence...";
+      d1aRefreshEngineerWorkflowDisplay();
+      try {
+        await performEngineerPendingReadResume(workflow, sessionRevision, { autoResume: true });
+      } catch (error) {
+        if (workflow.current) {
+          workflow.current.resumeSubmitted = false;
+          workflow.actionStatus = "Approved. Resume did not complete; you can resume manually.";
+        }
+        throw error;
+      }
+    }
   });
 }
 
@@ -1994,26 +2015,38 @@ async function denyEngineerPendingRead() {
 async function resumeEngineerPendingRead() {
   engineerCurrentWorkflow().actionStatus = "Approved execution in progress.";
   await runEngineerWorkflowAction("resume", async (workflow, sessionRevision) => {
-    workflow.current.resumeSubmitted = true;
-    const result = await renderPostNoBody(engineerApprovalPath("resume"), { sessionRevision });
-    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
-    workflow.current.resumeResponse = result;
-    workflow.current.resumeStatus = result.status || "";
-    workflow.current.lifecycleState = result.workItemLifecycle || workflow.current.lifecycleState;
-    workflow.actionStatus = engineerResultStatusCopy(result);
-    await refreshEngineerTrace(sessionRevision);
-    await refreshEngineerSteering(sessionRevision);
-    if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
-    if (result.answer) {
-      const evidenceHtml = result.engineerResponse ? roleEvidenceHtml(result.engineerResponse, "Engineer") : "";
-      appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", {
-        persist: true,
-        evidencePacket: result.engineerResponse || null,
-        evidenceRole: "Engineer",
-      });
-      engineerConversationHistory.push({ role: "engineer", content: result.answer });
-    }
+    await performEngineerPendingReadResume(workflow, sessionRevision);
   });
+}
+
+async function performEngineerPendingReadResume(workflow, sessionRevision, options = {}) {
+  workflow.current.resumeSubmitted = true;
+  let result;
+  try {
+    result = await renderPostNoBody(engineerApprovalPath("resume"), { sessionRevision });
+  } catch (error) {
+    if (options.autoResume === true && workflow.current) {
+      workflow.current.resumeSubmitted = false;
+    }
+    throw error;
+  }
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+  workflow.current.resumeResponse = result;
+  workflow.current.resumeStatus = result.status || "";
+  workflow.current.lifecycleState = result.workItemLifecycle || workflow.current.lifecycleState;
+  workflow.actionStatus = engineerResultStatusCopy(result);
+  await refreshEngineerTrace(sessionRevision);
+  await refreshEngineerSteering(sessionRevision);
+  if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
+  if (result.answer) {
+    const evidenceHtml = result.engineerResponse ? roleEvidenceHtml(result.engineerResponse, "Engineer") : "";
+    appendPrimeMessage("assistant", result.answer, evidenceHtml, "Engineer", {
+      persist: true,
+      evidencePacket: result.engineerResponse || null,
+      evidenceRole: "Engineer",
+    });
+    engineerConversationHistory.push({ role: "engineer", content: result.answer });
+  }
 }
 
 async function submitEngineerSteering(event) {
@@ -2076,7 +2109,6 @@ async function captureEngineerPendingRead(packet, sessionRevision = currentOpera
   workflow.current = normalizeEngineerReadWorkflow(packet);
   workflow.trace = null;
   workflow.steering = null;
-  workflow.debugOnForRun = isEngineerDebugOn();
   workflow.actionStatus = "Waiting for your approval.";
   workflow.lastError = null;
   try {
@@ -2227,20 +2259,15 @@ function engineerCompactWorkflowEvidenceHtml(current) {
 }
 
 function engineerCompactEvidenceHtml(packet) {
-  const rows = engineerCompactEvidenceRows(packet);
-  return `
-    <details class="prime-evidence engineer-compact-evidence">
-      <summary>Evidence</summary>
-      <dl class="prime-evidence-grid">
-        ${rows.map(([label, value]) => `
-          <div>
-            <dt>${escapeHtml(label)}</dt>
-            <dd>${escapeHtml(value)}</dd>
-          </div>
-        `).join("")}
-      </dl>
-    </details>
-  `;
+  const evidence = isPlainObject(packet && packet.evidence) ? packet.evidence : {};
+  const repositoryBinding = isPlainObject(packet && packet.repositoryBinding)
+    ? packet.repositoryBinding
+    : isPlainObject(evidence.repositoryBinding)
+    ? evidence.repositoryBinding
+    : {};
+  const repository = safeText(packet && packet.repositoryName || repositoryBinding.repositoryName, "");
+  const suffix = repository ? ` · ${repository}` : "";
+  return `<p class="meta engineer-compact-evidence">Evidence: approved repository read${escapeHtml(suffix)}</p>`;
 }
 
 function roleEvidenceHtml(packet, assistantLabel = "Prime") {
