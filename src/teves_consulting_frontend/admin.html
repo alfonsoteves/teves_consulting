@@ -1869,6 +1869,40 @@
       color: #f8fafc;
     }
 
+    .admin-section-link-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .admin-section-link-card {
+      display: grid;
+      gap: 6px;
+      padding: 14px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #11161d;
+      color: #cbd5e1;
+      text-decoration: none;
+    }
+
+    .admin-section-link-card:hover,
+    .admin-section-link-card:focus {
+      border-color: #60a5fa;
+      color: #f8fafc;
+    }
+
+    .admin-section-link-card strong {
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+
+    .admin-section-link-card span {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
     .admin-section-tool-primary {
       border-color: #4b6f9f;
       background: #151d28;
@@ -1953,6 +1987,10 @@
       .admin-section-overview-card button {
         width: 100%;
         min-height: 42px;
+      }
+
+      .admin-section-link-card {
+        padding: 12px;
       }
     }
     /* Admin section overviews end */
@@ -2238,6 +2276,7 @@
   </footer>
   <!-- Aion Operator landing chrome end -->
   <header class="admin-header">
+    <a class="admin-header-link" href="https://www.tevesconsulting.com/">Aion</a>
     <div>
       <h1>Admin</h1>
     </div>
@@ -2266,6 +2305,7 @@
         <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Reports</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="links" role="tab" aria-selected="false">Links</button>
       </div>
       <!-- Admin view controls start -->
       <details class="admin-view-tools">
@@ -2940,6 +2980,22 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="httpsOutcallTransportResults"></div>
     </details>
     </section>
+
+    <section id="adminLinks" class="admin-section" data-admin-view="links">
+      <h2>Links</h2>
+      <p class="section-note">Quick external references for routine operator review.</p>
+
+      <div class="admin-section-link-list" aria-label="Admin external links">
+        <a class="admin-section-link-card" href="https://nns.internetcomputer.org/" target="_blank" rel="noopener noreferrer">
+          <strong>Network Nervous System</strong>
+          <span>Open the Internet Computer NNS dashboard.</span>
+        </a>
+        <a class="admin-section-link-card" href="https://forum.dfinity.org/" target="_blank" rel="noopener noreferrer">
+          <strong>DFINITY Forum</strong>
+          <span>Open the DFINITY developer and community forum.</span>
+        </a>
+      </div>
+    </section>
   </div>
 
   <!-- Admin evergreen shell cleanup start -->
@@ -2951,7 +3007,8 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         continuity: "Continuity",
         intelligence: "Reports",
         providers: "Providers",
-        validation: "Validation"
+        validation: "Validation",
+        links: "Links"
       };
 
       const hashToView = {
@@ -2961,7 +3018,8 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         memoryHealth: "intelligence",
         operatorInsights: "intelligence",
         providers: "providers",
-        systemValidation: "validation"
+        systemValidation: "validation",
+        adminLinks: "links"
       };
 
       function setAdminView(view, options = {}) {
