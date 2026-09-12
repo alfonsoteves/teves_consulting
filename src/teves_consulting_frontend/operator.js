@@ -1603,12 +1603,12 @@ function engineerWorkflowStatusHtml(workflow) {
   const debugOn = engineerWorkflowDebugOn(workflow);
   if (!debugOn && engineerWorkflowHasActionableApproval(current)) return "";
   if (!debugOn && workflow.lastError && engineerWorkflowIsTerminal(current)) return "";
+  if (!debugOn && engineerWorkflowIsTerminal(current)) return "";
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
   const parity = debugOn ? engineerFinalizationParityHtml(current.resumeResponse) : "";
   const selectedEvidence = debugOn ? engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse) : "";
-  const compactEvidence = debugOn ? "" : engineerCompactWorkflowEvidenceHtml(current);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -1619,7 +1619,6 @@ function engineerWorkflowStatusHtml(workflow) {
         </div>
         <span class="engineer-status-pill">${escapeHtml(current.lifecycleState || current.resumeStatus || "pending")}</span>
       </div>
-      ${compactEvidence}
       ${parity}
       ${selectedEvidence}
     </section>
