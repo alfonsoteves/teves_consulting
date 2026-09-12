@@ -1086,6 +1086,8 @@ function normalizeEngineerReadWorkflow(packet) {
     secondProviderPassOccurred: packet.secondProviderPassOccurred === true,
     repositoryAccessPerformed: packet.repositoryAccessPerformed === true,
     grantCreated: packet.grantCreated === true,
+    localExecutionCompleted: packet.localExecutionCompleted === true,
+    sourceTransportedTransiently: packet.sourceTransportedTransiently === true,
     continuityWritten: packet.continuityWritten === true,
     evidenceAuthorizesExecution: packet.evidenceAuthorizesExecution === true,
   };
@@ -1600,6 +1602,7 @@ function engineerWorkflowStatusHtml(workflow) {
   const current = workflow.current;
   const debugOn = engineerWorkflowDebugOn(workflow);
   if (!debugOn && engineerWorkflowHasActionableApproval(current)) return "";
+  if (!debugOn && workflow.lastError && engineerWorkflowIsTerminal(current)) return "";
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
@@ -1812,6 +1815,20 @@ function engineerErrorHtml(workflow) {
   if (isPlainObject(packet) && workflow.lastError.responseReceived === false) {
     packet.responseReceived = false;
   }
+  if (!debugOn && workflow.current && engineerWorkflowIsTerminal(workflow.current)) {
+    const current = workflow.current;
+    const displayPacket = isPlainObject(packet) ? { ...current, ...packet } : current;
+    const message = engineerResultStatusCopy(displayPacket) === "Engineer continuation did not complete."
+      ? "I couldn't complete that request because the approved repository evidence was not sufficient to produce a reliable answer."
+      : engineerResultStatusCopy(displayPacket);
+    return `
+      <section class="engineer-workflow-card engineer-workflow-error" role="alert">
+        <p class="prime-message-role">Engineer</p>
+        <h3>${escapeHtml(message)}</h3>
+        ${engineerCompactEvidenceHtml(displayPacket)}
+      </section>
+    `;
+  }
   const message = typeof packet === "string" ? packet : safeText(packet.reason || packet.failure || packet.status || packet.classification, "The backend returned an error.");
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
@@ -1911,9 +1928,25 @@ function markEngineerCanonicalStateUnavailable(error) {
 
 function applyEngineerResumeResponseToWorkflow(workflow, result) {
   if (!workflow.current || !isPlainObject(result)) return;
+  const evidence = isPlainObject(result.evidence) ? result.evidence : {};
   workflow.current.resumeResponse = result;
   workflow.current.resumeStatus = result.status || "";
   workflow.current.lifecycleState = result.workItemLifecycle || result.lifecycleState || workflow.current.lifecycleState;
+  if (result.localExecutionCompleted === true || evidence.localExecutionCompleted === true || evidence.localResultAccepted === true) {
+    workflow.current.localExecutionCompleted = true;
+    workflow.current.repositoryAccessPerformed = true;
+  }
+  if (safeText(result.grantId, "")) {
+    workflow.current.grantCreated = true;
+  }
+  if (result.sourceTransportedTransiently === true || evidence.sourceTransportedTransiently === true) {
+    workflow.current.sourceTransportedTransiently = true;
+  }
+  if (result.secondProviderPassOccurred === true || evidence.secondProviderPassOccurred === true) {
+    workflow.current.secondProviderPassOccurred = true;
+  }
+  workflow.current.continuityWritten = result.continuityWritten === true || evidence.continuityWritten === true;
+  workflow.current.evidenceAuthorizesExecution = result.evidenceAuthorizesExecution === true || evidence.evidenceAuthorizesExecution === true;
   if (engineerWorkflowIsTerminal(workflow.current)) {
     workflow.current.resumeSubmitted = true;
   }
