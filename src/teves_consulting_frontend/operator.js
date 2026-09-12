@@ -1082,6 +1082,7 @@ function normalizeEngineerReadWorkflow(packet) {
     approvalResponse: null,
     resumeResponse: null,
     resumeStatus: "",
+    manualResumeAvailable: false,
     providerPassCountSoFar: Number.isInteger(packet.providerPassCountSoFar) ? packet.providerPassCountSoFar : 1,
     secondProviderPassOccurred: packet.secondProviderPassOccurred === true,
     repositoryAccessPerformed: packet.repositoryAccessPerformed === true,
@@ -1206,6 +1207,16 @@ function engineerWorkflowHasActionableApproval(current) {
     && current.canonicalStateUnavailable !== true
     && !engineerWorkflowIsTerminal(current)
     && ["awaiting_approval", "approved"].includes(current.lifecycleState);
+}
+
+function engineerManualResumeAvailable(workflow, current) {
+  return isPlainObject(workflow)
+    && isPlainObject(current)
+    && current.manualResumeAvailable === true
+    && current.lifecycleState === "approved"
+    && !current.resumeSubmitted
+    && !engineerWorkflowIsTerminal(current)
+    && !workflow.inFlightAction;
 }
 
 function engineerRefinementDiagnosticsHtml(packet) {
@@ -1640,8 +1651,8 @@ function engineerCompactApprovalPanelHtml(workflow) {
         <button id="engineerDenyReadButton" class="secondary" type="button"${busy ? " disabled" : ""}>Deny</button>
       `
     : "";
-  const resumeButton = approved && !inProgress
-    ? `<button id="engineerResumeReadButton" type="button"${busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>`
+  const resumeButton = approved && !inProgress && engineerManualResumeAvailable(workflow, current)
+    ? `<button id="engineerResumeReadButton" type="button">Resume approved Engineer workflow</button>`
     : "";
   const progress = inProgress ? '<p class="meta">Engineer is reviewing the approved repository evidence...</p>' : "";
   return `
@@ -1674,8 +1685,8 @@ function engineerApprovalPanelHtml(workflow) {
         <button id="engineerDenyReadButton" class="secondary" type="button"${busy ? " disabled" : ""}>Deny</button>
       `
     : "";
-  const resumeButton = approved
-    ? `<button id="engineerResumeReadButton" type="button"${busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>`
+  const resumeButton = approved && engineerManualResumeAvailable(workflow, current)
+    ? `<button id="engineerResumeReadButton" type="button">Resume approved Engineer workflow</button>`
     : "";
   return `
     <section class="engineer-workflow-card engineer-approval-card">
@@ -2016,12 +2027,12 @@ async function runEngineerWorkflowAction(actionName, fn) {
 
 async function approveEngineerPendingRead() {
   await runEngineerWorkflowAction("approve", async (workflow, sessionRevision) => {
-    const current = workflow.current;
-    const shouldAutoResume = !isEngineerDebugOn();
+    const shouldAutoResume = true;
     const result = await renderPostNoBody(engineerApprovalPath("approve"), { sessionRevision });
     if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
     workflow.current.lifecycleState = result.lifecycleState || workflow.current.lifecycleState;
     workflow.current.canonicalStateUnavailable = false;
+    workflow.current.manualResumeAvailable = false;
     workflow.current.approvalResponse = result;
     workflow.actionStatus = engineerResultStatusCopy(result);
     await refreshEngineerTrace(sessionRevision);
@@ -2033,7 +2044,19 @@ async function approveEngineerPendingRead() {
       } catch (error) {
         if (workflow.current) {
           workflow.current.resumeSubmitted = false;
-          workflow.actionStatus = "Approved. Resume did not complete; you can resume manually.";
+          workflow.current.manualResumeAvailable = false;
+          let refreshedResumableState = false;
+          try {
+            await refreshEngineerApprovalDetails(sessionRevision);
+            refreshedResumableState = workflow.current.lifecycleState === "approved"
+              && !engineerWorkflowIsTerminal(workflow.current);
+          } catch (_) {
+            // Keep manual Resume hidden unless Aion confirms the approval is still resumable.
+          }
+          if (refreshedResumableState) {
+            workflow.current.manualResumeAvailable = true;
+            workflow.actionStatus = "Approved. Resume did not complete; you can resume manually.";
+          }
         }
         throw error;
       }
@@ -2063,6 +2086,7 @@ async function resumeEngineerPendingRead() {
 
 async function performEngineerPendingReadResume(workflow, sessionRevision, options = {}) {
   workflow.current.resumeSubmitted = true;
+  workflow.current.manualResumeAvailable = false;
   let result;
   try {
     result = await renderPostNoBody(engineerApprovalPath("resume"), { sessionRevision });
