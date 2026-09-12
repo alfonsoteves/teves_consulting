@@ -160,10 +160,16 @@
     justify-content: center;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
+  .header-inner {
+    position: relative;
+  }
   .header-theme-toggle {
-    margin-left: -8px;
+    position: absolute;
+    right: -38px;
+    top: 50%;
+    margin-left: 0;
     color: #1f2937;
-    transform: translateY(-4px);
+    transform: translateY(-54%);
   }
   html[data-theme="dark"] .header-theme-toggle { color: #ffffff; }
   .post {
@@ -364,7 +370,7 @@
     .feed-top { align-items: flex-start; }
     .theme-toggle { flex-shrink: 0; }
     .header-theme-toggle {
-      margin-left: 0;
+      display: none;
     }
     .post {
       grid-template-columns: 46px minmax(0, 1fr);
@@ -394,15 +400,15 @@
 
 <body>
 <header class="border-b border-slate-200 bg-white text-slate-800">
-  <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-end">
+  <div class="header-inner mx-auto max-w-6xl px-4 py-6 flex items-center justify-end">
     <nav class="hidden sm:flex gap-6 text-sm">
       <a class="hover:text-slate-600" href="/index.html">Aion</a>
       <a class="hover:text-slate-600" href="/insights.html">Insights</a>
       <a class="hover:text-slate-600" href="/about.html">About</a>
       <span class="ml-4"></span>
       <a class="hover:underline" href="https://www.tevesconsulting.com/es/article-ai-sovereign-tweets.html">ES</a>
-      <button class="theme-toggle header-theme-toggle" type="button" aria-label="Toggle light or dark view">&#9790;</button>
     </nav>
+    <button class="theme-toggle header-theme-toggle" type="button" aria-label="Toggle light or dark view">&#9790;</button>
   </div>
 </header>
 
