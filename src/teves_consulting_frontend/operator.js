@@ -778,6 +778,7 @@ function createEmptyEngineerWorkflowState() {
     current: null,
     trace: null,
     steering: null,
+    debugOnForRun: null,
     actionStatus: "",
     inFlightAction: "",
     lastError: null,
@@ -811,8 +812,9 @@ function isEngineerDebugOn() {
 
 function d1aEngineerDebugControlHtml() {
   const debugOn = isEngineerDebugOn();
+  const hidden = activeRole === "engineer" ? "" : " hidden";
   return `
-    <fieldset class="d1a-choice-group d1a-debug-toggle" aria-label="Engineer debug projection">
+    <fieldset id="engineerDebugControl" class="d1a-choice-group d1a-debug-toggle" aria-label="Engineer debug projection"${hidden}>
       <legend>Debug</legend>
       <div class="d1a-choice-row d1a-debug-row">
         <button id="engineerDebugOffButton" class="d1a-debug-button${debugOn ? "" : " is-active"}" type="button" aria-pressed="${debugOn ? "false" : "true"}" data-engineer-debug-mode="off">Off</button>
@@ -897,6 +899,8 @@ function d1aRefreshDiagnosticDisplay() {
 }
 
 function d1aRefreshDebugModeDisplay() {
+  const control = document.getElementById("engineerDebugControl");
+  if (control) control.hidden = activeRole !== "engineer";
   document.querySelectorAll("[data-engineer-debug-mode]").forEach((button) => {
     const enabled = button.dataset.engineerDebugMode === "on";
     const active = enabled === isEngineerDebugOn();
@@ -1014,6 +1018,11 @@ function engineerCurrentWorkflow() {
   return d1aWorkspaceState.engineerWorkflow || createEmptyEngineerWorkflowState();
 }
 
+function engineerWorkflowDebugOn(workflow) {
+  if (workflow && typeof workflow.debugOnForRun === "boolean") return workflow.debugOnForRun;
+  return isEngineerDebugOn();
+}
+
 function engineerWorkflowIsTerminal(current) {
   if (!current) return false;
   const lifecycle = current.lifecycleState || "";
@@ -1110,6 +1119,32 @@ function engineerRequestedPathsHtml(paths) {
   const items = safeList(paths);
   if (!items.length) return `<dd>unknown</dd>`;
   return `<dd><ul class="engineer-path-list">${items.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join("")}</ul></dd>`;
+}
+
+function engineerCompactApprovalQuestion(current) {
+  const paths = safeList(current && current.requestedPaths);
+  const operation = firstOrUnknown(current && current.requestedOperations);
+  const repository = safeText(current && current.repositoryName, "this repository");
+  if (operation === "read_text_file") {
+    return paths.length === 1
+      ? `Allow Aion to read the requested file in ${repository}?`
+      : `Allow Aion to read these files in ${repository}?`;
+  }
+  if (operation === "list_directory") {
+    return paths.length === 1
+      ? `Allow Aion to inspect this directory in ${repository}?`
+      : `Allow Aion to inspect these directories in ${repository}?`;
+  }
+  return paths.length === 1
+    ? `Allow Aion to use the requested repository access in ${repository}?`
+    : `Allow Aion to use these requested repository accesses in ${repository}?`;
+}
+
+function engineerCompactApprovalPathsHtml(current) {
+  const paths = safeList(current && current.requestedPaths);
+  if (!paths.length) return `<p><code>unknown</code></p>`;
+  if (paths.length === 1) return `<p><code>${escapeHtml(paths[0])}</code></p>`;
+  return `<ul class="engineer-path-list">${paths.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join("")}</ul>`;
 }
 
 function engineerTraceLabel(stage) {
@@ -1558,13 +1593,14 @@ function engineerFinalizationParityHtml(packet) {
 function engineerWorkflowStatusHtml(workflow) {
   if (!workflow.current) return "";
   const current = workflow.current;
-  if (!isEngineerDebugOn() && engineerWorkflowHasActionableApproval(current)) return "";
+  const debugOn = engineerWorkflowDebugOn(workflow);
+  if (!debugOn && engineerWorkflowHasActionableApproval(current)) return "";
   const status = engineerWorkflowIsTerminal(current)
     ? engineerResultStatusCopy(current.resumeResponse || current.approvalResponse || current)
     : workflow.actionStatus || engineerResultStatusCopy(current.approvalResponse || current);
-  const parity = isEngineerDebugOn() ? engineerFinalizationParityHtml(current.resumeResponse) : "";
-  const selectedEvidence = isEngineerDebugOn() ? engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse) : "";
-  const compactEvidence = isEngineerDebugOn() ? "" : engineerCompactWorkflowEvidenceHtml(current);
+  const parity = debugOn ? engineerFinalizationParityHtml(current.resumeResponse) : "";
+  const selectedEvidence = debugOn ? engineerSelectedEvidenceDiagnosticHtml(current.resumeResponse) : "";
+  const compactEvidence = debugOn ? "" : engineerCompactWorkflowEvidenceHtml(current);
   return `
     <section class="engineer-workflow-card">
       <div class="engineer-workflow-card-header">
@@ -1582,6 +1618,35 @@ function engineerWorkflowStatusHtml(workflow) {
   `;
 }
 
+function engineerCompactApprovalPanelHtml(workflow) {
+  const current = workflow.current;
+  if (!current) return "";
+  const actionable = current.canonicalStateUnavailable !== true;
+  const awaiting = actionable && current.lifecycleState === "awaiting_approval";
+  const approved = actionable && current.lifecycleState === "approved";
+  if (!awaiting && !approved) return "";
+  const busy = Boolean(workflow.inFlightAction);
+  const approvalButtons = awaiting
+    ? `
+        <button id="engineerApproveReadButton" type="button"${busy ? " disabled" : ""}>Approve once</button>
+        <button id="engineerDenyReadButton" class="secondary" type="button"${busy ? " disabled" : ""}>Deny</button>
+      `
+    : "";
+  const resumeButton = approved
+    ? `<button id="engineerResumeReadButton" type="button"${busy || current.resumeSubmitted ? " disabled" : ""}>Resume approved Engineer workflow</button>`
+    : "";
+  return `
+    <section class="engineer-workflow-card engineer-approval-card">
+      <h3>${escapeHtml(engineerCompactApprovalQuestion(current))}</h3>
+      ${engineerCompactApprovalPathsHtml(current)}
+      <div class="engineer-workflow-actions">
+        ${approvalButtons}
+        ${resumeButton}
+      </div>
+    </section>
+  `;
+}
+
 function engineerApprovalPanelHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
@@ -1589,6 +1654,7 @@ function engineerApprovalPanelHtml(workflow) {
   const awaiting = actionable && current.lifecycleState === "awaiting_approval";
   const approved = actionable && current.lifecycleState === "approved";
   if (!awaiting && !approved) return "";
+  if (!engineerWorkflowDebugOn(workflow)) return engineerCompactApprovalPanelHtml(workflow);
   const operation = firstOrUnknown(current.requestedOperations);
   const reason = firstOrUnknown(current.requestReasons);
   const busy = Boolean(workflow.inFlightAction);
@@ -1639,7 +1705,7 @@ function engineerTraceHtml(workflow) {
   if (!engineerWorkflowHasActiveWork(current)) return "";
   const entries = workflow.trace && Array.isArray(workflow.trace.entries) ? workflow.trace.entries : [];
   const currentStage = workflow.trace && workflow.trace.currentStage ? workflow.trace.currentStage : "waiting_for_approval";
-  if (!isEngineerDebugOn()) return "";
+  if (!engineerWorkflowDebugOn(workflow)) return "";
   const rows = entries.length ? entries.map((entry) => `
     <li>
       <strong>${escapeHtml(engineerTraceLabel(entry.stage))}</strong>
@@ -1672,7 +1738,7 @@ function engineerTraceHtml(workflow) {
 function engineerSteeringHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
-  if (!isEngineerDebugOn()) return "";
+  if (!engineerWorkflowDebugOn(workflow)) return "";
   const terminal = engineerWorkflowIsTerminal(current);
   if (terminal || current.lifecycleState !== "approved") return "";
   const busy = Boolean(workflow.inFlightAction);
@@ -1733,6 +1799,7 @@ function engineerSteeringHtml(workflow) {
 
 function engineerErrorHtml(workflow) {
   if (!workflow.lastError) return "";
+  const debugOn = engineerWorkflowDebugOn(workflow);
   const packet = engineerResponsePayload(workflow.lastError.responseData || workflow.lastError.backendDetail || {});
   if (isPlainObject(packet) && workflow.lastError.responseReceived === false) {
     packet.responseReceived = false;
@@ -1740,12 +1807,12 @@ function engineerErrorHtml(workflow) {
   const message = typeof packet === "string" ? packet : safeText(packet.reason || packet.failure || packet.status || packet.classification, "The backend returned an error.");
   const execution = typeof packet === "string" ? "No execution is proven by the returned evidence." : engineerExecutionKnownCopy(packet);
   const next = typeof packet === "string" ? "Review the request before trying again." : engineerNextStepCopy(packet);
-  const diagnostics = isEngineerDebugOn() ? engineerRefinementDiagnosticsHtml(packet) : "";
-  const providerFailureDiagnostic = isEngineerDebugOn() ? engineerProviderFailureDiagnosticHtml(packet) : "";
-  const needIdentity = isEngineerDebugOn() ? engineerRefinementNeedIdentityHtml(packet) : "";
-  const selectedEvidence = isEngineerDebugOn() ? engineerSelectedEvidenceDiagnosticHtml(packet) : "";
-  const mappingDiagnostic = isEngineerDebugOn() ? engineerEvidenceNeedMappingDiagnosticHtml(packet) : "";
-  const parity = isEngineerDebugOn() ? engineerFinalizationParityHtml(packet) : "";
+  const diagnostics = debugOn ? engineerRefinementDiagnosticsHtml(packet) : "";
+  const providerFailureDiagnostic = debugOn ? engineerProviderFailureDiagnosticHtml(packet) : "";
+  const needIdentity = debugOn ? engineerRefinementNeedIdentityHtml(packet) : "";
+  const selectedEvidence = debugOn ? engineerSelectedEvidenceDiagnosticHtml(packet) : "";
+  const mappingDiagnostic = debugOn ? engineerEvidenceNeedMappingDiagnosticHtml(packet) : "";
+  const parity = debugOn ? engineerFinalizationParityHtml(packet) : "";
   return `
     <section class="engineer-workflow-card engineer-workflow-error" role="alert">
       <p class="prime-message-role">Engineer workflow issue</p>
@@ -1771,7 +1838,7 @@ function d1aEngineerWorkflowHtml() {
     ${engineerWorkflowStatusHtml(workflow)}
     ${engineerTraceHtml(workflow)}
     ${engineerSteeringHtml(workflow)}
-    ${isEngineerDebugOn() ? engineerSessionLimitsHtml(workflow) : ""}
+    ${engineerWorkflowDebugOn(workflow) ? engineerSessionLimitsHtml(workflow) : ""}
   `;
 }
 
@@ -2009,6 +2076,7 @@ async function captureEngineerPendingRead(packet, sessionRevision = currentOpera
   workflow.current = normalizeEngineerReadWorkflow(packet);
   workflow.trace = null;
   workflow.steering = null;
+  workflow.debugOnForRun = isEngineerDebugOn();
   workflow.actionStatus = "Waiting for your approval.";
   workflow.lastError = null;
   try {
@@ -2491,6 +2559,7 @@ function createLocalEngineerPairingState() {
     readinessConvergenceActive: false,
     readinessConvergenceDeadlineMs: 0,
     readinessConvergencePollIndex: 0,
+    readinessConvergenceLastErrorMessage: "",
   };
 }
 
@@ -2528,6 +2597,7 @@ function cancelLocalEngineerReadinessConvergence() {
   localEngineerPairingState.readinessConvergenceActive = false;
   localEngineerPairingState.readinessConvergenceDeadlineMs = 0;
   localEngineerPairingState.readinessConvergencePollIndex = 0;
+  localEngineerPairingState.readinessConvergenceLastErrorMessage = "";
 }
 
 function resetLocalEngineerPairingState() {
@@ -2762,6 +2832,7 @@ function startLocalEngineerReadinessConvergence(connectAttemptId, stateRevision,
   localEngineerPairingState.readinessConvergenceActive = true;
   localEngineerPairingState.readinessConvergenceDeadlineMs = Date.now() + LOCAL_ENGINEER_READINESS_CONVERGENCE_WINDOW_MS;
   localEngineerPairingState.readinessConvergencePollIndex = 0;
+  localEngineerPairingState.readinessConvergenceLastErrorMessage = "";
   scheduleLocalEngineerDeviceStatusRefresh(connectAttemptId, stateRevision, {
     delayMs: LOCAL_ENGINEER_INITIAL_STATUS_REFRESH_DELAY_MS,
     readinessConvergence: true,
@@ -2791,7 +2862,6 @@ function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateR
     !localEngineerPairingState.readinessConvergenceActive
     || connectAttemptId !== localEngineerPairingState.connectAttemptId
     || stateRevision !== localEngineerPairingState.stateRevision
-    || activeRole !== "engineer"
     || !isCurrentOperatorSessionRevision(sessionRevision)
   ) {
     cancelLocalEngineerReadinessConvergence();
@@ -2805,7 +2875,9 @@ function maybeContinueLocalEngineerReadinessConvergence(connectAttemptId, stateR
     Date.now() >= localEngineerPairingState.readinessConvergenceDeadlineMs
     || localEngineerPairingState.readinessConvergencePollIndex >= LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS.length
   ) {
+    localEngineerPairingState.deviceStatusMessage = localEngineerPairingState.readinessConvergenceLastErrorMessage || localEngineerPairingState.deviceStatusMessage;
     cancelLocalEngineerReadinessConvergence();
+    d1aRefreshLocalEngineerPairingDisplay();
     return;
   }
   const delayMs = LOCAL_ENGINEER_READINESS_CONVERGENCE_DELAYS_MS[localEngineerPairingState.readinessConvergencePollIndex];
@@ -2856,6 +2928,12 @@ async function refreshLocalEngineerDeviceStatus(options = {}) {
       || stateRevision !== localEngineerPairingState.stateRevision
       || statusRequestId !== localEngineerPairingState.statusRequestId
     ) return;
+    if (options.readinessConvergence === true) {
+      localEngineerPairingState.readinessConvergenceLastErrorMessage = localEngineerPairingFailureText(error);
+      localEngineerPairingState.deviceStatusMessage = "Waiting for Local Engineer adapter to become ready.";
+      localEngineerPairingState.message = "";
+      return;
+    }
     if (isPlainObject(localEngineerPairingState.deviceStatus)) {
       localEngineerPairingState.deviceStatus = {
         ...localEngineerPairingState.deviceStatus,
@@ -2930,9 +3008,7 @@ function setActiveRole(role) {
   }
   d1aRefreshEngineerWorkflowDisplay();
   d1aRefreshLocalEngineerPairingDisplay();
-  if (role !== "engineer") {
-    cancelLocalEngineerReadinessConvergence();
-  }
+  d1aRefreshDebugModeDisplay();
   if (role === "engineer" && isOperator && !localEngineerPairingState.statusInFlight) {
     refreshLocalEngineerDeviceStatus({
       connectAttemptId: localEngineerPairingState.connectAttemptId,
@@ -3043,7 +3119,9 @@ function renderRoleActivationWorkspace(options = {}) {
           await captureEngineerPendingRead(packet, sessionRevision);
           if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
           const requestSummary = "Engineer needs repository evidence before answering. Review the requested authority below.";
-          appendPrimeMessage("assistant", requestSummary, "", roleLabel, { persist: true });
+          if (engineerWorkflowDebugOn(engineerCurrentWorkflow())) {
+            appendPrimeMessage("assistant", requestSummary, "", roleLabel, { persist: true });
+          }
           history.push({ role, content: requestSummary });
           return;
         }
