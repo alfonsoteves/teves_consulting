@@ -1202,6 +1202,7 @@ function engineerResultStatusCopy(packet) {
 function engineerWorkflowHasActionableApproval(current) {
   return isPlainObject(current)
     && current.canonicalStateUnavailable !== true
+    && !engineerWorkflowIsTerminal(current)
     && ["awaiting_approval", "approved"].includes(current.lifecycleState);
 }
 
@@ -1625,9 +1626,9 @@ function engineerWorkflowStatusHtml(workflow) {
 function engineerCompactApprovalPanelHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
-  const actionable = current.canonicalStateUnavailable !== true;
-  const awaiting = actionable && current.lifecycleState === "awaiting_approval";
-  const approved = actionable && current.lifecycleState === "approved";
+  if (!engineerWorkflowHasActionableApproval(current)) return "";
+  const awaiting = current.lifecycleState === "awaiting_approval";
+  const approved = current.lifecycleState === "approved";
   if (!awaiting && !approved) return "";
   const busy = Boolean(workflow.inFlightAction);
   const inProgress = approved && (workflow.inFlightAction === "approve" || workflow.inFlightAction === "resume");
@@ -1657,9 +1658,9 @@ function engineerCompactApprovalPanelHtml(workflow) {
 function engineerApprovalPanelHtml(workflow) {
   const current = workflow.current;
   if (!current) return "";
-  const actionable = current.canonicalStateUnavailable !== true;
-  const awaiting = actionable && current.lifecycleState === "awaiting_approval";
-  const approved = actionable && current.lifecycleState === "approved";
+  if (!engineerWorkflowHasActionableApproval(current)) return "";
+  const awaiting = current.lifecycleState === "awaiting_approval";
+  const approved = current.lifecycleState === "approved";
   if (!awaiting && !approved) return "";
   if (!engineerWorkflowDebugOn(workflow)) return engineerCompactApprovalPanelHtml(workflow);
   const operation = firstOrUnknown(current.requestedOperations);
@@ -1908,6 +1909,17 @@ function markEngineerCanonicalStateUnavailable(error) {
   workflow.lastError = error;
 }
 
+function applyEngineerResumeResponseToWorkflow(workflow, result) {
+  if (!workflow.current || !isPlainObject(result)) return;
+  workflow.current.resumeResponse = result;
+  workflow.current.resumeStatus = result.status || "";
+  workflow.current.lifecycleState = result.workItemLifecycle || result.lifecycleState || workflow.current.lifecycleState;
+  if (engineerWorkflowIsTerminal(workflow.current)) {
+    workflow.current.resumeSubmitted = true;
+  }
+  workflow.actionStatus = engineerResultStatusCopy(result);
+}
+
 async function refreshEngineerSteering(sessionRevision = currentOperatorSessionRevision()) {
   const workflow = engineerCurrentWorkflow();
   const current = workflow.current;
@@ -1954,9 +1966,7 @@ async function runEngineerWorkflowAction(actionName, fn) {
     workflow.lastError = error;
     const responseData = error && error.responseData ? engineerResponsePayload(error.responseData) : null;
     if (responseData && workflow.current) {
-      workflow.current.resumeResponse = responseData;
-      workflow.current.resumeStatus = responseData.status || "";
-      workflow.actionStatus = engineerResultStatusCopy(responseData);
+      applyEngineerResumeResponseToWorkflow(workflow, responseData);
     } else if (actionName === "resume" && workflow.current) {
       workflow.current.resumeSubmitted = true;
       workflow.actionStatus = "Resume result is ambiguous. Do not retry automatically.";
@@ -2031,10 +2041,7 @@ async function performEngineerPendingReadResume(workflow, sessionRevision, optio
     throw error;
   }
   if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
-  workflow.current.resumeResponse = result;
-  workflow.current.resumeStatus = result.status || "";
-  workflow.current.lifecycleState = result.workItemLifecycle || workflow.current.lifecycleState;
-  workflow.actionStatus = engineerResultStatusCopy(result);
+  applyEngineerResumeResponseToWorkflow(workflow, result);
   await refreshEngineerTrace(sessionRevision);
   await refreshEngineerSteering(sessionRevision);
   if (!isCurrentOperatorSessionRevision(sessionRevision)) return;
