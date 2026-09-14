@@ -156,16 +156,6 @@ const idlFactory = ({ IDL }) => {
     isReplicated: IDL.Bool,
   });
 
-  const WebAnalyticsDailyCount = IDL.Record({
-    dayKey: IDL.Text,
-    pagePath: IDL.Text,
-    pageTitle: IDL.Text,
-    locale: IDL.Text,
-    count: IDL.Nat,
-    firstSeenAt: IDL.Int,
-    lastSeenAt: IDL.Int,
-  });
-
   const ContinuityPreviewResponse = IDL.Record({
     queryText: IDL.Text,
     queryIntent: IDL.Text,
@@ -220,12 +210,6 @@ const idlFactory = ({ IDL }) => {
       ["query"]
     ),
 
-    getWebAnalyticsDailyCounts: IDL.Func(
-      [IDL.Nat],
-      [IDL.Vec(WebAnalyticsDailyCount)],
-      ["query"]
-    ),
-
     previewAionProviderRoute: IDL.Func(
       [ProviderRouteOperation],
       [ProviderRoutePreview],
@@ -260,9 +244,6 @@ async function initAuth() {
     identity = authClient.getIdentity();
     await createAuthenticatedActor();
     await refreshOperatorAccess();
-    if (isOperator) {
-      await loadSiteMetrics();
-    }
   }
 
   updateAuthUI();
@@ -637,7 +618,6 @@ window.handleAuth = async function handleAuth() {
         await loadMemories();
         await loadGoldenTests();
         await loadFeedback();
-        await loadSiteMetrics();
         const refresh = { refreshedAt: new Date().toISOString() };
         persistDashboardRefresh(refresh);
         renderDashboardRefresh(refresh);
@@ -850,521 +830,9 @@ window.loadFeedback = async function loadFeedback() {
   }
 };
 
-let latestSiteMetrics = [];
-let latestSiteMetricsLoadedAt = null;
-let latestSiteMetricsError = "";
-let latestSiteMetricsSource = "none";
-const SITE_METRICS_PUBLIC_PAGE_COUNT = 164;
-const SITE_METRICS_BACKEND_ROW_LIMIT = 2000;
-const SITE_METRICS_QUERY_LIMIT = 2000;
-const SITE_METRICS_TECHNICAL_PATHS = new Set([
-  "/robots.txt",
-  "/favicon.ico",
-  "/sitemap.xml",
-  "/manifest.json",
-  "/site.webmanifest",
-  "/browserconfig.xml",
-]);
-const SITE_METRICS_TECHNICAL_PREFIXES = [
-  "/assets/",
-  "/apple-touch-icon",
-];
-
-function normalizeSiteMetricEntry(entry = {}) {
-  return {
-    dayKey: String(entry.dayKey || ""),
-    pagePath: String(entry.pagePath || "/"),
-    pageTitle: String(entry.pageTitle || entry.pagePath || "/"),
-    locale: String(entry.locale || "unknown"),
-    count: String(entry.count || "0"),
-    firstSeenAt: String(entry.firstSeenAt || "0"),
-    lastSeenAt: String(entry.lastSeenAt || "0"),
-  };
-}
-
-function normalizeSiteMetrics(metrics = []) {
-  return Array.isArray(metrics)
-    ? metrics.map(normalizeSiteMetricEntry)
-    : [];
-}
-
-function persistSiteMetricsCache(metrics = latestSiteMetrics, loadedAt = latestSiteMetricsLoadedAt) {
-  try {
-    localStorage.setItem(
-      ADMIN_SITE_METRICS_CACHE_KEY,
-      JSON.stringify({
-        loadedAt,
-        metrics: normalizeSiteMetrics(metrics).slice(0, SITE_METRICS_QUERY_LIMIT),
-      }),
-    );
-  } catch (err) {
-    console.warn("Could not save site metrics cache:", err);
-  }
-}
-
-function clearPersistedSiteMetricsCache() {
-  try {
-    localStorage.removeItem(ADMIN_SITE_METRICS_CACHE_KEY);
-  } catch (err) {
-    console.warn("Could not clear site metrics cache:", err);
-  }
-}
-
-function loadSiteMetricsCache() {
-  try {
-    const raw = localStorage.getItem(ADMIN_SITE_METRICS_CACHE_KEY);
-    const cached = raw ? JSON.parse(raw) : null;
-    if (!cached || !Array.isArray(cached.metrics)) return null;
-    return {
-      loadedAt: cached.loadedAt || null,
-      metrics: normalizeSiteMetrics(cached.metrics),
-    };
-  } catch (err) {
-    console.warn("Could not load site metrics cache:", err);
-    return null;
-  }
-}
-
-function restoreCachedSiteMetrics() {
-  const cached = loadSiteMetricsCache();
-  if (!cached || !cached.metrics.length) {
-    renderSiteMetricsHealth(latestSiteMetrics);
-    return;
-  }
-  latestSiteMetrics = cached.metrics;
-  latestSiteMetricsLoadedAt = cached.loadedAt;
-  latestSiteMetricsError = "";
-  latestSiteMetricsSource = "cache";
-  renderSiteMetrics(latestSiteMetrics);
-  const status = document.getElementById("siteMetricsStatus");
-  if (status && cached.loadedAt) {
-    status.textContent = `Showing cached metrics from ${new Date(cached.loadedAt).toLocaleString()}.`;
-  }
-}
-
-function formatSiteMetricsLoadedAt() {
-  if (latestSiteMetricsError) return "Load failed";
-  if (!latestSiteMetricsLoadedAt) return "Not loaded";
-  const loadedAt = new Date(latestSiteMetricsLoadedAt);
-  if (!Number.isFinite(loadedAt.getTime())) return "Unknown";
-  const ageMinutes = Math.max(0, Math.round((Date.now() - loadedAt.getTime()) / 60000));
-  const source = latestSiteMetricsSource === "cache" ? "Cached" : "Live";
-  if (ageMinutes < 1) return `${source} just now`;
-  if (ageMinutes < 60) return `${source} ${ageMinutes}m ago`;
-  const ageHours = Math.round(ageMinutes / 60);
-  if (ageHours < 48) return `${source} ${ageHours}h ago`;
-  return `${source} ${loadedAt.toLocaleDateString()}`;
-}
-
-function renderSiteMetricsLoadedStatus() {
-  const loadedElement = document.getElementById("siteMetricsLoaded");
-  if (loadedElement) {
-    loadedElement.textContent = formatSiteMetricsLoadedAt();
-  }
-}
-
-function siteMetricDayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
-}
-
-function recentSiteMetricDayKeyList(days = 7) {
-  const keys = [];
-  for (let index = 0; index < days; index += 1) {
-    const date = new Date();
-    date.setDate(date.getDate() - index);
-    keys.push(siteMetricDayKey(date));
-  }
-  return keys;
-}
-
-function recentSiteMetricDayKeys(days = 7) {
-  return new Set(recentSiteMetricDayKeyList(days));
-}
-
-function metricNatToNumber(value) {
-  const number = Number(value || 0);
-  return Number.isFinite(number) ? number : 0;
-}
-
-function safeSiteMetricHref(path = "/") {
-  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
-    ? path
-    : "/";
-}
-
-function isTrackableSiteMetricPath(path = "") {
-  if (!path || SITE_METRICS_TECHNICAL_PATHS.has(path)) return false;
-  return !SITE_METRICS_TECHNICAL_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
-
-function displaySiteMetrics(metrics = []) {
-  return normalizeSiteMetrics(metrics).filter((entry) => isTrackableSiteMetricPath(entry.pagePath));
-}
-
-function technicalSiteMetrics(metrics = []) {
-  return normalizeSiteMetrics(metrics).filter((entry) => !isTrackableSiteMetricPath(entry.pagePath));
-}
-
-function technicalSiteMetricsSummary(metrics = []) {
-  const rows = technicalSiteMetrics(metrics);
-  return {
-    rows: rows.length,
-    uses: rows.reduce((total, entry) => total + metricNatToNumber(entry.count), 0),
-  };
-}
-
-function summarizeSiteMetrics(metrics = []) {
-  const displayMetrics = displaySiteMetrics(metrics);
-  const today = siteMetricDayKey();
-  const weekKeyList = recentSiteMetricDayKeyList(7);
-  const weekKeys = new Set(weekKeyList);
-  const monthKeys = recentSiteMetricDayKeys(30);
-  const weekPages = new Set();
-  let todayViews = 0;
-  let weekViews = 0;
-  let monthViews = 0;
-  let latest = null;
-  const pageTotals = new Map();
-  const dailyTotals = new Map();
-  const monthlyDailyTotals = new Map();
-  const localeTotals = {
-    en: 0,
-    es: 0,
-    other: 0,
-  };
-
-  displayMetrics.forEach((entry) => {
-    const count = metricNatToNumber(entry.count);
-    const pagePath = entry.pagePath || "/";
-    const locale = entry.locale || "unknown";
-    const pageKey = `${pagePath}::${locale}`;
-    if (entry.dayKey === today) {
-      todayViews += count;
-    }
-    if (monthKeys.has(entry.dayKey)) {
-      monthViews += count;
-      const existingMonthDay = monthlyDailyTotals.get(entry.dayKey) || { dayKey: entry.dayKey, count: 0 };
-      existingMonthDay.count += count;
-      monthlyDailyTotals.set(entry.dayKey, existingMonthDay);
-    }
-    if (weekKeys.has(entry.dayKey)) {
-      weekViews += count;
-      const existingDay = dailyTotals.get(entry.dayKey) || { dayKey: entry.dayKey, count: 0, en: 0, es: 0 };
-      existingDay.count += count;
-      if (locale === "en") existingDay.en += count;
-      if (locale === "es") existingDay.es += count;
-      dailyTotals.set(entry.dayKey, existingDay);
-      if (locale === "en" || locale === "es") {
-        localeTotals[locale] += count;
-      } else {
-        localeTotals.other += count;
-      }
-      weekPages.add(pageKey);
-      const existing = pageTotals.get(pageKey) || {
-        pagePath,
-        pageTitle: entry.pageTitle || pagePath,
-        locale,
-        count: 0,
-      };
-      existing.count += count;
-      pageTotals.set(pageKey, existing);
-    }
-    const lastSeenAt = Number(entry.lastSeenAt || 0);
-    if (!latest || lastSeenAt > Number(latest.lastSeenAt || 0)) {
-      latest = entry;
-    }
-  });
-
-  return {
-    todayViews,
-    weekViews,
-    trackedPages: weekPages.size,
-    localeTotals,
-    latest,
-    dailyTotals: weekKeyList.map((dayKey) => dailyTotals.get(dayKey) || { dayKey, count: 0, en: 0, es: 0 }),
-    monthViews,
-    dailyAverage30: Math.round(monthViews / 30),
-    peakDay30: Array.from(monthlyDailyTotals.values())
-      .sort((a, b) => b.count - a.count || b.dayKey.localeCompare(a.dayKey))[0] || null,
-    topPages: Array.from(pageTotals.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8),
-  };
-}
-
-function estimatedSiteMetricWritesPerDay(summary) {
-  return Math.round((summary?.weekViews || 0) / 7);
-}
-
-function siteMetricsHealthStatus(metrics = latestSiteMetrics) {
-  if (latestSiteMetricsError) {
-    return { label: "Load failed", className: "watch", detailId: "siteMetricsPanel" };
-  }
-  if (!latestSiteMetricsLoadedAt) {
-    return { label: "Not loaded", className: "pending", detailId: "siteMetricsPanel" };
-  }
-
-  const loadedAt = new Date(latestSiteMetricsLoadedAt).getTime();
-  const ageHours = Number.isFinite(loadedAt)
-    ? (Date.now() - loadedAt) / (60 * 60 * 1000)
-    : Infinity;
-  if (!Number.isFinite(ageHours) || ageHours > 24) {
-    return { label: "Refresh metrics", className: "stale", detailId: "siteMetricsPanel" };
-  }
-
-  const summary = summarizeSiteMetrics(metrics);
-  if (summary.weekViews === 0) {
-    return { label: "No uses yet", className: "watch", detailId: "siteMetricsPanel" };
-  }
-
-  return {
-    label: `${summary.weekViews.toLocaleString()} uses`,
-    className: "healthy",
-    detailId: "siteMetricsPanel",
-  };
-}
-
-function renderSiteMetricsHealth(metrics = latestSiteMetrics) {
-  const element = document.getElementById("healthSiteMetrics");
-  if (!element) return;
-  const status = siteMetricsHealthStatus(metrics);
-  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}">${escapeHtml(status.label)}</span>`;
-}
-
-function refreshSiteMetricsDashboardSignals() {
-  renderSiteMetricsHealth(latestSiteMetrics);
-  if (typeof renderDashboardActionQueue === "function") {
-    renderDashboardActionQueue(loadCycleSnapshot());
-  }
-  if (typeof renderAdminReviewPacket === "function") {
-    renderAdminReviewPacket();
-  }
-}
-
-function renderSiteMetrics(metrics = latestSiteMetrics) {
-  const displayMetrics = displaySiteMetrics(metrics);
-  const summary = summarizeSiteMetrics(metrics);
-  const todayElement = document.getElementById("siteMetricsToday");
-  const weekElement = document.getElementById("siteMetricsWeek");
-  const monthElement = document.getElementById("siteMetricsMonth");
-  const averageElement = document.getElementById("siteMetricsDailyAverage");
-  const peakDayElement = document.getElementById("siteMetricsPeakDay");
-  const pagesElement = document.getElementById("siteMetricsPages");
-  const englishElement = document.getElementById("siteMetricsEnglish");
-  const spanishElement = document.getElementById("siteMetricsSpanish");
-  const writesElement = document.getElementById("siteMetricsWrites");
-  const coverageElement = document.getElementById("siteMetricsCoverage");
-  const storageElement = document.getElementById("siteMetricsStorage");
-  const filteredElement = document.getElementById("siteMetricsFiltered");
-  const boundaryElement = document.getElementById("siteMetricsBoundary");
-  const latestElement = document.getElementById("siteMetricsLatest");
-  const resultsElement = document.getElementById("siteMetricsResults");
-
-  if (todayElement) todayElement.textContent = summary.todayViews.toLocaleString();
-  if (weekElement) weekElement.textContent = summary.weekViews.toLocaleString();
-  if (monthElement) monthElement.textContent = summary.monthViews.toLocaleString();
-  if (averageElement) averageElement.textContent = summary.dailyAverage30.toLocaleString();
-  if (peakDayElement) {
-    peakDayElement.textContent = summary.peakDay30
-      ? `${summary.peakDay30.count.toLocaleString()} · ${summary.peakDay30.dayKey}`
-      : "No views yet";
-  }
-  if (pagesElement) pagesElement.textContent = summary.trackedPages.toLocaleString();
-  if (englishElement) englishElement.textContent = summary.localeTotals.en.toLocaleString();
-  if (spanishElement) spanishElement.textContent = summary.localeTotals.es.toLocaleString();
-  if (writesElement) writesElement.textContent = `${estimatedSiteMetricWritesPerDay(summary).toLocaleString()} / day`;
-  if (coverageElement) coverageElement.textContent = `${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} pages`;
-  if (storageElement) storageElement.textContent = `${displayMetrics.length.toLocaleString()} shown / ${normalizeSiteMetrics(metrics).length.toLocaleString()} raw`;
-  const filteredSummary = technicalSiteMetricsSummary(metrics);
-  if (filteredElement) filteredElement.textContent = `${filteredSummary.rows.toLocaleString()} rows`;
-  if (boundaryElement) boundaryElement.textContent = "GA supplement";
-  if (latestElement) {
-    latestElement.textContent = summary.latest
-      ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}`
-      : "No views yet";
-  }
-  renderSiteMetricsLoadedStatus();
-  refreshSiteMetricsDashboardSignals();
-
-  if (!resultsElement) return;
-  const filteredNote = filteredSummary.rows
-    ? `<p class="meta">Filtered ${escapeHtml(filteredSummary.rows.toLocaleString())} technical row${filteredSummary.rows === 1 ? "" : "s"} (${escapeHtml(filteredSummary.uses.toLocaleString())} tracked use${filteredSummary.uses === 1 ? "" : "s"}) from crawler, icon, sitemap, or asset requests.</p>`
-    : "";
-  if (!displayMetrics.length) {
-    resultsElement.innerHTML = filteredNote || '<p class="meta">No ICP site metrics have been recorded yet.</p>';
-    return;
-  }
-
-  const dailyRows = summary.dailyTotals.map((day) => `
-    <tr>
-      <td>${escapeHtml(day.dayKey)}</td>
-      <td>${escapeHtml(day.count.toLocaleString())}</td>
-      <td>${escapeHtml(day.en.toLocaleString())}</td>
-      <td>${escapeHtml(day.es.toLocaleString())}</td>
-    </tr>
-  `).join("");
-  const pageRows = summary.topPages.map((page) => `
-    <tr>
-      <td>${escapeHtml(page.pageTitle || page.pagePath)}</td>
-      <td><a href="${escapeHtml(safeSiteMetricHref(page.pagePath))}" target="_blank" rel="noopener noreferrer">${escapeHtml(page.pagePath)}</a></td>
-      <td>${escapeHtml(page.locale)}</td>
-      <td>${escapeHtml(page.count.toLocaleString())}</td>
-    </tr>
-  `).join("");
-  resultsElement.innerHTML = `
-    ${filteredNote}
-    <div class="memory-card">
-      <h3>Daily trend, last 7 days</h3>
-      <table>
-        <thead><tr><th>Day</th><th>Uses</th><th>English</th><th>Spanish</th></tr></thead>
-        <tbody>${dailyRows || '<tr><td colspan="4">No tracked uses in the last 7 days.</td></tr>'}</tbody>
-      </table>
-    </div>
-    <div class="memory-card">
-      <h3>Top pages, last 7 days</h3>
-      <table>
-        <thead><tr><th>Title</th><th>Path</th><th>Locale</th><th>Uses</th></tr></thead>
-        <tbody>${pageRows || '<tr><td colspan="4">No tracked uses in the last 7 days.</td></tr>'}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-window.loadSiteMetrics = async function loadSiteMetrics() {
-  const status = document.getElementById("siteMetricsStatus");
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-  if (status) status.textContent = "Loading site metrics...";
-  try {
-    latestSiteMetrics = normalizeSiteMetrics(await window.adminActor.getWebAnalyticsDailyCounts(BigInt(SITE_METRICS_QUERY_LIMIT)));
-    latestSiteMetricsLoadedAt = new Date().toISOString();
-    latestSiteMetricsError = "";
-    latestSiteMetricsSource = "live";
-    persistSiteMetricsCache(latestSiteMetrics, latestSiteMetricsLoadedAt);
-    renderSiteMetrics(latestSiteMetrics);
-    const summary = summarizeSiteMetrics(latestSiteMetrics);
-    if (status) {
-      status.textContent = `Loaded ${latestSiteMetrics.length.toLocaleString()} daily page counters.`;
-    }
-    recordAdminDashboardActivity("Site metrics refreshed", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
-  } catch (err) {
-    console.error("Failed to load site metrics:", err);
-    latestSiteMetricsError = err.message || String(err);
-    renderSiteMetricsLoadedStatus();
-    refreshSiteMetricsDashboardSignals();
-    if (status) {
-      status.textContent = `Failed to load site metrics. ${err.message || String(err)}`;
-    }
-  }
-};
-
-function buildSiteMetricsSummaryText() {
-  const summary = summarizeSiteMetrics(latestSiteMetrics);
-  const lines = [
-    "Aion Operator Site Metrics",
-    `Generated: ${new Date().toLocaleString()}`,
-    `Today: ${summary.todayViews.toLocaleString()}`,
-    `Last 7 days: ${summary.weekViews.toLocaleString()}`,
-    `Last 30 days: ${summary.monthViews.toLocaleString()}`,
-    `Average/day, 30 days: ${summary.dailyAverage30.toLocaleString()}`,
-    `Peak day, 30 days: ${summary.peakDay30 ? `${summary.peakDay30.count.toLocaleString()} · ${summary.peakDay30.dayKey}` : "None"}`,
-    `Pages, 7 days: ${summary.trackedPages.toLocaleString()}`,
-    `English, 7 days: ${summary.localeTotals.en.toLocaleString()}`,
-    `Spanish, 7 days: ${summary.localeTotals.es.toLocaleString()}`,
-    `Estimated writes/day: ${estimatedSiteMetricWritesPerDay(summary).toLocaleString()}`,
-    `Tracker coverage: ${SITE_METRICS_PUBLIC_PAGE_COUNT.toLocaleString()} public pages`,
-    `Storage rows shown: ${displaySiteMetrics(latestSiteMetrics).length.toLocaleString()} / ${normalizeSiteMetrics(latestSiteMetrics).length.toLocaleString()} raw`,
-    `Filtered technical rows: ${technicalSiteMetricsSummary(latestSiteMetrics).rows.toLocaleString()}`,
-    "Boundary: Approximate ICP supplement; Google Analytics remains source of truth",
-    "Privacy: Stores day, path, title, locale, and count; no visitor IDs, IPs, or user agents",
-    `Latest view: ${summary.latest ? `${summary.latest.pagePath || "/"} · ${summary.latest.dayKey || "unknown"}` : "None"}`,
-    `Loaded: ${formatSiteMetricsLoadedAt()}`,
-    "",
-    "Daily trend, last 7 days",
-  ];
-  summary.dailyTotals.forEach((day) => {
-    lines.push(`${day.dayKey}: ${day.count.toLocaleString()} tracked uses · ${day.en.toLocaleString()} en · ${day.es.toLocaleString()} es`);
-  });
-  if (!summary.dailyTotals.length) {
-    lines.push("No tracked uses recorded in the last 7 days.");
-  }
-  lines.push("");
-  lines.push(
-    "Top pages, last 7 days",
-  );
-  summary.topPages.forEach((page, index) => {
-    lines.push(`${index + 1}. ${page.pageTitle || page.pagePath} · ${page.pagePath} · ${page.locale} · ${page.count.toLocaleString()} tracked uses`);
-  });
-  if (!summary.topPages.length) {
-    lines.push("No tracked uses recorded in the last 7 days.");
-  }
-  return lines.join("\n");
-}
-
-window.copySiteMetricsSummary = async function copySiteMetricsSummary() {
-  const status = document.getElementById("siteMetricsStatus");
-  try {
-    await copyTextToClipboard(buildSiteMetricsSummaryText());
-    const summary = summarizeSiteMetrics(latestSiteMetrics);
-    if (status) status.textContent = "Site metrics summary copied.";
-    recordAdminDashboardActivity("Site metrics copied", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
-  } catch (err) {
-    console.error("Could not copy site metrics:", err);
-    if (status) status.textContent = "Could not copy site metrics.";
-  }
-};
-
 function csvCell(value) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
-
-function buildSiteMetricsCsvText(metrics = latestSiteMetrics) {
-  const lines = [
-    ["dayKey", "pagePath", "pageTitle", "locale", "count", "firstSeenAt", "lastSeenAt"].map(csvCell).join(","),
-  ];
-  displaySiteMetrics(metrics).forEach((entry) => {
-    lines.push([
-      entry.dayKey,
-      entry.pagePath,
-      entry.pageTitle,
-      entry.locale,
-      entry.count,
-      entry.firstSeenAt,
-      entry.lastSeenAt,
-    ].map(csvCell).join(","));
-  });
-  return lines.join("\n");
-}
-
-window.copySiteMetricsCsv = async function copySiteMetricsCsv() {
-  const status = document.getElementById("siteMetricsStatus");
-  try {
-    await copyTextToClipboard(buildSiteMetricsCsvText());
-    const summary = summarizeSiteMetrics(latestSiteMetrics);
-    if (status) status.textContent = "Site metrics CSV copied.";
-    recordAdminDashboardActivity("Site metrics CSV copied", `${summary.weekViews.toLocaleString()} tracked uses in 7 days`);
-  } catch (err) {
-    console.error("Could not copy site metrics CSV:", err);
-    if (status) status.textContent = "Could not copy site metrics CSV.";
-  }
-};
-
-window.clearSiteMetricsCache = function clearSiteMetricsCache() {
-  const status = document.getElementById("siteMetricsStatus");
-  clearPersistedSiteMetricsCache();
-  latestSiteMetrics = [];
-  latestSiteMetricsLoadedAt = null;
-  latestSiteMetricsError = "";
-  latestSiteMetricsSource = "none";
-  renderSiteMetrics(latestSiteMetrics);
-  renderLocalBackupMetric();
-  recordAdminDashboardActivity("Site metrics cache cleared");
-  if (status) {
-    status.textContent = "Site metrics cache cleared. Refresh metrics to load the latest counters.";
-  }
-};
 
 window.exportFeedback = function exportFeedback() {
   const plainFeedback = latestFeedback.map(f => ({
@@ -3232,7 +2700,6 @@ const ADMIN_DASHBOARD_NOTE_DRAFT_KEY = "aion_admin_dashboard_note_draft_v1";
 const ADMIN_DASHBOARD_CHECKLIST_KEY = "aion_admin_dashboard_checklist_v1";
 const ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY = "aion_admin_dashboard_review_evidence_v1";
 const ADMIN_CYCLE_HISTORY_KEY = "aion_admin_cycle_history_v1";
-const ADMIN_SITE_METRICS_CACHE_KEY = "aion_admin_site_metrics_cache_v1";
 const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const ADMIN_CYCLE_LABELS = {
   frontend: "Frontend",
@@ -3823,7 +3290,6 @@ function buildAdminDashboardState() {
     dashboardNoteDraft: loadAdminDashboardNoteDraft(),
     dashboardChecklist: loadAdminDashboardChecklist(),
     reviewEvidence: loadAdminReviewEvidence(),
-    siteMetricsCache: loadSiteMetricsCache(),
     goldenResults: typeof loadSavedGoldenResults === "function" ? loadSavedGoldenResults() : null,
   };
 }
@@ -3859,13 +3325,6 @@ function applyAdminDashboardState(state) {
   }
   if (state.reviewEvidence && typeof state.reviewEvidence === "object") {
     persistAdminReviewEvidence(state.reviewEvidence);
-  }
-  if (state.siteMetricsCache && Array.isArray(state.siteMetricsCache.metrics)) {
-    latestSiteMetrics = normalizeSiteMetrics(state.siteMetricsCache.metrics);
-    latestSiteMetricsLoadedAt = state.siteMetricsCache.loadedAt || new Date().toISOString();
-    latestSiteMetricsError = "";
-    persistSiteMetricsCache(latestSiteMetrics, latestSiteMetricsLoadedAt);
-    renderSiteMetrics(latestSiteMetrics);
   }
   if (state.goldenResults && typeof saveGoldenResults === "function") {
     saveGoldenResults(state.goldenResults);
@@ -5027,11 +4486,6 @@ function dashboardActionQueue(snapshots = loadCycleSnapshot()) {
     }
   }
 
-  const siteMetrics = siteMetricsHealthStatus();
-  if (["pending", "stale"].includes(siteMetrics.className) || siteMetrics.label === "Load failed") {
-    add({ label: `Site metrics: ${siteMetrics.label}`, className: siteMetrics.className, detailId: "siteMetricsPanel", tag: "Reports" });
-  }
-
   const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
   if (evidence.className !== "healthy") {
     add({ label: evidence.label, className: evidence.className, detailId: "adminDashboardHandoff", tag: "Evidence" });
@@ -5122,7 +4576,6 @@ function localBackupStatus() {
     { label: "Note", saved: Boolean(loadAdminDashboardNote() || loadAdminDashboardNoteDraft()) },
     { label: "Activity", saved: Boolean(loadAdminDashboardActivity().length) },
     { label: "Movement", saved: Boolean(loadCycleHistory().length) },
-    { label: "Site metrics", saved: Boolean(loadSiteMetricsCache()?.metrics?.length) },
   ];
   const saved = buckets.filter((bucket) => bucket.saved).length;
   const missing = buckets.filter((bucket) => !bucket.saved).map((bucket) => bucket.label);
@@ -5374,7 +4827,6 @@ function dashboardActionDestination(action) {
   if (action.command === "refresh") return "Refresh dashboard";
   const labels = {
     cycleRunwayPanel: "Reports > Cycles runway",
-    siteMetricsPanel: "Reports > Site metrics",
     goldenTestsPanel: "Validation > Answer quality checks",
     feedbackDashboardPanel: "Memory > Feedback signal",
     memoryHealthDashboardPanel: "Reports > Memory dashboard",
@@ -5408,10 +4860,6 @@ function buildAdminDashboardSummaryText() {
     `Quality: ${dashboardMetricText("adminAttentionQuality")}`,
     `Golden tests: ${dashboardMetricText("healthGoldenTests")}`,
     `Feedback signal: ${dashboardMetricText("healthFeedbackSignal")}`,
-    `Site metrics: ${dashboardMetricText("healthSiteMetrics")}`,
-    `Site 30 days: ${dashboardMetricText("siteMetricsMonth")}`,
-    `Site writes/day: ${dashboardMetricText("siteMetricsWrites")}`,
-    `Site storage: ${dashboardMetricText("siteMetricsStorage")}`,
     `Deploy readiness: ${dashboardMetricText("healthDeployReadiness")}`,
     `Deploy buffer: ${dashboardMetricText("healthDeployBuffer")}`,
     `Pre-deploy check: ${dashboardMetricText("healthPreDeployCheck")}`,
@@ -5484,10 +4932,6 @@ function dashboardPacketItems() {
     { label: "Deploy buffer", value: frontendDeployBufferStatus(snapshots).label },
     { label: "Pre-deploy", value: preDeployCheckStatus(snapshots).label },
     { label: "Quality", value: qualityStatus.label },
-    { label: "Site metrics", value: siteMetricsHealthStatus().label },
-    { label: "Site 30 days", value: dashboardMetricText("siteMetricsMonth") },
-    { label: "Site writes/day", value: dashboardMetricText("siteMetricsWrites") },
-    { label: "Site storage", value: dashboardMetricText("siteMetricsStorage") },
     { label: "Evidence", value: evidence.label },
     { label: "Checklist", value: checklist.label },
     { label: "Local backup", value: localBackupStatus().label },
@@ -5709,10 +5153,6 @@ function buildAdminDeployPacketText() {
     `- Deploy readiness: ${deployReadiness.label}`,
     `- Deploy buffer: ${deployBuffer.label}`,
     `- Quality: ${quality.label}`,
-    `- Site metrics: ${siteMetricsHealthStatus().label}`,
-    `- Site 30 days: ${dashboardMetricText("siteMetricsMonth")}`,
-    `- Site writes/day: ${dashboardMetricText("siteMetricsWrites")}`,
-    `- Site storage: ${dashboardMetricText("siteMetricsStorage")}`,
     `- Review evidence: ${evidence.label}`,
     "",
     "Cycles",
@@ -6194,13 +5634,12 @@ window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
       loadMemories(),
       loadGoldenTests(),
       loadFeedback(),
-      loadSiteMetrics(),
     ]);
     const refresh = { refreshedAt: new Date().toISOString() };
     persistDashboardRefresh(refresh);
     renderDashboardRefresh(refresh);
     renderCycleSnapshot(loadCycleSnapshot());
-    recordAdminDashboardActivity("Dashboard refreshed", "Memory, tests, feedback, and site metrics requested");
+    recordAdminDashboardActivity("Dashboard refreshed", "Memory, tests, and feedback requested");
   } finally {
     if (button) {
       button.disabled = false;

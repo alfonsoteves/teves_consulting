@@ -2282,7 +2282,6 @@
         <div class="metric-card"><div class="metric-label">Data refresh</div><div id="healthDataRefresh" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Golden tests</div><div id="healthGoldenTests" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Feedback signal</div><div id="healthFeedbackSignal" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Site metrics</div><div id="healthSiteMetrics" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Freshness</div><div id="healthFreshness" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Deploy readiness</div><div id="healthDeployReadiness" class="metric-value">Pending</div></div>
         <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
@@ -2618,11 +2617,6 @@
           <button type="button" data-admin-detail-jump="cycleRunwayPanel">Open cycles</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Site metrics</strong>
-          <span>Review lightweight ICP-backed tracked uses by day and page.</span>
-          <button type="button" data-admin-detail-jump="siteMetricsPanel">Open metrics</button>
-        </div>
-        <div class="admin-section-overview-card">
           <strong>Operator report</strong>
           <span>Build the consolidated report for a calm state-of-system review.</span>
           <button type="button" data-admin-detail-jump="operatorInsightReportPanel">Open report</button>
@@ -2715,38 +2709,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <button type="button" onclick="markDashboardReviewed()">Mark dashboard reviewed</button>
         </div>
         <p id="dashboardReviewStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
-      </details>
-
-<details id="siteMetricsPanel" class="admin-section-tool-primary">
-        <summary><strong>Site metrics</strong></summary>
-        <p class="meta">Basic ICP-backed page-use counts by day and page. This is intentionally lightweight and does not replace Google Analytics.</p>
-        <p class="meta">Counts are limited to one tracked use per browser, page, and UTC day when local storage is available. Do Not Track is respected.</p>
-        <div class="dashboard-grid">
-          <div class="metric-card"><div class="metric-label">Today</div><div id="siteMetricsToday" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Last 7 days</div><div id="siteMetricsWeek" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Last 30 days</div><div id="siteMetricsMonth" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Avg/day, 30 days</div><div id="siteMetricsDailyAverage" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Peak day, 30 days</div><div id="siteMetricsPeakDay" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Pages, 7 days</div><div id="siteMetricsPages" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">English, 7 days</div><div id="siteMetricsEnglish" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Spanish, 7 days</div><div id="siteMetricsSpanish" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Est. writes/day</div><div id="siteMetricsWrites" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Tracker coverage</div><div id="siteMetricsCoverage" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Storage rows</div><div id="siteMetricsStorage" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Filtered technical</div><div id="siteMetricsFiltered" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Latest view</div><div id="siteMetricsLatest" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Loaded</div><div id="siteMetricsLoaded" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Boundary</div><div id="siteMetricsBoundary" class="metric-value">GA supplement</div></div>
-          <div class="metric-card"><div class="metric-label">Privacy</div><div id="siteMetricsPrivacy" class="metric-value">No visitor IDs</div></div>
-        </div>
-        <div class="admin-cycle-actions admin-review-actions">
-          <button type="button" onclick="loadSiteMetrics()">Refresh metrics</button>
-          <button type="button" onclick="copySiteMetricsSummary()">Copy metrics</button>
-          <button type="button" onclick="copySiteMetricsCsv()">Copy CSV</button>
-          <button type="button" onclick="clearSiteMetricsCache()">Clear cache</button>
-        </div>
-        <p id="siteMetricsStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
-        <div id="siteMetricsResults"></div>
       </details>
 
     <details id="operatorInsightReportPanel" class="primary-operator-tool admin-section-tool-primary">
