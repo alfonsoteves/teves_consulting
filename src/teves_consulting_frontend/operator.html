@@ -302,6 +302,76 @@
       display: block;
     }
 
+    .operator-workspace-masthead,
+    .operator-workspace-masthead-header {
+      display: contents;
+    }
+
+    .operator-workspace-identity {
+      display: none;
+    }
+
+    body.operator-signed-in .operator-workspace-masthead {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 24px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+    }
+
+    body.operator-signed-in .operator-workspace-masthead-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    body.operator-signed-in .operator-workspace-identity {
+      display: block;
+      min-width: 0;
+    }
+
+    .operator-workspace-kicker {
+      margin: 0;
+      color: var(--blue-soft);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .operator-workspace-title {
+      margin: 3px 0 0;
+      color: var(--ink);
+      font-size: 1.02rem;
+      font-weight: 700;
+    }
+
+    body.operator-signed-in .operator-workspace-status {
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    body.operator-signed-in .operator-workspace-status.verified {
+      border: 0;
+      background: transparent;
+      color: var(--green);
+    }
+
+    body.operator-signed-in .operator-workspace-status.denied {
+      border: 0;
+      background: transparent;
+      color: var(--warn);
+    }
+
     .operator-view-tabs {
       display: flex;
       align-items: center;
@@ -914,6 +984,28 @@
         position: static !important;
         margin: 0 0 22px !important;
         padding: 8px 0 12px !important;
+      }
+
+      body.operator-signed-in .operator-workspace-masthead {
+        gap: 10px;
+        margin: 0 0 22px;
+        padding: 8px 0 12px;
+      }
+
+      body.operator-signed-in .operator-workspace-masthead-header {
+        align-items: center;
+        flex-direction: row;
+        gap: 10px;
+      }
+
+      body.operator-signed-in .operator-workspace-status {
+        margin-left: auto;
+        font-size: 0.82rem;
+        text-align: left;
+      }
+
+      .operator-workspace-title {
+        display: none;
       }
     }
 
@@ -1744,7 +1836,15 @@
   </header>
 
   <main class="operator-content">
-    <div id="operatorAccess" class="status" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
+    <section class="operator-workspace-masthead" aria-label="Operator workspace status">
+      <div class="operator-workspace-masthead-header">
+        <div class="operator-workspace-identity">
+          <p class="operator-workspace-kicker">Aion Operator</p>
+          <p class="operator-workspace-title">Governed interaction with Aion roles and workflows.</p>
+        </div>
+        <div id="operatorAccess" class="status operator-workspace-status" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
+      </div>
+    </section>
 
     <section id="operatorWorkspace" class="workspace">
       <div id="operatorWorkspaceWarning" class="status workspace-warning" role="status" aria-live="polite" hidden></div>
