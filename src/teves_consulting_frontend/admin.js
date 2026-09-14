@@ -303,7 +303,7 @@ function updateAdminVisibility() {
 
   adminContent.style.display = adminReady ? "block" : "none";
   access.style.display = "block";
-  access.className = "admin-access";
+  access.className = "operator-access";
   if (authButton) {
     authButton.removeAttribute("title");
     authButton.removeAttribute("aria-label");

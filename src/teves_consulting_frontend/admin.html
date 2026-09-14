@@ -247,7 +247,7 @@
       border-color: #2c3138;
     }
 
-    .admin-access {
+    .operator-access {
       display: none;
       margin: 16px 0;
       padding: 14px 16px;
@@ -257,12 +257,12 @@
       color: #cbd5e1;
     }
 
-    .admin-access.denied {
+    .operator-access.denied {
       border-color: #b45309;
       color: #fde68a;
     }
 
-    .admin-access.verified {
+    .operator-access.verified {
       border-color: #166534;
       color: #bbf7d0;
     }
@@ -865,7 +865,7 @@
       margin: 0;
     }
 
-    body.admin-signed-out .admin-access {
+    body.admin-signed-out .operator-access {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -884,8 +884,8 @@
       text-align: center;
     }
 
-    body.admin-signed-out .admin-access.denied,
-    body.admin-signed-out .admin-access.verified {
+    body.admin-signed-out .operator-access.denied,
+    body.admin-signed-out .operator-access.verified {
       border: none;
       color: #ffffff;
     }
@@ -2135,7 +2135,7 @@
         white-space: nowrap;
       }
 
-      body.admin-signed-out .admin-access {
+      body.admin-signed-out .operator-access {
         width: calc(100% - 40px);
       }
 
@@ -2157,14 +2157,91 @@
       }
     }
 
+    /* Admin/Operator header parity final override start */
+    body.admin-shell .admin-header h1,
+    .admin-header-link,
+    body.admin-shell #authButton {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid #2f3b49 !important;
+      border-radius: 8px;
+      background: #151b24 !important;
+      color: #ffffff !important;
+      font-size: 0.87rem;
+      font-weight: 500;
+      line-height: 1.2;
+      text-decoration: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 22px rgba(0, 0, 0, 0.18);
+    }
+
+    body.admin-signed-in .admin-header > div {
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      clip: auto !important;
+      white-space: normal !important;
+      border: 0 !important;
+    }
+    /* Admin/Operator header parity final override end */
+
+    /* Header active state and mark parity start */
+    body.admin-shell .admin-header h1 {
+      text-decoration: underline;
+      text-decoration-color: #ffffff;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 5px;
+    }
+
+    body.admin-shell .admin-header h1,
+    .admin-header-link,
+    body.admin-shell #authButton {
+      background: #151b24 !important;
+    }
+    /* Header active state and mark parity end */
+
+    /* Admin signed-out access fallback final override start */
+    body.admin-signed-out .operator-access {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      z-index: 20 !important;
+      display: block !important;
+      width: min(100% - 48px, 460px) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      transform: translate(-50%, -50%) !important;
+      border: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: #d4d4d4 !important;
+      font-size: 0.95rem !important;
+      line-height: 1.6 !important;
+      text-align: center !important;
+    }
+
+    body.admin-signed-out .operator-access:empty::before {
+      content: "Sign in with Internet Identity to continue.";
+    }
+
+    body.admin-signed-in .operator-access {
+      display: none !important;
+    }
+    /* Admin signed-out access fallback final override end */
+
   </style>
-  <link rel="stylesheet" href="/aion-shell.css" />
 </head>
 
 <body class="admin-shell admin-signed-out">
   <!-- Aion Operator landing chrome start -->
   <div class="admin-login-brand" aria-hidden="true">
-    <span class="aion-shell-mark admin-login-mark">
+    <span class="admin-login-mark">
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <circle cx="32" cy="32" r="25"></circle>
         <circle cx="32" cy="32" r="3.5"></circle>
@@ -2178,7 +2255,7 @@
     </span>
   </div>
   <div class="admin-workspace-brand" aria-hidden="true">
-    <span class="aion-shell-mark admin-workspace-mark">
+    <span class="admin-workspace-mark">
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <circle cx="32" cy="32" r="25"></circle>
         <circle cx="32" cy="32" r="3.5"></circle>
@@ -2209,7 +2286,7 @@
     </div>
   </header>
 
-  <div id="operatorAccess" class="admin-access" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
+  <div id="operatorAccess" class="operator-access" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
   <div id="adminContent" style="display:none;">
 
     <!-- Admin evergreen navigation start -->
