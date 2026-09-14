@@ -321,10 +321,8 @@
     }
 
     body.operator-signed-in .operator-workspace-masthead-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
+      display: grid;
+      gap: 4px;
     }
 
     body.operator-signed-in .operator-workspace-identity {
@@ -349,27 +347,27 @@
     }
 
     body.operator-signed-in .operator-workspace-status {
-      flex: 0 0 auto;
       margin: 0;
       padding: 0;
       border: 0;
       border-radius: 0;
       background: transparent;
-      color: #cbd5e1;
+      color: var(--ink);
       font-size: 0.9rem;
-      text-align: right;
+      font-weight: 600;
+      text-align: left;
     }
 
     body.operator-signed-in .operator-workspace-status.verified {
       border: 0;
       background: transparent;
-      color: var(--green);
+      color: var(--ink);
     }
 
     body.operator-signed-in .operator-workspace-status.denied {
       border: 0;
       background: transparent;
-      color: var(--warn);
+      color: var(--ink);
     }
 
     .operator-view-tabs {
@@ -993,13 +991,10 @@
       }
 
       body.operator-signed-in .operator-workspace-masthead-header {
-        align-items: center;
-        flex-direction: row;
         gap: 10px;
       }
 
       body.operator-signed-in .operator-workspace-status {
-        margin-left: auto;
         font-size: 0.82rem;
         text-align: left;
       }
@@ -1825,7 +1820,7 @@
     </div>
   </footer>
   <header class="operator-header">
-    <a class="nav-link secondary" href="https://www.tevesconsulting.com/">Aion</a>
+    <a class="nav-link secondary" href="https://www.tevesconsulting.com/aion.html">Aion</a>
     <div>
       <h1>Operator</h1>
     </div>
