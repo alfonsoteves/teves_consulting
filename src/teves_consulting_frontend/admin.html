@@ -162,16 +162,8 @@
       color: #1d4ed8;
     }
 
-    .candidate-result-card.success {
-      border-left: 4px solid #22c55e;
-    }
-
-    .candidate-result-card.error {
-      border-left: 4px solid #f97316;
-    }
-
     :root {
-      color-scheme: dark;
+      color-scheme: light;
     }
 
     body {
@@ -247,7 +239,7 @@
       border-color: #2c3138;
     }
 
-    .operator-access {
+    .admin-access {
       display: none;
       margin: 16px 0;
       padding: 14px 16px;
@@ -257,12 +249,12 @@
       color: #cbd5e1;
     }
 
-    .operator-access.denied {
+    .admin-access.denied {
       border-color: #b45309;
       color: #fde68a;
     }
 
-    .operator-access.verified {
+    .admin-access.verified {
       border-color: #166534;
       color: #bbf7d0;
     }
@@ -330,19 +322,6 @@
       font-weight: 650;
     }
 
-    .transition-note {
-      border-left: 3px solid #60a5fa;
-      padding-left: 12px;
-    }
-
-    .archived-phase-tool summary::after {
-      content: "Reference only";
-      margin-left: 10px;
-      color: #94a3b8;
-      font-size: 0.78rem;
-      font-weight: 500;
-    }
-
     .operator-workspace {
       display: flex;
       flex-direction: column;
@@ -376,18 +355,6 @@
       color: #94a3b8;
       font-size: 0.78rem;
       font-weight: 500;
-    }
-
-    .legacy-reference-tool summary::after {
-      content: "Legacy diagnostic";
-      margin-left: 10px;
-      color: #94a3b8;
-      font-size: 0.78rem;
-      font-weight: 500;
-    }
-
-    .active-transition-tool {
-      border-color: #365f8d;
     }
 
     /* Admin evergreen shell cleanup start */
@@ -507,7 +474,7 @@
     /* Admin evergreen shell cleanup end */
 
 
-    /* Admin diagnostic declutter start */
+    /* Continuity workspace grouping start */
     #continuityInspector details {
       transition: border-color 160ms ease, background 160ms ease, opacity 160ms ease;
     }
@@ -523,15 +490,6 @@
 
     #continuityInspector .advanced-operator-tool {
       border-color: #2f3d4e;
-    }
-
-    #continuityInspector .archived-phase-tool {
-      border-color: #263241;
-      opacity: 0.88;
-    }
-
-    #continuityInspector .archived-phase-tool[open] {
-      opacity: 1;
     }
 
     #continuityInspector .admin-continuity-group {
@@ -552,12 +510,11 @@
     }
 
     #continuityInspector .admin-continuity-group .primary-operator-tool,
-    #continuityInspector .admin-continuity-group .advanced-operator-tool,
-    #continuityInspector .admin-continuity-group .archived-phase-tool {
+    #continuityInspector .admin-continuity-group .advanced-operator-tool {
       margin-left: 0;
       margin-right: 0;
     }
-    /* Admin diagnostic declutter end */
+    /* Continuity workspace grouping end */
 
 
     /* Aion Admin landing start */
@@ -612,6 +569,7 @@
 
     .admin-login-mark {
       position: relative;
+      box-sizing: content-box;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -647,6 +605,7 @@
 
     .admin-workspace-mark {
       position: relative;
+      box-sizing: content-box;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -792,7 +751,7 @@
       margin: 0;
     }
 
-    body.admin-signed-out .operator-access {
+    body.admin-signed-out .admin-access {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -811,8 +770,8 @@
       text-align: center;
     }
 
-    body.admin-signed-out .operator-access.denied,
-    body.admin-signed-out .operator-access.verified {
+    body.admin-signed-out .admin-access.denied,
+    body.admin-signed-out .admin-access.verified {
       border: none;
       color: #ffffff;
     }
@@ -988,72 +947,9 @@
 
     .admin-dashboard-attention {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin: -6px 0 18px;
-    }
-
-    .admin-dashboard-action-queue {
-      display: grid;
-      gap: 8px;
-      margin: -6px 0 18px;
-      padding: 0;
-      list-style: none;
-    }
-
-    .admin-dashboard-queue-item {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: center;
-      width: 100%;
-      min-height: 44px;
-      padding: 10px 12px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
-      color: #cbd5e1;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
-    }
-
-    .admin-dashboard-queue-item strong {
-      display: block;
-      color: #f8fafc;
-      font-size: 0.88rem;
-      line-height: 1.25;
-    }
-
-    .admin-dashboard-queue-item span {
-      color: #94a3b8;
-      font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .admin-dashboard-queue-item:hover,
-    .admin-dashboard-queue-item:focus-visible {
-      border-color: #60a5fa;
-      background: #151a20;
-    }
-
-    .admin-dashboard-queue-item.is-clear {
-      border-color: rgba(22, 101, 52, 0.55);
-    }
-
-    .admin-dashboard-queue-item.is-watch {
-      border-color: rgba(161, 98, 7, 0.65);
-    }
-
-    .admin-dashboard-queue-item.is-action {
-      border-color: rgba(185, 28, 28, 0.68);
-    }
-
-    .admin-dashboard-queue-item.is-pending {
-      border-color: #334155;
     }
 
     .admin-dashboard-attention-item {
@@ -1137,176 +1033,111 @@
       line-height: 1.3;
     }
 
-    .admin-dashboard-activity {
-      margin-top: 16px;
-      padding: 14px;
+    body.admin-signed-in #aionHealth .metric-provenance {
+      margin-top: 8px;
+      color: #94a3b8;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
+
+    body.admin-signed-in #aionHealth .metric-provenance.is-unavailable,
+    body.admin-signed-in #aionHealth .metric-provenance.is-stale {
+      color: #fca5a5;
+    }
+
+    .admin-memory-controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(130px, 0.45fr));
+      gap: 10px;
+      align-items: end;
+      margin: 12px 0 14px;
+      padding: 12px;
       border: 1px solid #263241;
       border-radius: 8px;
       background: #11161d;
     }
 
-    .admin-dashboard-handoff-panel {
-      margin-top: 16px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
+    .admin-memory-control {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
     }
 
-    .admin-dashboard-baseline-panel {
-      margin-top: 16px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
+    .admin-memory-control label {
+      color: #94a3b8;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
-    .admin-dashboard-cadence-panel {
-      margin-top: 16px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
+    .admin-memory-control input,
+    .admin-memory-control select {
+      width: 100%;
+      min-height: 36px;
+      padding: 7px 9px;
     }
 
-    .admin-dashboard-baseline-panel summary,
-    .admin-dashboard-cadence-panel summary,
-    .admin-dashboard-handoff-panel summary {
+    .admin-memory-clear {
+      align-self: end;
+      min-height: 36px;
+      margin: 0;
+    }
+
+    .admin-memory-list-status {
+      margin: 0 0 10px;
+      color: #94a3b8;
+      font-size: 0.88rem;
+    }
+
+    .admin-memory-card {
+      scroll-margin-top: 110px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .admin-memory-card.is-focused {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.24);
+    }
+
+    .admin-memory-card-header {
       display: flex;
-      align-items: center;
+      align-items: start;
       justify-content: space-between;
       gap: 12px;
-      color: #f8fafc;
-      font-size: 0.95rem;
-      line-height: 1.35;
     }
 
-    .admin-dashboard-panel-summary {
-      color: #94a3b8;
-      font-size: 0.82rem;
-      font-weight: 700;
+    .admin-memory-card-header h3 {
+      margin: 0;
     }
 
-    .admin-dashboard-baseline-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin: 14px;
+    .admin-memory-id {
+      color: #93c5fd;
     }
 
-    .admin-dashboard-cadence-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin: 14px;
-    }
-
-    .admin-dashboard-baseline-item {
-      padding: 12px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #0f141a;
+    .admin-memory-secondary {
       color: #cbd5e1;
-      font-size: 0.9rem;
-      line-height: 1.4;
     }
 
-    .admin-dashboard-cadence-item {
-      display: grid;
+    .admin-memory-delete {
+      border-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .admin-memory-ref-actions {
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
-      padding: 12px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #0f141a;
-      color: #cbd5e1;
-      font-size: 0.9rem;
-      line-height: 1.45;
+      margin: 8px 0;
     }
 
-    .admin-dashboard-baseline-item strong {
-      display: block;
-      color: #f8fafc;
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .admin-dashboard-cadence-item strong {
-      color: #f8fafc;
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .admin-dashboard-cadence-item span {
-      color: #94a3b8;
-    }
-
-    .admin-dashboard-cadence-item button {
-      align-self: end;
-      width: max-content;
-      min-height: 32px;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      background: #111827;
-      color: #e5e7eb;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .admin-dashboard-cadence-item button:hover,
-    .admin-dashboard-cadence-item button:focus {
-      border-color: #60a5fa;
-      color: #f8fafc;
-    }
-
-    .admin-dashboard-baseline-item span {
-      display: block;
-      margin-top: 6px;
-    }
-
-    .admin-dashboard-handoff-panel > .meta {
-      margin: 0 14px 14px;
-    }
-
-    .admin-dashboard-handoff-panel .admin-dashboard-checklist,
-    .admin-dashboard-handoff-panel .admin-dashboard-packet,
-    .admin-dashboard-handoff-panel .admin-dashboard-note,
-    .admin-dashboard-handoff-panel .admin-dashboard-activity {
-      margin: 14px;
-    }
-
-    .admin-dashboard-packet {
-      margin-top: 16px;
-      padding: 14px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
-    }
-
-    .admin-dashboard-packet-list {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin: 12px 0 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .admin-dashboard-packet-list li {
-      padding: 10px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #0f141a;
-      color: #cbd5e1;
-      font-size: 0.86rem;
-      line-height: 1.4;
-    }
-
-    .admin-dashboard-packet-list strong {
-      display: block;
-      margin-bottom: 4px;
-      color: #f8fafc;
-      font-size: 0.76rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+    @media (max-width: 820px) {
+      .admin-memory-controls {
+        grid-template-columns: 1fr;
+      }
     }
 
     .admin-dashboard-note {
@@ -1315,21 +1146,6 @@
       border: 1px solid #263241;
       border-radius: 8px;
       background: #11161d;
-    }
-
-    .admin-dashboard-checklist {
-      margin-top: 16px;
-      padding: 14px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
-    }
-
-    .admin-dashboard-checklist-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 10px;
     }
 
     .admin-dashboard-evidence-checks {
@@ -1355,28 +1171,6 @@
     .admin-dashboard-evidence-checks li.is-detected {
       border-color: rgba(22, 101, 52, 0.55);
       color: #bbf7d0;
-    }
-
-    .admin-dashboard-check-item {
-      display: flex;
-      min-height: 44px;
-      align-items: center;
-      gap: 9px;
-      padding: 10px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #0f141a;
-      color: #cbd5e1;
-      font-size: 0.84rem;
-      font-weight: 700;
-      line-height: 1.3;
-    }
-
-    .admin-dashboard-check-item input {
-      width: 16px;
-      height: 16px;
-      accent-color: #60a5fa;
-      flex: 0 0 auto;
     }
 
     .admin-dashboard-note textarea {
@@ -1417,11 +1211,6 @@
       color: #f8fafc;
     }
 
-    .admin-dashboard-note-status {
-      color: #94a3b8;
-      font-size: 0.84rem;
-    }
-
     .admin-dashboard-activity-header {
       display: flex;
       align-items: center;
@@ -1455,46 +1244,12 @@
       color: #f8fafc;
     }
 
-    .admin-dashboard-activity-list {
-      display: grid;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .admin-dashboard-activity-list li {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 8px;
-      border-top: 1px solid #1f2937;
-      color: #cbd5e1;
-      font-size: 0.88rem;
-      line-height: 1.4;
-    }
-
-    .admin-dashboard-activity-list li:first-child {
-      padding-top: 0;
-      border-top: 0;
-    }
-
-    .admin-dashboard-activity-list time {
-      flex: 0 0 auto;
-      color: #94a3b8;
-      font-size: 0.8rem;
-    }
-
     @media (max-width: 900px) {
       body.admin-signed-in #aionHealth .dashboard-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .admin-dashboard-attention {
-        grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-queue-item {
         grid-template-columns: 1fr;
       }
     }
@@ -1508,14 +1263,6 @@
 
     .admin-cycle-panel summary {
       color: #f8fafc;
-    }
-
-    .admin-cycle-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(240px, 0.45fr);
-      gap: 14px;
-      align-items: start;
-      margin-top: 14px;
     }
 
     .admin-cycle-input {
@@ -1558,38 +1305,6 @@
 
     .admin-cycle-snapshot strong {
       color: #f8fafc;
-    }
-
-    .admin-cycle-history {
-      margin-top: 12px;
-    }
-
-    .admin-cycle-history-list {
-      display: grid;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .admin-cycle-history-list li {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 8px;
-      border-top: 1px solid #263241;
-    }
-
-    .admin-cycle-history-list li:first-child {
-      padding-top: 0;
-      border-top: 0;
-    }
-
-    .admin-cycle-history-list time {
-      flex: 0 0 auto;
-      color: #94a3b8;
-      font-size: 0.78rem;
     }
 
     .admin-cycle-runway-label {
@@ -1702,46 +1417,9 @@
       font-size: 0.9rem;
     }
 
-    .admin-dashboard-detail-panel {
-      margin-top: 16px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
-    }
-
-    .admin-dashboard-detail-panel summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      color: #f8fafc;
-      font-size: 0.95rem;
-      line-height: 1.35;
-    }
-
-    .admin-dashboard-detail-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin: 14px;
-    }
-
     @media (max-width: 780px) {
-      .admin-cycle-grid {
-        grid-template-columns: 1fr;
-      }
-
       .admin-cycle-snapshots {
         grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-detail-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-detail-panel summary {
-        align-items: flex-start;
-        flex-direction: column;
       }
     }
     /* Admin cycles visibility end */
@@ -1796,40 +1474,6 @@
       color: #f8fafc;
     }
 
-    .admin-section-link-list {
-      display: grid;
-      gap: 12px;
-      margin: 18px 0;
-    }
-
-    .admin-section-link-card {
-      display: grid;
-      gap: 6px;
-      padding: 14px;
-      border: 1px solid #263241;
-      border-radius: 8px;
-      background: #11161d;
-      color: #cbd5e1;
-      text-decoration: none;
-    }
-
-    .admin-section-link-card:hover,
-    .admin-section-link-card:focus {
-      border-color: #60a5fa;
-      color: #f8fafc;
-    }
-
-    .admin-section-link-card strong {
-      color: #f8fafc;
-      font-size: 0.9rem;
-    }
-
-    .admin-section-link-card span {
-      color: #94a3b8;
-      font-size: 0.9rem;
-      line-height: 1.45;
-    }
-
     .admin-section-tool-primary {
       border-color: #4b6f9f;
       background: #151d28;
@@ -1856,19 +1500,9 @@
       color: #fff7ed;
     }
 
-    .admin-section-tool-archived {
-      border-color: #263241;
-      opacity: 0.88;
-    }
-
-    .admin-section-tool-archived[open] {
-      opacity: 1;
-    }
-
     #memoryAndFeedback > details,
     #continuityInspector > details,
-    #memoryHealth > details,
-    #operatorInsights > details,
+    #adminOperations > details,
     #providers > details,
     #systemValidation > details {
       margin: 14px 0;
@@ -1876,8 +1510,7 @@
 
     #memoryAndFeedback > details > summary,
     #continuityInspector > details > summary,
-    #memoryHealth > details > summary,
-    #operatorInsights > details > summary,
+    #adminOperations > details > summary,
     #providers > details > summary,
     #systemValidation > details > summary {
       color: #f8fafc;
@@ -1887,8 +1520,7 @@
 
     #memoryAndFeedback > details > p,
     #continuityInspector > details > p,
-    #memoryHealth > details > p,
-    #operatorInsights > details > p,
+    #adminOperations > details > p,
     #providers > details > p,
     #systemValidation > details > p {
       color: #94a3b8;
@@ -1916,22 +1548,12 @@
         min-height: 42px;
       }
 
-      .admin-section-link-card {
-        padding: 12px;
-      }
     }
     /* Admin section overviews end */
 
     @media (max-width: 640px) {
       .admin-dashboard-summary {
         grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-baseline-panel summary,
-      .admin-dashboard-cadence-panel summary,
-      .admin-dashboard-handoff-panel summary {
-        align-items: flex-start;
-        flex-direction: column;
       }
 
       .admin-dashboard-pill {
@@ -1952,37 +1574,13 @@
       }
 
       .admin-dashboard-activity-header,
-      .admin-dashboard-checklist-grid,
-      .admin-dashboard-note-actions,
-      .admin-dashboard-activity-list li {
+      .admin-dashboard-note-actions {
         align-items: start;
         flex-direction: column;
       }
 
-      .admin-dashboard-checklist-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-      }
-
       .admin-dashboard-evidence-checks {
         grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-packet-list {
-        grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-baseline-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-cadence-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .admin-dashboard-cadence-item button {
-        width: 100%;
-        min-height: 42px;
       }
 
       body.admin-signed-in #aionHealth .dashboard-grid {
@@ -2062,7 +1660,7 @@
         white-space: nowrap;
       }
 
-      body.admin-signed-out .operator-access {
+      body.admin-signed-out .admin-access {
         width: calc(100% - 40px);
       }
 
@@ -2134,7 +1732,7 @@
     /* Header active state and mark parity end */
 
     /* Admin signed-out access fallback final override start */
-    body.admin-signed-out .operator-access {
+    body.admin-signed-out .admin-access {
       position: fixed !important;
       top: 50% !important;
       left: 50% !important;
@@ -2153,19 +1751,239 @@
       text-align: center !important;
     }
 
-    body.admin-signed-out .operator-access:empty::before {
+    body.admin-signed-out .admin-access:empty::before {
       content: "Sign in with Internet Identity to continue.";
     }
 
-    body.admin-signed-in .operator-access {
+    body.admin-signed-in .admin-access {
       display: none !important;
     }
     /* Admin signed-out access fallback final override end */
+
+    /* Aion shared theme parity start */
+    .theme-toggle {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      min-height: 30px;
+      margin: 0;
+      padding: 0;
+      border: none !important;
+      border-radius: 0;
+      background: transparent !important;
+      color: #1f2937 !important;
+      box-shadow: none !important;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    body:not(.dark-mode).admin-shell {
+      color-scheme: light;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode).admin-signed-out.admin-shell {
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode).admin-signed-in.admin-shell {
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) h1,
+    body:not(.dark-mode) h2,
+    body:not(.dark-mode) h3,
+    body:not(.dark-mode) strong,
+    body:not(.dark-mode) summary {
+      color: #0f172a;
+    }
+
+    body:not(.dark-mode) .section-note,
+    body:not(.dark-mode) .meta,
+    body:not(.dark-mode) .metric-label,
+    body:not(.dark-mode) .admin-workspace-title,
+    body:not(.dark-mode) .admin-continuity-group-note,
+    body:not(.dark-mode) .admin-memory-list-status {
+      color: #64748b;
+    }
+
+    body:not(.dark-mode) .admin-login-mark,
+    body:not(.dark-mode) .admin-workspace-mark {
+      border-color: #93c5fd;
+      background: rgba(239, 246, 255, 0.8);
+      color: #1d4ed8;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+    }
+
+    body:not(.dark-mode) details,
+    body:not(.dark-mode) details[open],
+    body:not(.dark-mode) .memory-card,
+    body:not(.dark-mode) .metric-card,
+    body:not(.dark-mode) .admin-dashboard-summary,
+    body:not(.dark-mode) .admin-dashboard-note,
+    body:not(.dark-mode) .admin-memory-controls,
+    body:not(.dark-mode) .admin-cycle-snapshot,
+    body:not(.dark-mode) .admin-section-overview-card {
+      border-color: #e5e7eb;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) .metric-card,
+    body:not(.dark-mode) .admin-cycle-snapshot,
+    body:not(.dark-mode) .admin-section-overview-card {
+      background: #f8fbff;
+    }
+
+    body:not(.dark-mode) .metric-value,
+    body:not(.dark-mode) .admin-dashboard-headline {
+      color: #0f172a;
+    }
+
+    body:not(.dark-mode) input,
+    body:not(.dark-mode) textarea,
+    body:not(.dark-mode) select {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) button,
+    body:not(.dark-mode) .admin-header-link {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) button:hover,
+    body:not(.dark-mode) button:focus-visible,
+    body:not(.dark-mode) .admin-header-link:hover,
+    body:not(.dark-mode) .admin-header-link:focus-visible {
+      border-color: #93c5fd;
+      background: #f8fbff;
+      color: #0f172a;
+    }
+
+    body:not(.dark-mode) .admin-dashboard-attention-item.is-clear {
+      border-color: #bbf7d0;
+      background: #ecfdf5;
+    }
+
+    body:not(.dark-mode) .admin-dashboard-attention-item.is-watch,
+    body:not(.dark-mode) .admin-dashboard-attention-item.is-pending {
+      border-color: #fed7aa;
+      background: #fff7ed;
+    }
+
+    body:not(.dark-mode) .admin-dashboard-attention-item.is-action,
+    body:not(.dark-mode) .admin-danger-button,
+    body:not(.dark-mode) .admin-memory-delete {
+      border-color: #b91c1c;
+      background: #7f1d1d;
+      color: #fee2e2;
+    }
+
+    body:not(.dark-mode) .admin-danger-button:hover,
+    body:not(.dark-mode) .admin-danger-button:focus,
+    body:not(.dark-mode) .admin-memory-delete:hover,
+    body:not(.dark-mode) .admin-memory-delete:focus {
+      border-color: #fca5a5;
+      background: #991b1b;
+      color: #fff7ed;
+    }
+
+    body:not(.dark-mode) .admin-header-link,
+    body:not(.dark-mode).admin-shell #authButton {
+      border: none !important;
+      background: transparent !important;
+      color: #1f2937 !important;
+      box-shadow: none !important;
+      padding: 0;
+    }
+
+    body:not(.dark-mode) .admin-header-link:hover,
+    body:not(.dark-mode) .admin-header-link:focus-visible,
+    body:not(.dark-mode).admin-shell #authButton:hover,
+    body:not(.dark-mode).admin-shell #authButton:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    body:not(.dark-mode).admin-signed-out .admin-login-brand,
+    body:not(.dark-mode).admin-signed-in .admin-workspace-brand {
+      color: #1d4ed8;
+    }
+
+    body:not(.dark-mode).admin-signed-out .admin-login-footer,
+    body:not(.dark-mode).admin-signed-out .admin-login-company,
+    body:not(.dark-mode).admin-signed-out .admin-login-about {
+      color: #64748b;
+    }
+
+    body:not(.dark-mode).admin-signed-out .admin-access {
+      color: #64748b;
+    }
+
+    body:not(.dark-mode).admin-signed-in .admin-header {
+      border-bottom-color: #e5e7eb;
+      background: #ffffff;
+    }
+
+    body:not(.dark-mode).admin-signed-in .admin-workspace-nav {
+      border-bottom-color: #e5e7eb;
+      background: #ffffff;
+    }
+
+    body:not(.dark-mode) .admin-workspace-kicker,
+    body:not(.dark-mode) .admin-dashboard-kicker {
+      color: #1d4ed8;
+    }
+
+    body.dark-mode {
+      color-scheme: dark;
+    }
+
+    body.dark-mode .admin-header-link,
+    body.dark-mode .admin-header h1,
+    body.dark-mode #authButton {
+      display: none !important;
+    }
+
+    body.dark-mode .admin-login-brand,
+    body.dark-mode .admin-workspace-brand {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.dark-mode .admin-login-footer {
+      display: none !important;
+    }
+
+    body.dark-mode .theme-toggle {
+      display: inline-flex !important;
+      color: #f9fafb !important;
+    }
+    /* Aion shared theme parity end */
 
   </style>
 </head>
 
 <body class="admin-shell admin-signed-out">
+  <script>
+    try {
+      if (localStorage.getItem("aion-theme") === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    } catch (_) {}
+  </script>
   <!-- Aion Admin landing chrome start -->
   <div class="admin-login-brand" aria-hidden="true">
     <span class="admin-login-mark">
@@ -2210,10 +2028,11 @@
     <div class="admin-header-actions">
       <a class="admin-header-link" href="/operator.html">Operator</a>
       <button id="authButton" onclick="handleAuth()">Sign In</button>
+      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" aria-pressed="false">☾</button>
     </div>
   </header>
 
-  <div id="operatorAccess" class="operator-access" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
+  <div id="operatorAccess" class="admin-access" role="status" aria-live="polite">Sign in with Internet Identity to continue.</div>
   <div id="adminContent" style="display:none;">
 
     <!-- Admin evergreen navigation start -->
@@ -2228,17 +2047,16 @@
         <button type="button" class="admin-view-tab is-active" data-admin-view-target="overview" role="tab" aria-selected="true">Overview</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="records" role="tab" aria-selected="false">Memory</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="continuity" role="tab" aria-selected="false">Continuity</button>
-        <button type="button" class="admin-view-tab" data-admin-view-target="intelligence" role="tab" aria-selected="false">Reports</button>
+        <button type="button" class="admin-view-tab" data-admin-view-target="operations" role="tab" aria-selected="false">Operations</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="providers" role="tab" aria-selected="false">Providers</button>
         <button type="button" class="admin-view-tab" data-admin-view-target="validation" role="tab" aria-selected="false">Validation</button>
-        <button type="button" class="admin-view-tab" data-admin-view-target="links" role="tab" aria-selected="false">Links</button>
       </div>
     </nav>
     <!-- Admin evergreen navigation end -->
 
     <section id="aionHealth" class="admin-section" data-admin-view="overview">
       <h2>Aion Dashboard</h2>
-      <p class="section-note">Start here: check attention, open the recommended action, and keep decision evidence ready before changes.</p>
+      <p class="section-note">Start here: see what needs attention, refresh live data, and open the one next operational action when needed.</p>
 
       <div class="admin-dashboard-summary">
         <div>
@@ -2250,189 +2068,28 @@
           <button type="button" id="adminDashboardActionButton" class="admin-dashboard-action" onclick="openAdminRecommendedAction()">Open recommended action</button>
           <button type="button" id="adminDashboardRefreshButton" class="admin-dashboard-refresh" onclick="refreshAdminDashboardData()">Refresh dashboard</button>
           <button type="button" id="adminDashboardCopyButton" class="admin-dashboard-copy" onclick="copyAdminDashboardSummary()">Copy summary</button>
-          <button type="button" id="adminDashboardCopyActionsButton" class="admin-dashboard-copy" onclick="copyAdminDashboardActions()">Copy recommended actions</button>
         </div>
       </div>
       <div id="adminDashboardAttention" class="admin-dashboard-attention" aria-label="Dashboard attention">
-        <button type="button" id="adminAttentionSnapshots" class="admin-dashboard-attention-item is-pending" data-admin-detail-jump="cycleRunwayPanel">
-          <strong>Snapshots</strong>
-          <span>Paste status</span>
+        <button type="button" id="adminAttentionData" class="admin-dashboard-attention-item is-pending" onclick="refreshAdminDashboardData()">
+          <strong>Data</strong>
+          <span>Refresh needed</span>
         </button>
-        <button type="button" id="adminAttentionDeploy" class="admin-dashboard-attention-item is-pending" data-admin-detail-jump="cycleRunwayPanel">
-          <strong>Deploy</strong>
-          <span>Check frontend</span>
-        </button>
-        <button type="button" id="adminAttentionReview" class="admin-dashboard-attention-item is-pending" data-admin-detail-jump="cycleRunwayPanel">
-          <strong>Review</strong>
-          <span>Not reviewed</span>
+        <button type="button" id="adminAttentionOperations" class="admin-dashboard-attention-item is-pending" data-admin-detail-jump="cycleRunwayPanel">
+          <strong>Operations</strong>
+          <span>Update before deploy</span>
         </button>
         <button type="button" id="adminAttentionQuality" class="admin-dashboard-attention-item is-pending" data-admin-detail-jump="goldenTestsPanel">
           <strong>Quality</strong>
           <span>Run tests</span>
         </button>
       </div>
-      <ul id="adminDashboardActionQueue" class="admin-dashboard-action-queue" aria-label="Operator action queue">
-        <li><button type="button" class="admin-dashboard-queue-item is-pending" data-admin-detail-jump="cycleRunwayPanel"><strong>Paste snapshots</strong><span>Next</span></button></li>
-      </ul>
       <div class="dashboard-grid">
-        <div class="metric-card"><div class="metric-label">Operator access</div><div id="healthOperatorStatus" class="metric-value">Checking</div></div>
-        <div class="metric-card"><div class="metric-label">Admin session</div><div id="healthSessionStatus" class="metric-value">Checking</div></div>
         <div class="metric-card"><div class="metric-label">Recommended action</div><div id="healthCycleAction" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Operator readiness</div><div id="healthOperatorReadiness" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Data refresh</div><div id="healthDataRefresh" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Golden tests</div><div id="healthGoldenTests" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Feedback signal</div><div id="healthFeedbackSignal" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Freshness</div><div id="healthFreshness" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Deploy readiness</div><div id="healthDeployReadiness" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Cycle status</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
-        <div class="metric-card"><div class="metric-label">Memories</div><div id="healthMemoryCount" class="metric-value">Loading</div></div>
-        <div class="metric-card"><div class="metric-label">Feedback</div><div id="healthFeedbackCount" class="metric-value">Loading</div></div>
+        <div class="metric-card"><div class="metric-label">Quality</div><div id="healthGoldenTests" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Data freshness</div><div id="healthDataRefresh" class="metric-value">Pending</div></div>
+        <div class="metric-card"><div class="metric-label">Operations</div><div id="healthCycleRunway" class="metric-value">Pending</div></div>
       </div>
-
-      <!-- Admin dashboard details start -->
-      <details id="adminDashboardDetails" class="admin-dashboard-detail-panel">
-        <summary><strong>Decision evidence</strong><span id="adminDashboardDetailsSummary" class="admin-dashboard-panel-summary">Readiness, blockers, evidence</span></summary>
-        <div class="admin-dashboard-detail-grid" aria-label="Decision evidence">
-          <div class="metric-card"><div class="metric-label">Frontend cycles</div><div id="healthFrontendCycles" class="metric-value">Add snapshot</div></div>
-          <div class="metric-card"><div class="metric-label">Backend cycles</div><div id="healthBackendCycles" class="metric-value">Add snapshot</div></div>
-          <div class="metric-card"><div class="metric-label">Wallet cycles</div><div id="healthWalletCycles" class="metric-value">Add balance</div></div>
-          <div class="metric-card"><div class="metric-label">Canister state</div><div id="healthCanisterState" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Top-up plan</div><div id="healthTopUpPlan" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Cycle movement</div><div id="healthCycleMovement" class="metric-value">Collecting</div></div>
-          <div class="metric-card"><div class="metric-label">Deploy buffer</div><div id="healthDeployBuffer" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Pre-deploy check</div><div id="healthPreDeployCheck" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Snapshot age</div><div id="healthCycleSnapshotAge" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Last reviewed</div><div id="healthDashboardReviewed" class="metric-value">Not reviewed</div></div>
-          <div class="metric-card"><div class="metric-label">Review evidence</div><div id="healthReviewEvidence" class="metric-value">Not saved</div></div>
-          <div class="metric-card"><div class="metric-label">Handoff readiness</div><div id="healthHandoffReadiness" class="metric-value">Checklist pending</div></div>
-          <div class="metric-card"><div class="metric-label">Readiness blockers</div><div id="healthReadinessBlockers" class="metric-value">Pending</div></div>
-          <div class="metric-card"><div class="metric-label">Local backup</div><div id="healthLocalBackup" class="metric-value">Pending</div></div>
-        </div>
-      </details>
-      <!-- Admin dashboard details end -->
-
-      <!-- Admin dashboard cadence start -->
-      <details id="adminDashboardCadence" class="admin-dashboard-cadence-panel">
-        <summary><strong>Operator cadence</strong><span class="admin-dashboard-panel-summary">Daily, deploy, weekly</span></summary>
-        <div class="admin-dashboard-cadence-grid" aria-label="Operator cadence">
-          <div class="admin-dashboard-cadence-item">
-            <strong>Daily review</strong>
-            <span>Refresh dashboard data, check quality, and save a short handoff note.</span>
-            <button type="button" onclick="startAdminDashboardCadenceReview('daily')">Start daily note</button>
-          </div>
-          <div class="admin-dashboard-cadence-item">
-            <strong>Before deploy</strong>
-            <span>Refresh cycles, verify frontend runway, and copy checks before production work.</span>
-            <button type="button" onclick="startAdminDashboardCadenceReview('deploy')">Start deploy note</button>
-          </div>
-          <div class="admin-dashboard-cadence-item">
-            <strong>Weekly maintenance</strong>
-            <span>Review memories, feedback, golden tests, and provider status for drift.</span>
-            <button type="button" onclick="startAdminDashboardCadenceReview('weekly')">Start weekly note</button>
-          </div>
-        </div>
-      </details>
-      <!-- Admin dashboard cadence end -->
-
-      <!-- Admin dashboard handoff start -->
-      <details id="adminDashboardHandoff" class="admin-dashboard-handoff-panel">
-        <summary><strong>Operator handoff</strong><span id="adminDashboardHandoffSummary" class="admin-dashboard-panel-summary">Checklist pending</span></summary>
-        <p class="meta">Use this area when preparing a handoff or deploy decision: save evidence, finish the checklist, and copy the review packet.</p>
-      <!-- Admin dashboard review evidence start -->
-      <div id="adminDashboardReviewEvidence" class="admin-dashboard-note" aria-label="Review evidence">
-        <div class="admin-dashboard-activity-header">
-          <p class="admin-dashboard-activity-title">Review evidence</p>
-          <div class="admin-dashboard-note-actions">
-            <button type="button" class="admin-dashboard-clear" onclick="pasteAdminReviewEvidenceFromClipboard()">Paste clipboard and save</button>
-            <button type="button" class="admin-dashboard-clear" onclick="saveAdminReviewEvidence()">Save evidence</button>
-            <button type="button" class="admin-dashboard-clear" onclick="clearAdminReviewEvidence()">Clear</button>
-          </div>
-        </div>
-        <textarea id="adminDashboardReviewEvidenceInput" spellcheck="false" placeholder="Paste validation-check output after local validation completes."></textarea>
-        <ul id="adminDashboardReviewEvidenceChecks" class="admin-dashboard-evidence-checks" aria-live="polite">
-          <li>Diff check</li>
-          <li>Assets prepared</li>
-          <li>JavaScript checked</li>
-          <li>Scripts compiled</li>
-          <li>Bundle repeatable</li>
-          <li>Tests passed</li>
-        </ul>
-        <p id="adminDashboardReviewEvidenceStatus" class="admin-cycle-status" role="status" aria-live="polite">Not saved</p>
-      </div>
-      <!-- Admin dashboard review evidence end -->
-
-      <!-- Admin dashboard checklist start -->
-      <div id="adminDashboardChecklist" class="admin-dashboard-checklist" aria-label="Operator checklist">
-        <div class="admin-dashboard-activity-header">
-          <p class="admin-dashboard-activity-title">Operator checklist</p>
-          <div class="admin-dashboard-note-actions">
-            <button type="button" class="admin-dashboard-clear" onclick="saveAdminDashboardChecklist()">Save checklist</button>
-            <button type="button" class="admin-dashboard-clear" onclick="clearAdminDashboardChecklist()">Clear</button>
-          </div>
-        </div>
-        <div class="admin-dashboard-checklist-grid">
-          <label class="admin-dashboard-check-item"><input type="checkbox" id="adminChecklistSnapshots">Snapshots reviewed</label>
-          <label class="admin-dashboard-check-item"><input type="checkbox" id="adminChecklistWallet">Wallet checked</label>
-          <label class="admin-dashboard-check-item"><input type="checkbox" id="adminChecklistQuality">Quality reviewed</label>
-          <label class="admin-dashboard-check-item"><input type="checkbox" id="adminChecklistEvidence">Evidence saved</label>
-          <label class="admin-dashboard-check-item"><input type="checkbox" id="adminChecklistNote">Handoff note ready</label>
-        </div>
-        <p id="adminDashboardChecklistStatus" class="admin-cycle-status" role="status" aria-live="polite">Not saved</p>
-      </div>
-      <!-- Admin dashboard checklist end -->
-
-      <!-- Admin dashboard note start -->
-      <div id="adminDashboardNote" class="admin-dashboard-note" aria-label="Operator handoff note">
-        <div class="admin-dashboard-activity-header">
-          <p class="admin-dashboard-activity-title">Operator note</p>
-        </div>
-        <textarea id="adminDashboardNoteInput" spellcheck="true" placeholder="Add a short handoff note for the next operator review."></textarea>
-        <div class="admin-dashboard-note-actions">
-          <button type="button" onclick="fillAdminDashboardNoteTemplate('daily')">Use daily note</button>
-          <button type="button" onclick="fillAdminDashboardNoteTemplate('deploy')">Use deploy note</button>
-          <button type="button" onclick="fillAdminDashboardNoteTemplate('weekly')">Use weekly note</button>
-          <button type="button" onclick="saveAdminDashboardNote()">Save note</button>
-          <button type="button" onclick="clearAdminDashboardNote()">Clear note</button>
-          <span id="adminDashboardNoteStatus" class="admin-dashboard-note-status">Not saved</span>
-        </div>
-      </div>
-      <!-- Admin dashboard note end -->
-
-      <!-- Admin dashboard review packet start -->
-      <div id="adminDashboardReviewPacket" class="admin-dashboard-packet" aria-label="Review packet">
-        <div class="admin-dashboard-activity-header">
-          <p class="admin-dashboard-activity-title">Review packet</p>
-          <div class="admin-dashboard-note-actions">
-            <button type="button" id="adminDashboardCopyPacketButton" class="admin-dashboard-clear" onclick="copyAdminReviewPacket()">Copy review packet</button>
-            <button type="button" class="admin-dashboard-clear" onclick="markDashboardReviewed()">Mark reviewed</button>
-          </div>
-        </div>
-        <p class="meta">Copy this packet for Owner review. It summarizes next action, readiness, evidence, blockers, and local notes without executing anything.</p>
-        <p id="adminDashboardReviewPacketStatus" class="admin-cycle-status" role="status" aria-live="polite">Pending dashboard state</p>
-        <ul id="adminDashboardReviewPacketList" class="admin-dashboard-packet-list" aria-live="polite">
-          <li><strong>Next action</strong><span>Pending</span></li>
-        </ul>
-      </div>
-      <!-- Admin dashboard review packet end -->
-
-      <!-- Admin dashboard activity start -->
-      <div id="adminDashboardActivity" class="admin-dashboard-activity" aria-label="Recent dashboard activity">
-        <div class="admin-dashboard-activity-header">
-          <p class="admin-dashboard-activity-title">Recent activity</p>
-          <div class="admin-dashboard-note-actions">
-            <button type="button" id="adminDashboardCopyReviewCommandsButton" class="admin-dashboard-clear" onclick="copyAdminReviewCommands()">Copy validation checks</button>
-            <button type="button" id="adminDashboardCopyStateButton" class="admin-dashboard-clear" onclick="copyAdminDashboardState()">Copy dashboard state</button>
-            <button type="button" id="adminDashboardRestoreStateButton" class="admin-dashboard-clear" onclick="restoreAdminDashboardState()">Restore dashboard state</button>
-            <button type="button" id="adminDashboardClearActivityButton" class="admin-dashboard-clear" onclick="clearAdminDashboardActivity()">Clear</button>
-          </div>
-        </div>
-        <ul id="adminDashboardActivityList" class="admin-dashboard-activity-list" aria-live="polite">
-          <li><span>No recent activity yet.</span><time>Pending</time></li>
-        </ul>
-      </div>
-      <!-- Admin dashboard activity end -->
-      </details>
-      <!-- Admin dashboard handoff end -->
     </section>
 
     <section id="memoryAndFeedback" class="admin-section" data-admin-view="records">
@@ -2455,6 +2112,16 @@
           <span>Inspect saved feedback and export it when doing quality review.</span>
           <button type="button" data-admin-detail-jump="feedbackDashboardPanel">Open feedback</button>
         </div>
+        <div class="admin-section-overview-card">
+          <strong>Memory dashboard</strong>
+          <span>Build the combined memory health, consolidation, and decision-evolution view.</span>
+          <button type="button" data-admin-detail-jump="memoryHealthDashboardPanel">Open dashboard</button>
+        </div>
+        <div class="admin-section-overview-card">
+          <strong>Maintenance plan</strong>
+          <span>Generate the next action plan without changing memories.</span>
+          <button type="button" data-admin-detail-jump="memoryMaintenancePlanPanel">Open plan</button>
+        </div>
       </div>
 
 <details id="memoryOverviewPanel" class="admin-section-tool-primary">
@@ -2473,6 +2140,38 @@
       <summary><strong>Saved memories</strong></summary>
 
       <button onclick="loadMemories()">Refresh saved memories</button>
+      <div class="admin-memory-controls" aria-label="Saved memory controls">
+        <div class="admin-memory-control">
+          <label for="memorySearchInput">Search</label>
+          <input id="memorySearchInput" type="search" placeholder="ID, title, summary, tag, decision..." />
+        </div>
+        <div class="admin-memory-control">
+          <label for="memoryTypeFilter">Type</label>
+          <select id="memoryTypeFilter"><option value="all">All types</option></select>
+        </div>
+        <div class="admin-memory-control">
+          <label for="memoryStatusFilter">Status</label>
+          <select id="memoryStatusFilter"><option value="all">All statuses</option></select>
+        </div>
+        <div class="admin-memory-control">
+          <label for="memoryMilestoneFilter">Milestone</label>
+          <select id="memoryMilestoneFilter">
+            <option value="all">All</option>
+            <option value="milestone">Milestones</option>
+            <option value="regular">Non-milestones</option>
+          </select>
+        </div>
+        <div class="admin-memory-control">
+          <label for="memorySortSelect">Sort</label>
+          <select id="memorySortSelect">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="importance">Importance high to low</option>
+          </select>
+        </div>
+        <button type="button" id="memoryClearFiltersButton" class="admin-memory-clear" onclick="clearMemoryFilters()">Clear filters</button>
+      </div>
+      <p id="memoryListStatus" class="admin-memory-list-status" role="status" aria-live="polite">Load memories to search and filter.</p>
 
       <div id="memoryList"></div>
     </details>
@@ -2488,6 +2187,25 @@
       <button onclick="exportFeedback()">Export Feedback JSON</button>
 
       <div id="feedbackList"></div>
+    </details>
+
+    <details id="memoryHealthDashboardPanel" class="primary-operator-tool admin-section-tool-primary">
+      <summary><strong>Memory Health Dashboard</strong></summary>
+
+      <p>Review health, consolidation, and decision-evolution status in one Admin view.</p>
+
+      <button onclick="runMemoryHealthDashboard()">Build Dashboard</button>
+
+      <div id="memoryHealthDashboardResults"></div>
+    </details>
+    <details id="memoryMaintenancePlanPanel" class="primary-operator-tool admin-section-tool-primary">
+      <summary><strong>Memory Maintenance Plan</strong></summary>
+
+      <p>Build an action plan without changing memories or live retrieval.</p>
+
+      <button onclick="runMemoryMaintenancePlanDebug()">Build Action Plan</button>
+
+      <div id="memoryMaintenancePlanResults"></div>
     </details>
     </section>
 
@@ -2549,83 +2267,26 @@
             <div id="publicRetrievalPreviewResults"></div>
           </details>
 
-      <details class="legacy-reference-tool">
-      <summary><strong>Selected Retrieval Result</strong></summary>
-      
-            <p>Final post-filtered retrieval used by Aion.</p>
-      
-            <input
-              id="retrievalQuery"
-              placeholder="Enter retrieval query..."
-              style="width: 70%; padding: 8px; margin-top: 10px;"
-            />
-      
-            <button onclick="runRetrievalDebug()">Test Retrieval</button>
-      
-            <div id="retrievalResults"></div>
-          </details>
     </details>
     <!-- Admin continuity group end: Retrieval diagnostics -->
 
     </section>
 
-    <section id="memoryHealth" class="admin-section operator-workspace" data-admin-view="intelligence">
-      <h2>Memory Reports</h2>
-      <p class="section-note">Start with the memory dashboard and maintenance plan before judging continuity quality.</p>
+    <section id="adminOperations" class="admin-section" data-admin-view="operations">
+      <h2>Operations</h2>
+      <p class="section-note">Capture one operational snapshot, review the current state, and act only when cycles or canister status need attention.</p>
 
-      <div class="admin-section-overview-grid" aria-label="Memory report shortcuts">
-        <div class="admin-section-overview-card">
-          <strong>Memory dashboard</strong>
-          <span>Build the combined memory health, consolidation, and decision-evolution view.</span>
-          <button type="button" data-admin-detail-jump="memoryHealthDashboardPanel">Open dashboard</button>
-        </div>
-        <div class="admin-section-overview-card">
-          <strong>Maintenance plan</strong>
-          <span>Generate the next operator action plan without changing memories.</span>
-          <button type="button" data-admin-detail-jump="memoryMaintenancePlanPanel">Open plan</button>
-        </div>
-      </div>
-
-    <details id="memoryHealthDashboardPanel" class="primary-operator-tool admin-section-tool-primary">
-      <summary><strong>Memory Health Dashboard</strong></summary>
-
-      <p>Review health, consolidation, and decision-evolution status in one operator view.</p>
-
-      <button onclick="runMemoryHealthDashboard()">Build Dashboard</button>
-
-      <div id="memoryHealthDashboardResults"></div>
-    </details>
-    <details id="memoryMaintenancePlanPanel" class="primary-operator-tool admin-section-tool-primary">
-      <summary><strong>Memory Maintenance Plan</strong></summary>
-
-      <p>Build an operator action plan without changing memories or live retrieval.</p>
-
-      <button onclick="runMemoryMaintenancePlanDebug()">Build Action Plan</button>
-
-      <div id="memoryMaintenancePlanResults"></div>
-    </details>
-    </section>
-
-    <section id="operatorInsights" class="admin-section operator-workspace" data-admin-view="intelligence">
-      <h2>Operator Reports</h2>
-      <p class="section-note">Build the consolidated operator report for a calm state-of-system review.</p>
-
-      <div class="admin-section-overview-grid" aria-label="Operator report shortcuts">
+      <div class="admin-section-overview-grid" aria-label="Operations shortcuts">
         <div class="admin-section-overview-card">
           <strong>Cycles runway</strong>
-          <span>Update frontend and backend cycle snapshots before deployment decisions.</span>
+          <span>Paste combined wallet, frontend, and backend output before deployment decisions.</span>
           <button type="button" data-admin-detail-jump="cycleRunwayPanel">Open cycles</button>
-        </div>
-        <div class="admin-section-overview-card">
-          <strong>Operator report</strong>
-          <span>Build the consolidated report for a calm state-of-system review.</span>
-          <button type="button" data-admin-detail-jump="operatorInsightReportPanel">Open report</button>
         </div>
       </div>
 
       <details id="cycleRunwayPanel" class="admin-cycle-panel admin-section-tool-primary">
       <summary><strong>Cycles runway</strong></summary>
-        <p class="meta">Paste the latest cycles wallet balance plus frontend and backend canister status outputs to update the dashboard. Idle runway is based on the reported daily burn; frontend deployments can consume additional burst cycles.</p>
+        <p class="meta">Paste the latest cycles wallet balance plus frontend and backend canister status outputs. Partial combined pastes update only the snapshots they contain.</p>
         <div>
           <label for="combinedCycleStatusInput"><strong>Combined cycles output</strong></label>
           <textarea id="combinedCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste the combined output from:
@@ -2638,41 +2299,13 @@ icp canister status teves_consulting_backend -e ic"></textarea>
             <button type="button" onclick="clearCombinedCycleInput()">Clear combined paste</button>
           </div>
         </div>
-        <div class="admin-cycle-grid">
-          <div>
-            <label for="frontendCycleStatusInput"><strong>Frontend canister status</strong></label>
-            <textarea id="frontendCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste frontend output containing lines like:
-Cycles: 487_539_480_150
-Idle cycles burned per day: 3_007_903_040
-Reserved cycles limit: 5_000_000_000_000"></textarea>
-            <div class="admin-cycle-actions">
-              <button type="button" onclick="saveCycleSnapshotFromInput('frontend')">Update frontend</button>
-              <button type="button" onclick="clearCycleSnapshot('frontend')">Clear frontend</button>
-            </div>
-          </div>
-          <div>
-            <label for="walletCycleStatusInput"><strong>Cycles wallet balance</strong></label>
-            <textarea id="walletCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste cycles balance output containing a line like:
-Balance: 657_432_400_770 cycles"></textarea>
-            <div class="admin-cycle-actions">
-              <button type="button" onclick="saveCycleWalletFromInput()">Update wallet</button>
-              <button type="button" onclick="clearCycleSnapshot('wallet')">Clear wallet</button>
-            </div>
-          </div>
-          <div>
-            <label for="backendCycleStatusInput"><strong>Backend canister status</strong></label>
-            <textarea id="backendCycleStatusInput" class="admin-cycle-input" spellcheck="false" placeholder="Paste backend output containing lines like:
-Cycles: 487_539_480_150
-Idle cycles burned per day: 3_007_903_040
-Reserved cycles limit: 5_000_000_000_000"></textarea>
-            <div class="admin-cycle-actions">
-              <button type="button" onclick="saveCycleSnapshotFromInput('backend')">Update backend</button>
-              <button type="button" onclick="clearCycleSnapshot('backend')">Clear backend</button>
-            </div>
-          </div>
-        </div>
         <p id="cycleSnapshotStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
         <div class="admin-cycle-snapshots">
+          <div id="operationsReadinessSummary" class="admin-cycle-snapshot">
+            <span><strong>Operational readiness:</strong> Add snapshots before deploy</span>
+            <span><strong>Canisters:</strong> Pending</span>
+            <span><strong>Deploy:</strong> Update before deploy</span>
+          </div>
           <div id="frontendCycleSnapshotSummary" class="admin-cycle-snapshot">
             <span><strong>Frontend:</strong> Add a snapshot</span>
             <span><strong>Idle runway:</strong> Pending</span>
@@ -2694,84 +2327,56 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
             <span><strong>Wallet after:</strong> Pending</span>
           </div>
         </div>
-        <div id="cycleMovementHistory" class="admin-cycle-snapshot admin-cycle-history">
-          <span><strong>Recent movement:</strong> Collecting</span>
-          <ul id="cycleMovementHistoryList" class="admin-cycle-history-list" aria-live="polite">
-            <li><span>Paste a second snapshot to compare movement.</span><time>Pending</time></li>
-          </ul>
-        </div>
         <div class="admin-cycle-actions admin-review-actions">
           <button type="button" onclick="copyCycleStatusCommands()">Copy status commands</button>
           <button type="button" id="frontendTopUpButton" onclick="copyFrontendTopUpCommand()">Copy recommended top-up</button>
-          <button type="button" id="adminDashboardCopyDeployPacketButton" onclick="copyAdminDeployPacket()">Copy deploy packet</button>
-          <button type="button" id="adminDashboardCopyMovementButton" onclick="copyCycleMovementHistory()">Copy movement</button>
-          <button type="button" onclick="clearCycleHistory()">Clear movement</button>
-          <button type="button" onclick="markDashboardReviewed()">Mark dashboard reviewed</button>
         </div>
-        <p id="dashboardReviewStatus" class="admin-cycle-status" role="status" aria-live="polite"></p>
       </details>
 
-    <details id="operatorInsightReportPanel" class="primary-operator-tool admin-section-tool-primary">
-      <summary><strong>Operator Insight Report</strong></summary>
-
-      <p>Build an operator insight report without changing memories or live retrieval.</p>
-
-      <button onclick="runOperatorInsightReportDebug()">Build Report</button>
-
-      <div id="operatorInsightReportResults"></div>
-    </details>
     </section>
 
     <section id="providers" class="admin-section" data-admin-view="providers">
-      <h2>Provider Controls</h2>
-      <p class="section-note">Review current provider routing, enforcement, runtime diagnostics, and audited production route changes.</p>
+      <h2>Providers</h2>
+      <p class="section-note">Review the active production route, make deliberate route changes, and inspect route history.</p>
 
       <div class="admin-section-overview-grid" aria-label="Provider review shortcuts">
         <div class="admin-section-overview-card">
-          <strong>Current baseline</strong>
-          <span>Inspect current provider policy, route enforcement, guard behavior, and Render-native policy status.</span>
-          <button type="button" data-admin-detail-jump="providerStatusPanel">Open status</button>
+          <strong>Current production route</strong>
+          <span>See the route Aion is using now, the active provider, rollback target, and fallback/retry state.</span>
+          <button type="button" data-admin-detail-jump="providerStatusPanel">Open route</button>
         </div>
         <div class="admin-section-overview-card">
           <strong>Production route change</strong>
           <span>Select OpenAI or native only after reviewing identity, audit, rollback, and no-deploy confirmations.</span>
           <button type="button" data-admin-detail-jump="productionRouteSwitchPanel">Open switch</button>
         </div>
+        <div class="admin-section-overview-card">
+          <strong>Route history</strong>
+          <span>Review the read-only audit trail of prior production route changes.</span>
+          <button type="button" data-admin-detail-jump="productionRouteHistoryPanel">Open history</button>
+        </div>
       </div>
 
-<details id="providerStatusPanel" class="admin-section-tool-primary">
-      <summary><strong>Provider status</strong></summary>
+      <div id="providerStatusPanel" class="admin-section-tool-primary">
+      <h3>Current Production Route</h3>
 
-      <p>Inspect current provider policy and route enforcement without invoking reasoning providers or changing routing.</p>
+      <p>Read-only production route state. Refreshing this panel does not invoke reasoning providers or change routing.</p>
 
-      <button onclick="runAionProviderRoutingPolicyDebug()">Build Routing Policy</button>
-      <button onclick="runAionProviderPolicyParityDebug()">Verify Native Policy Parity</button>
-      <button onclick="runAionRouteEnforcementHandoffDebug()">Build Handoff Design</button>
-      <button onclick="runProviderAdapterGuardDebug()">Run Adapter Guard Fixtures</button>
-      <button onclick="runRenderNativeProviderPolicyQueryDebug()">Query Native Policy From Render</button>
-
-      <div id="aionProviderRoutingPolicyResults"></div>
-      <div id="aionProviderPolicyParityResults"></div>
-      <div id="aionRouteEnforcementHandoffResults"></div>
-      <div id="providerAdapterGuardResults"></div>
-      <div id="renderNativeProviderPolicyQueryResults"></div>
-
-    </details>
-    <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
-      <summary><strong>Production route change</strong></summary>
-
-      <p>Production-impacting: select the answer route used by Aion only after the confirmation checklist is complete. This control does not deploy or change memory/continuity.</p>
-
-      <button type="button" onclick="refreshProductionRouteSwitch()">Refresh Route</button>
-      <button type="button" onclick="refreshProductionRouteSwitchAudit()">View Audit</button>
+      <button type="button" onclick="refreshProductionRouteSwitch()">Refresh route</button>
 
       <div id="productionRouteSwitchState"></div>
+
+    </div>
+    <details id="productionRouteSwitchPanel" class="admin-section-tool-primary">
+      <summary><strong>Change Production Route</strong></summary>
+
+      <p>Production-impacting: select the answer route used by Aion only after the confirmation checklist is complete. This control does not deploy or change memory/continuity.</p>
 
       <div class="memory-card">
         <h3>Operator Confirmation</h3>
         <div class="form-grid">
           <label>Reason
-            <input id="productionRouteSwitchReason" type="text" value="Operator-selected Phase 8 production route validation.">
+            <input id="productionRouteSwitchReason" type="text" value="Operator-selected production route change.">
           </label>
         </div>
         <label><input id="productionRouteOperatorAuthorized" type="checkbox"> I am the authorized operator.</label>
@@ -2789,6 +2394,14 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <button type="button" onclick="rollbackProductionRouteToOpenAi()">Roll Back to OpenAI</button>
 
       <div id="productionRouteSwitchResults"></div>
+    </details>
+    <details id="productionRouteHistoryPanel" class="admin-section-tool-primary">
+      <summary><strong>Route History</strong></summary>
+
+      <p>Read-only audit trail for production route changes.</p>
+
+      <button type="button" onclick="refreshProductionRouteSwitchAudit()">Refresh history</button>
+
       <div id="productionRouteSwitchAudit"></div>
     </details>
     </section>
@@ -2810,9 +2423,9 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
           <button type="button" data-admin-detail-jump="securityDiagnostics">Open access</button>
         </div>
         <div class="admin-section-overview-card">
-          <strong>Transport proof</strong>
-          <span>Use the HTTPS probe as a deployment validation check, not routine browsing.</span>
-          <button type="button" data-admin-detail-jump="transportValidation">Open transport</button>
+          <strong>Local validation snapshot</strong>
+          <span>Save locally captured validation output for the current Admin review.</span>
+          <button type="button" data-admin-detail-jump="localValidationSnapshotPanel">Open snapshot</button>
         </div>
         <div class="admin-section-overview-card">
           <strong>Local Engineer</strong>
@@ -2830,6 +2443,32 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <button onclick="runGoldenTests()">Run quality checks</button>
 
       <div id="goldenResults"></div>
+    </details>
+
+    <details id="localValidationSnapshotPanel" class="admin-section-tool-routine">
+      <summary><strong>Local Validation Snapshot</strong></summary>
+
+      <p>Save locally captured validation state for this Admin review. This snapshot does not deploy, mutate continuity, or provide future-phase assurance.</p>
+      <div id="adminDashboardReviewEvidence" class="admin-dashboard-note" aria-label="Local validation snapshot">
+        <div class="admin-dashboard-activity-header">
+          <p class="admin-dashboard-activity-title">Local validation output</p>
+          <div class="admin-dashboard-note-actions">
+            <button type="button" class="admin-dashboard-clear" onclick="pasteAdminReviewEvidenceFromClipboard()">Paste clipboard and save</button>
+            <button type="button" class="admin-dashboard-clear" onclick="saveAdminReviewEvidence()">Save snapshot</button>
+            <button type="button" class="admin-dashboard-clear" onclick="clearAdminReviewEvidence()">Clear</button>
+          </div>
+        </div>
+        <textarea id="adminDashboardReviewEvidenceInput" spellcheck="false" placeholder="Paste validation-check output after local validation completes."></textarea>
+        <ul id="adminDashboardReviewEvidenceChecks" class="admin-dashboard-evidence-checks" aria-live="polite">
+          <li>Diff check</li>
+          <li>Assets prepared</li>
+          <li>JavaScript checked</li>
+          <li>Scripts compiled</li>
+          <li>Bundle repeatable</li>
+          <li>Tests passed</li>
+        </ul>
+        <p id="adminDashboardReviewEvidenceStatus" class="admin-cycle-status" role="status" aria-live="polite">Not saved</p>
+      </div>
     </details>
 
     <details id="securityDiagnostics" class="admin-section-tool-routine">
@@ -2850,30 +2489,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
       <div id="localEngineerGovernanceResults"></div>
     </details>
 
-    <details id="transportValidation" class="admin-section-tool-secondary">
-      <summary><strong>Advanced transport check</strong></summary>
-
-      <p>Run the fixed operator-only non-replicated transport proof when validating a deployment. The probe returns only transport metadata. It does not call a reasoning provider or expose an external response body.</p>
-      <button id="runHttpsOutcallTransportProbeButton" onclick="runHttpsOutcallTransportProbe()">Run transport check</button>
-
-      <div id="httpsOutcallTransportResults"></div>
-    </details>
-    </section>
-
-    <section id="adminLinks" class="admin-section" data-admin-view="links">
-      <h2>Links</h2>
-      <p class="section-note">Quick external references for routine operator review.</p>
-
-      <div class="admin-section-link-list" aria-label="Admin external links">
-        <a class="admin-section-link-card" href="https://nns.internetcomputer.org/" target="_blank" rel="noopener noreferrer">
-          <strong>Network Nervous System</strong>
-          <span>Open the Internet Computer NNS dashboard.</span>
-        </a>
-        <a class="admin-section-link-card" href="https://forum.dfinity.org/" target="_blank" rel="noopener noreferrer">
-          <strong>DFINITY Forum</strong>
-          <span>Open the DFINITY developer and community forum.</span>
-        </a>
-      </div>
     </section>
   </div>
 
@@ -2884,21 +2499,18 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         overview: "Overview",
         records: "Memory",
         continuity: "Continuity",
-        intelligence: "Reports",
+        operations: "Operations",
         providers: "Providers",
-        validation: "Validation",
-        links: "Links"
+        validation: "Validation"
       };
 
       const hashToView = {
         aionHealth: "overview",
         memoryAndFeedback: "records",
         continuityInspector: "continuity",
-        memoryHealth: "intelligence",
-        operatorInsights: "intelligence",
+        adminOperations: "operations",
         providers: "providers",
-        systemValidation: "validation",
-        adminLinks: "links"
+        systemValidation: "validation"
       };
 
       function setAdminView(view, options = {}) {
@@ -2922,6 +2534,10 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         try {
           window.localStorage.setItem("tevesAdminView", selectedView);
         } catch (_) {}
+
+        if (selectedView === "providers" && typeof window.refreshProductionRouteSwitch === "function") {
+          window.refreshProductionRouteSwitch();
+        }
       }
 
       window.setAdminWorkspaceView = setAdminView;
@@ -2940,7 +2556,6 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
         try {
           savedView = window.localStorage.getItem("tevesAdminView") || "";
         } catch (_) {}
-
         setAdminView(hashToView[hash] || savedView || "overview");
       });
     })();
@@ -2975,6 +2590,44 @@ Reserved cycles limit: 5_000_000_000_000"></textarea>
     })();
   </script>
   <!-- Admin section overviews end -->
+
+  <script>
+    function applyTheme(theme) {
+      const toggle = document.getElementById("themeToggle");
+      if (theme === "dark") {
+        document.body.classList.add("dark-mode");
+        if (toggle) {
+          toggle.textContent = "\u2600\uFE0E";
+          toggle.setAttribute("aria-pressed", "true");
+          toggle.setAttribute("title", "Switch to light mode");
+        }
+      } else {
+        document.body.classList.remove("dark-mode");
+        if (toggle) {
+          toggle.textContent = "☾";
+          toggle.setAttribute("aria-pressed", "false");
+          toggle.setAttribute("title", "Switch to dark mode");
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.contains("dark-mode");
+      const nextTheme = isDark ? "light" : "dark";
+      try {
+        localStorage.setItem("aion-theme", nextTheme);
+      } catch (_) {}
+      applyTheme(nextTheme);
+    }
+
+    applyTheme((() => {
+      try {
+        return localStorage.getItem("aion-theme") || "light";
+      } catch (_) {
+        return "light";
+      }
+    })());
+  </script>
 
   <script type="module" src="./admin.js"></script>
 </body>

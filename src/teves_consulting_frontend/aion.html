@@ -97,6 +97,7 @@
 
     .aion-continuity-indicator {
       position: relative;
+      box-sizing: content-box;
       width: 40px;
       height: 40px;
       margin: 0;
@@ -627,6 +628,13 @@
 </head>
 
 <body>
+<script>
+  try {
+    if (localStorage.getItem("aion-theme") === "dark") {
+      document.body.classList.add("dark-mode");
+    }
+  } catch (_) {}
+</script>
 <header class="site-header">
   <div class="header-inner">
     <div id="aionContinuityIndicatorContainer" class="aion-continuity-indicator-container"></div>
@@ -636,7 +644,7 @@
       <button id="authButton" class="auth-button" onclick="handleAuth()">
         Sign In
       </button>
-      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" aria-pressed="false">
         🌙
       </button>
 	  </div>
@@ -1455,12 +1463,21 @@
 </script>
 <script>
   function applyTheme(theme) {
+    const toggle = document.getElementById("themeToggle");
     if (theme === "dark") {
       document.body.classList.add("dark-mode");
-      document.getElementById("themeToggle").textContent = "\u2600\uFE0E";
+      if (toggle) {
+        toggle.textContent = "\u2600\uFE0E";
+        toggle.setAttribute("aria-pressed", "true");
+        toggle.setAttribute("title", "Switch to light mode");
+      }
     } else {
       document.body.classList.remove("dark-mode");
-      document.getElementById("themeToggle").textContent = "☾";
+      if (toggle) {
+        toggle.textContent = "☾";
+        toggle.setAttribute("aria-pressed", "false");
+        toggle.setAttribute("title", "Switch to dark mode");
+      }
     }
   }
 

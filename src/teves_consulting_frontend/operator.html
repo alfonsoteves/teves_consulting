@@ -6,7 +6,7 @@
   <title>Operator — Teves Consulting</title>
   <style>
     :root {
-      color-scheme: dark;
+      color-scheme: light;
       --bg: #111315;
       --panel: #171b20;
       --panel-strong: #1a1f26;
@@ -70,6 +70,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      box-sizing: content-box;
       width: 40px;
       height: 40px;
       border: 1px solid currentColor;
@@ -670,6 +671,7 @@
     body.operator-signed-in .operator-workspace-brand .operator-mark,
     body.operator-signed-out .operator-login-brand .operator-mark {
       position: relative !important;
+      box-sizing: content-box !important;
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -1782,9 +1784,210 @@
     }
     /* Operator role activation surface end */
 
+    /* Aion shared theme parity start */
+    .theme-toggle {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      min-height: 30px;
+      margin: 0;
+      padding: 0;
+      border: none !important;
+      border-radius: 0;
+      background: transparent !important;
+      color: #1f2937 !important;
+      box-shadow: none !important;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    body:not(.dark-mode) {
+      color-scheme: light;
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --panel-strong: #f8fbff;
+      --line: #e5e7eb;
+      --line-strong: #cbd5e1;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #93c5fd;
+      --green: #166534;
+      --green-line: #bbf7d0;
+      --warn: #92400e;
+      --warn-line: #fed7aa;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode).operator-signed-out {
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) h1,
+    body:not(.dark-mode) h2,
+    body:not(.dark-mode) h3 {
+      color: #0f172a;
+    }
+
+    body:not(.dark-mode) .operator-login-brand,
+    body:not(.dark-mode) .operator-workspace-brand {
+      color: #1d4ed8 !important;
+    }
+
+    body:not(.dark-mode) .operator-mark {
+      border-color: #93c5fd;
+      background: rgba(239, 246, 255, 0.8);
+      color: #1d4ed8;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+    }
+
+    body:not(.dark-mode) .operator-login-footer,
+    body:not(.dark-mode) .operator-login-company,
+    body:not(.dark-mode) .operator-login-about,
+    body:not(.dark-mode) .status,
+    body:not(.dark-mode) .operator-workspace-title {
+      color: #64748b !important;
+    }
+
+    body:not(.dark-mode) .operator-header,
+    body:not(.dark-mode).operator-signed-in .operator-header {
+      border-bottom-color: #e5e7eb !important;
+      background: #ffffff !important;
+    }
+
+    body:not(.dark-mode) #authButton,
+    body:not(.dark-mode) .operator-header .nav-link {
+      border: none !important;
+      background: transparent !important;
+      color: #1f2937 !important;
+      box-shadow: none !important;
+      padding: 0;
+    }
+
+    body:not(.dark-mode) #authButton:hover,
+    body:not(.dark-mode) #authButton:focus-visible,
+    body:not(.dark-mode) .operator-header .nav-link:hover,
+    body:not(.dark-mode) .operator-header .nav-link:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    body:not(.dark-mode) .operator-workspace-nav,
+    body:not(.dark-mode).operator-signed-in .operator-workspace-nav {
+      border-bottom-color: #e5e7eb;
+      background: #ffffff !important;
+    }
+
+    body:not(.dark-mode) .operator-workspace-kicker {
+      color: #1d4ed8;
+    }
+
+    body:not(.dark-mode) .panel,
+    body:not(.dark-mode) .memory-card,
+    body:not(.dark-mode) .role-card,
+    body:not(.dark-mode) .engineer-card,
+    body:not(.dark-mode) .workspace-warning,
+    body:not(.dark-mode) .d1a-choice-group,
+    body:not(.dark-mode) .engineer-approval-card,
+    body:not(.dark-mode) .engineer-trace,
+    body:not(.dark-mode) .engineer-evidence-card {
+      border-color: #e5e7eb;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode).operator-signed-in .operator-workspace-status {
+      border-color: #e5e7eb;
+      background: #ffffff;
+      color: #1f2937 !important;
+    }
+
+    body:not(.dark-mode) input,
+    body:not(.dark-mode) textarea,
+    body:not(.dark-mode) select {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) button,
+    body:not(.dark-mode) .nav-link {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      color: #1f2937;
+    }
+
+    body:not(.dark-mode) button:hover,
+    body:not(.dark-mode) button:focus-visible,
+    body:not(.dark-mode) .nav-link:hover,
+    body:not(.dark-mode) .nav-link:focus-visible {
+      border-color: #93c5fd;
+      background: #f8fbff;
+      color: #0f172a;
+    }
+
+    body:not(.dark-mode) .d1a-role-diagnostic.is-error,
+    body:not(.dark-mode) .engineer-workflow-error {
+      border-color: #b91c1c;
+      background: #fff7ed;
+      color: #9a3412;
+    }
+
+    body:not(.dark-mode) .engineer-authority-list li {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    body:not(.dark-mode) .theme-toggle {
+      border: none !important;
+      background: transparent !important;
+      color: #1f2937 !important;
+    }
+
+    body.dark-mode {
+      color-scheme: dark;
+    }
+
+    body.dark-mode .operator-header .nav-link,
+    body.dark-mode .operator-header h1,
+    body.dark-mode #authButton {
+      display: none !important;
+    }
+
+    body.dark-mode .operator-login-brand,
+    body.dark-mode .operator-workspace-brand {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.dark-mode .operator-login-footer {
+      display: none !important;
+    }
+
+    body.dark-mode .theme-toggle {
+      display: inline-flex !important;
+      color: #f9fafb !important;
+    }
+    /* Aion shared theme parity end */
+
   </style>
 </head>
 <body class="operator-signed-out">
+  <script>
+    try {
+      if (localStorage.getItem("aion-theme") === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    } catch (_) {}
+  </script>
   <div class="operator-login-brand" aria-hidden="true">
     <span class="operator-mark">
       <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -1827,6 +2030,7 @@
     <div class="actions">
       <a class="nav-link secondary" href="/admin.html">Admin</a>
       <button id="authButton" type="button">Sign In</button>
+      <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle theme" aria-pressed="false">☾</button>
     </div>
   </header>
 
@@ -1850,6 +2054,44 @@
 
     </section>
   </main>
+
+  <script>
+    function applyTheme(theme) {
+      const toggle = document.getElementById("themeToggle");
+      if (theme === "dark") {
+        document.body.classList.add("dark-mode");
+        if (toggle) {
+          toggle.textContent = "\u2600\uFE0E";
+          toggle.setAttribute("aria-pressed", "true");
+          toggle.setAttribute("title", "Switch to light mode");
+        }
+      } else {
+        document.body.classList.remove("dark-mode");
+        if (toggle) {
+          toggle.textContent = "☾";
+          toggle.setAttribute("aria-pressed", "false");
+          toggle.setAttribute("title", "Switch to dark mode");
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.contains("dark-mode");
+      const nextTheme = isDark ? "light" : "dark";
+      try {
+        localStorage.setItem("aion-theme", nextTheme);
+      } catch (_) {}
+      applyTheme(nextTheme);
+    }
+
+    applyTheme((() => {
+      try {
+        return localStorage.getItem("aion-theme") || "light";
+      } catch (_) {
+        return "light";
+      }
+    })());
+  </script>
 
   <script type="module" src="/operator.js?v=phase-9-model-evidence-split-20260802"></script>
 </body>

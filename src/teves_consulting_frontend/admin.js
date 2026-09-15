@@ -284,7 +284,7 @@ function updateAdminVisibility() {
 
   adminContent.style.display = adminReady ? "block" : "none";
   access.style.display = "block";
-  access.className = "operator-access";
+  access.className = "admin-access";
   if (authButton) {
     authButton.removeAttribute("title");
     authButton.removeAttribute("aria-label");
@@ -294,6 +294,8 @@ function updateAdminVisibility() {
     access.textContent = "Sign in with Internet Identity to continue.";
     setAdminHealthMetric("healthOperatorStatus", "Signed out");
     setAdminHealthMetric("healthSessionStatus", "Unavailable");
+    setAdminMetricProvenance("healthOperatorStatus", "LIVE", "browser session");
+    setAdminMetricProvenance("healthSessionStatus", "LIVE", "session absent", { unavailable: true });
     return;
   }
 
@@ -302,6 +304,8 @@ function updateAdminVisibility() {
     access.textContent = "Operator access could not be verified. Refresh after the operator session service is available.";
     setAdminHealthMetric("healthOperatorStatus", "Review needed");
     setAdminHealthMetric("healthSessionStatus", "Unavailable");
+    setAdminMetricProvenance("healthOperatorStatus", "LIVE", "access unavailable", { unavailable: true });
+    setAdminMetricProvenance("healthSessionStatus", "LIVE", "session unavailable", { unavailable: true });
     return;
   }
 
@@ -310,6 +314,8 @@ function updateAdminVisibility() {
     access.textContent = "Access denied. This interface is restricted to the Teves Consulting operator.";
     setAdminHealthMetric("healthOperatorStatus", "Denied");
     setAdminHealthMetric("healthSessionStatus", "Unavailable");
+    setAdminMetricProvenance("healthOperatorStatus", "LIVE", "operator check");
+    setAdminMetricProvenance("healthSessionStatus", "LIVE", "session denied", { unavailable: true });
     return;
   }
 
@@ -324,11 +330,17 @@ function updateAdminVisibility() {
     authButton.setAttribute("aria-label", `Logout. ${operatorSessionMessage}`);
   }
   setAdminHealthMetric("healthOperatorStatus", "Verified");
+  setAdminMetricProvenance("healthOperatorStatus", "LIVE", "operator check");
   setAdminHealthMetric(
     "healthSessionStatus",
     renderOperatorSessionExpiresAt
       ? `Expires ${new Date(renderOperatorSessionExpiresAt * 1000).toLocaleTimeString()}`
       : "Verified"
+  );
+  setAdminMetricProvenance(
+    "healthSessionStatus",
+    "LIVE",
+    renderOperatorSessionExpiresAt ? "bounded session" : "session verified"
   );
 }
 
@@ -337,6 +349,52 @@ function setAdminHealthMetric(id, value) {
   if (element) {
     element.textContent = value;
   }
+}
+
+function metricCardForValue(id) {
+  const element = document.getElementById(id);
+  return element ? element.closest(".metric-card") : null;
+}
+
+function formatProvenanceAge(iso) {
+  if (!iso) return "";
+  const timestamp = new Date(iso).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+  const minutes = Math.floor((Date.now() - timestamp) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 0) return "";
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function setAdminMetricProvenance(id, kind, detail = "", options = {}) {
+  const card = metricCardForValue(id);
+  if (!card) return;
+  const safeKind = String(kind || "").trim().toUpperCase();
+  if (!["LIVE", "SNAPSHOT", "CACHED", "DERIVED"].includes(safeKind)) return;
+  const sourceId = `${id}Provenance`;
+  let element = document.getElementById(sourceId);
+  if (!element) {
+    element = document.createElement("div");
+    element.id = sourceId;
+    element.className = "metric-provenance";
+    element.dataset.adminProvenanceFor = id;
+    card.appendChild(element);
+  }
+  const detailText = String(detail || "").trim();
+  element.textContent = detailText ? `${safeKind} · ${detailText}` : safeKind;
+  element.classList.toggle("is-unavailable", options.unavailable === true);
+  element.classList.toggle("is-stale", options.stale === true);
+}
+
+function setAdminOverviewProvenanceDefaults() {
+  setAdminMetricProvenance("healthCycleAction", "DERIVED", "from dashboard state");
+  setAdminMetricProvenance("healthDataRefresh", "SNAPSHOT", "browser timestamp");
+  setAdminMetricProvenance("healthGoldenTests", "DERIVED", "from tests and feedback");
+  setAdminMetricProvenance("healthCycleRunway", "DERIVED", "from cycle snapshots");
 }
 
 function encodeOperatorGrant(nonce) {
@@ -444,54 +502,12 @@ window.showOperatorAuthorizationDryRun = async function showOperatorAuthorizatio
           "operator access": status.isOperator ? "verified" : "denied",
           "recovery principal": status.recoveryConfigured ? "configured" : "not configured",
         })}
-        <p class="meta">Phase 7.77 | Operator authorization and Render session required.</p>
+        <p class="meta">Operator authorization and short-lived Admin session required.</p>
       </div>
     `;
   } catch (err) {
     console.error("Operator access refresh failed:", err);
     container.innerHTML = `<p>Could not refresh operator access. Sign in again, confirm the operator allowlist, then retry. ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
-  }
-};
-
-window.runHttpsOutcallTransportProbe = async function runHttpsOutcallTransportProbe() {
-  const container = document.getElementById("httpsOutcallTransportResults");
-  const button = document.getElementById("runHttpsOutcallTransportProbeButton");
-  if (!container) {
-    return;
-  }
-
-  if (!isAuthenticated || !isOperator || !window.adminActor) {
-    container.innerHTML = "<p>Operator access is required before running the transport probe.</p>";
-    return;
-  }
-
-  if (button) {
-    button.disabled = true;
-  }
-  container.innerHTML = "<p>Running the fixed non-replicated HTTPS transport probe...</p>";
-
-  try {
-    const receipt = await window.adminActor.probeHttpsOutcallTransport();
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>HTTPS Transport Receipt</h3>
-        <p>The operator-only proof completed. No reasoning provider, memory write, or automatic fallback was involved.</p>
-        ${renderMetricGrid({
-          url: receipt.url,
-          "HTTP status": String(receipt.status),
-          "response bytes": String(receipt.responseBytes),
-          "replicated execution": receipt.isReplicated ? "yes" : "no",
-        })}
-        <p class="meta">Phase 7.78 | Fixed GET | No headers | No request body | No external response body displayed</p>
-      </div>
-    `;
-  } catch (err) {
-    console.error("HTTPS transport probe failed:", err);
-    container.innerHTML = `<p>Transport check failed. Confirm operator access and retry before using transport evidence. ${escapeHtml(String(err && (err.message || err) || "Unknown error"))}</p>`;
-  } finally {
-    if (button) {
-      button.disabled = false;
-    }
   }
 };
 
@@ -578,6 +594,11 @@ window.runContinuityInspector = async function runContinuityInspector() {
   }
 };
 
+function providersViewIsVisible() {
+  const section = document.querySelector('[data-admin-view="providers"]');
+  return Boolean(section && !section.hidden);
+}
+
 window.handleAuth = async function handleAuth() {
   if (!authClient) {
     authClient = await AuthClient.create();
@@ -601,6 +622,10 @@ window.handleAuth = async function handleAuth() {
     latestMemories = [];
     updateAuthUI();
     document.getElementById("memoryList").innerHTML = "";
+    const memoryStatus = document.getElementById("memoryListStatus");
+    if (memoryStatus) {
+      memoryStatus.textContent = "Load memories to search and filter.";
+    }
     return;
   }
 
@@ -618,6 +643,9 @@ window.handleAuth = async function handleAuth() {
         await loadMemories();
         await loadGoldenTests();
         await loadFeedback();
+        if (providersViewIsVisible() && typeof window.refreshProductionRouteSwitch === "function") {
+          await window.refreshProductionRouteSwitch();
+        }
         const refresh = { refreshedAt: new Date().toISOString() };
         persistDashboardRefresh(refresh);
         renderDashboardRefresh(refresh);
@@ -689,89 +717,385 @@ function renderRelationships(relationships = []) {
   `;
 }
 
+const memoryListState = {
+  search: "",
+  type: "all",
+  status: "all",
+  milestone: "all",
+  sort: "newest",
+};
+
+function memoryIdText(memory = {}) {
+  return memory && memory.id !== undefined && memory.id !== null
+    ? memory.id.toString()
+    : "";
+}
+
+function memoryCreatedTime(memory = {}) {
+  const value = Number(memory.createdAt || 0);
+  const timestamp = value > 0 ? value / 1_000_000 : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function memoryImportance(memory = {}) {
+  const value = Number(memory.importance);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function memoryConfidence(memory = {}) {
+  const value = Number(memory.confidence);
+  return Number.isFinite(value) ? value : null;
+}
+
+function memoryStringArray(value) {
+  return Array.isArray(value) ? value.map((item) => String(item || "")) : [];
+}
+
+function memorySearchText(memory = {}) {
+  const tags = memoryStringArray(memory.tags);
+  const topics = memoryStringArray(memory.topics);
+  const decisions = memoryStringArray(memory.keyDecisions);
+  return [
+    memoryIdText(memory),
+    memory.title,
+    memory.summary,
+    getMainTopic(tags),
+    ...getVisibleTags(tags),
+    ...topics,
+    ...decisions,
+    memory.memoryType,
+    memory.status,
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+}
+
+function memoryMatchesState(memory = {}) {
+  const query = memoryListState.search.trim().toLowerCase();
+  if (query && !memorySearchText(memory).includes(query)) return false;
+  if (memoryListState.type !== "all" && String(memory.memoryType || "session") !== memoryListState.type) return false;
+  if (memoryListState.status !== "all" && String(memory.status || "active") !== memoryListState.status) return false;
+  if (memoryListState.milestone === "milestone" && !memory.milestone) return false;
+  if (memoryListState.milestone === "regular" && memory.milestone) return false;
+  return true;
+}
+
+function currentVisibleMemories() {
+  const visible = latestMemories.filter(memoryMatchesState);
+  return visible.sort((a, b) => {
+    if (memoryListState.sort === "oldest") {
+      return memoryCreatedTime(a) - memoryCreatedTime(b);
+    }
+    if (memoryListState.sort === "importance") {
+      const importanceDelta = memoryImportance(b) - memoryImportance(a);
+      return importanceDelta || memoryCreatedTime(b) - memoryCreatedTime(a);
+    }
+    return memoryCreatedTime(b) - memoryCreatedTime(a);
+  });
+}
+
+function memoryFiltersActive() {
+  return Boolean(
+    memoryListState.search.trim() ||
+    memoryListState.type !== "all" ||
+    memoryListState.status !== "all" ||
+    memoryListState.milestone !== "all" ||
+    memoryListState.sort !== "newest"
+  );
+}
+
+function updateSelectOptions(id, values, allLabel, currentValue) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  const uniqueValues = Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  select.innerHTML = [
+    `<option value="all">${escapeHtml(allLabel)}</option>`,
+    ...uniqueValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`),
+  ].join("");
+  select.value = uniqueValues.includes(currentValue) ? currentValue : "all";
+  if (select.value !== currentValue) {
+    if (id === "memoryTypeFilter") memoryListState.type = "all";
+    if (id === "memoryStatusFilter") memoryListState.status = "all";
+  }
+}
+
+function renderMemoryFilterOptions() {
+  updateSelectOptions(
+    "memoryTypeFilter",
+    latestMemories.map((memory) => String(memory.memoryType || "session")),
+    "All types",
+    memoryListState.type
+  );
+  updateSelectOptions(
+    "memoryStatusFilter",
+    latestMemories.map((memory) => String(memory.status || "active")),
+    "All statuses",
+    memoryListState.status
+  );
+}
+
+function memoryReferenceButtonHtml(memory, label = null) {
+  const id = memoryIdText(memory);
+  if (!id) return escapeHtml(label || "Unavailable");
+  return `<button type="button" class="admin-memory-clear" onclick="reviewMemoryById(${escapeHtml(JSON.stringify(id))})">${escapeHtml(label || memory.title || `Memory #${id}`)}</button>`;
+}
+
+function updateMemoryOverview(memories = latestMemories) {
+  const total = memories.length;
+  const milestones = memories.filter(m => m.milestone).length;
+  const regular = total - milestones;
+  const latest = memories.length > 0 ? memories[memories.length - 1] : null;
+  const latestMilestone = memories
+    .slice()
+    .reverse()
+    .find(m => m.milestone);
+
+  document.getElementById("totalMemories").textContent = total;
+  document.getElementById("totalMilestones").textContent = milestones;
+  document.getElementById("totalRegular").textContent = regular;
+  document.getElementById("latestMemory").innerHTML = latest
+    ? memoryReferenceButtonHtml(latest, latest.title || `Memory #${memoryIdText(latest)}`)
+    : "None";
+  document.getElementById("latestMilestone").innerHTML = latestMilestone
+    ? memoryReferenceButtonHtml(latestMilestone, latestMilestone.title || `Memory #${memoryIdText(latestMilestone)}`)
+    : "None";
+}
+
+function renderSavedMemoryCard(memory = {}) {
+  const id = memoryIdText(memory);
+  const tags = memoryStringArray(memory.tags);
+  const visibleTags = getVisibleTags(tags);
+  const topics = memoryStringArray(memory.topics);
+  const createdTime = memoryCreatedTime(memory);
+  const createdText = createdTime ? new Date(createdTime).toLocaleString() : "Unknown";
+  const confidence = memoryConfidence(memory);
+  const topicLabel = topics.length ? topics.join(", ") : getMainTopic(tags);
+  const tagLabel = visibleTags.length ? visibleTags.join(", ") : "None";
+
+  return `
+    <div class="memory-card admin-memory-card" id="memory-card-${escapeHtml(id)}" data-memory-id="${escapeHtml(id)}" tabindex="-1">
+      <div class="admin-memory-card-header">
+        <h3><span class="admin-memory-id">#${escapeHtml(id || "n/a")}</span> ${escapeHtml(memory.title || "Untitled memory")}</h3>
+        <button type="button" class="admin-memory-delete" onclick="deleteMemory(${escapeHtml(JSON.stringify(id))})">Delete</button>
+      </div>
+      <p class="meta">
+        Created: ${escapeHtml(createdText)} |
+        Milestone: ${memory.milestone ? "yes" : "no"} |
+        Type: ${escapeHtml(memory.memoryType || "session")} |
+        Status: ${escapeHtml(memory.status || "active")}
+      </p>
+      <p class="meta admin-memory-secondary">
+        Importance: ${escapeHtml(memory.importance?.toString?.() || "n/a")} |
+        Confidence: ${confidence === null ? "n/a" : escapeHtml(confidence.toString())} |
+        Topics: ${escapeHtml(topicLabel || "Unclassified")} |
+        Tags: ${escapeHtml(tagLabel)}
+      </p>
+      <details>
+        <summary>Memory details</summary>
+        <pre>${escapeHtml(memory.summary || "")}</pre>
+        ${renderKeyDecisions(memory.keyDecisions)}
+        ${renderRelationships(memory.relationships)}
+      </details>
+    </div>
+  `;
+}
+
+function renderMemoryList() {
+  const list = document.getElementById("memoryList");
+  const status = document.getElementById("memoryListStatus");
+  const clearButton = document.getElementById("memoryClearFiltersButton");
+  if (!list) return;
+  const visible = currentVisibleMemories();
+  if (status) {
+    status.textContent = latestMemories.length
+      ? `Showing ${visible.length} of ${latestMemories.length} loaded memories.`
+      : "Load memories to search and filter.";
+  }
+  if (clearButton) {
+    clearButton.disabled = !memoryFiltersActive();
+  }
+  if (!latestMemories.length) {
+    list.innerHTML = "";
+    return;
+  }
+  if (!visible.length) {
+    list.innerHTML = "<p>No loaded memories match the current search and filters.</p>";
+    return;
+  }
+  list.innerHTML = visible.map(renderSavedMemoryCard).join("");
+}
+
+function applyLoadedMemories(memories = []) {
+  latestMemories = Array.isArray(memories) ? memories : [];
+  latestMemoryUnavailable = false;
+  updateMemoryOverview(latestMemories);
+  renderMemoryFilterOptions();
+  updateMemoryControlValuesFromState();
+  renderMemoryList();
+}
+
+function updateMemoryControlValuesFromState() {
+  const search = document.getElementById("memorySearchInput");
+  const type = document.getElementById("memoryTypeFilter");
+  const status = document.getElementById("memoryStatusFilter");
+  const milestone = document.getElementById("memoryMilestoneFilter");
+  const sort = document.getElementById("memorySortSelect");
+  if (search) search.value = memoryListState.search;
+  if (type) type.value = memoryListState.type;
+  if (status) status.value = memoryListState.status;
+  if (milestone) milestone.value = memoryListState.milestone;
+  if (sort) sort.value = memoryListState.sort;
+}
+
+window.clearMemoryFilters = function clearMemoryFilters(options = {}) {
+  memoryListState.search = "";
+  memoryListState.type = "all";
+  memoryListState.status = "all";
+  memoryListState.milestone = "all";
+  memoryListState.sort = "newest";
+  updateMemoryControlValuesFromState();
+  if (options.render !== false) {
+    renderMemoryList();
+  }
+};
+
+function initMemoryListControls() {
+  const search = document.getElementById("memorySearchInput");
+  const type = document.getElementById("memoryTypeFilter");
+  const status = document.getElementById("memoryStatusFilter");
+  const milestone = document.getElementById("memoryMilestoneFilter");
+  const sort = document.getElementById("memorySortSelect");
+  if (search) {
+    search.addEventListener("input", () => {
+      memoryListState.search = search.value;
+      renderMemoryList();
+    });
+  }
+  if (type) {
+    type.addEventListener("change", () => {
+      memoryListState.type = type.value || "all";
+      renderMemoryList();
+    });
+  }
+  if (status) {
+    status.addEventListener("change", () => {
+      memoryListState.status = status.value || "all";
+      renderMemoryList();
+    });
+  }
+  if (milestone) {
+    milestone.addEventListener("change", () => {
+      memoryListState.milestone = milestone.value || "all";
+      renderMemoryList();
+    });
+  }
+  if (sort) {
+    sort.addEventListener("change", () => {
+      memoryListState.sort = sort.value || "newest";
+      renderMemoryList();
+    });
+  }
+}
+
+async function focusLoadedMemory(id) {
+  const targetId = String(id || "");
+  if (!targetId) return false;
+  if (!latestMemories.length && isAuthenticated) {
+    await loadMemories();
+  }
+  const memory = latestMemories.find((item) => memoryIdText(item) === targetId);
+  const status = document.getElementById("memoryListStatus");
+  if (!memory) {
+    if (status) {
+      status.textContent = `Memory #${targetId} is not in the loaded memory set.`;
+    }
+    return false;
+  }
+  if (!memoryMatchesState(memory)) {
+    window.clearMemoryFilters({ render: false });
+  }
+  renderMemoryFilterOptions();
+  updateMemoryControlValuesFromState();
+  renderMemoryList();
+  openAdminDetailPanel("memoryListPanel");
+  const card = Array.from(document.querySelectorAll("[data-memory-id]"))
+    .find((element) => element.dataset.memoryId === targetId);
+  if (!card) {
+    if (status) {
+      status.textContent = `Memory #${targetId} could not be shown.`;
+    }
+    return false;
+  }
+  card.classList.add("is-focused");
+  const details = card.querySelector("details");
+  if (details) details.open = true;
+  card.focus({ preventScroll: true });
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (status) {
+    status.textContent = `Showing memory #${targetId}.`;
+  }
+  window.setTimeout(() => card.classList.remove("is-focused"), 2200);
+  return true;
+}
+
+window.reviewMemoryById = async function reviewMemoryById(id) {
+  await focusLoadedMemory(id);
+};
+
 window.loadMemories = async function loadMemories() {
   if (!isAuthenticated) {
     alert("Please sign in first.");
     return;
   }
 
-  const memories = await window.adminActor.getMyAllSummaries();
-  latestMemories = memories;
-
-  const total = memories.length;
-  const milestones = memories.filter(m => m.milestone).length;
-  const regular = total - milestones;
-
-  document.getElementById("totalMemories").textContent = total;
-  document.getElementById("totalMilestones").textContent = milestones;
-  document.getElementById("totalRegular").textContent = regular;
-  setAdminHealthMetric("healthMemoryCount", total);
-
-  if (memories.length > 0) {
-    const latest = memories[memories.length - 1];
-
-    document.getElementById("latestMemory").textContent =
-      latest.title;
-
-    const latestMilestone = memories
-      .slice()
-      .reverse()
-      .find(m => m.milestone);
-
-    document.getElementById("latestMilestone").textContent =
-      latestMilestone ? latestMilestone.title : "None";
+  try {
+    const memories = await window.adminActor.getMyAllSummaries();
+    applyLoadedMemories(memories);
+  } catch (err) {
+    console.error("Failed to load memories:", err);
+    latestMemories = [];
+    latestMemoryUnavailable = true;
+    const list = document.getElementById("memoryList");
+    if (list) {
+      list.innerHTML = "<p>Failed to load memories.</p>";
+    }
   }
-  const list = document.getElementById("memoryList");
-  list.innerHTML = "";
-
-  memories
-    .slice()
-    .reverse()
-    .forEach((m) => {
-      const createdDate = new Date(
-        Number(m.createdAt) / 1_000_000
-      );
-
-      const createdText = createdDate.toLocaleString();
-      const card = document.createElement("div");
-      card.className = "memory-card";
-
-      card.innerHTML = `
-        <h3>#${m.id.toString()} — ${escapeHtml(m.title)}</h3>
-        <p class="meta">
-          Main Topic: ${escapeHtml(getMainTopic(m.tags))} |
-          Milestone: ${m.milestone ? "true" : "false"} |
-          Type: ${escapeHtml(m.memoryType || "session")} |
-          Importance: ${m.importance?.toString?.() || "n/a"} |
-          Confidence: ${m.confidence?.toString?.() || "n/a"} |
-          Status: ${escapeHtml(m.status || "active")} |
-          Tags: ${escapeHtml(getVisibleTags(m.tags).join(", ") || "None")} |
-          Created: ${escapeHtml(createdText)}
-        </p>
-        <pre>${escapeHtml(m.summary)}</pre>
-        ${renderKeyDecisions(m.keyDecisions)}
-        ${renderRelationships(m.relationships)}
-        <button onclick="deleteMemory(${m.id.toString()})">Delete</button>
-      `;
-
-      list.appendChild(card);
-    });
 };
 
 window.deleteMemory = async function deleteMemory(id) {
-  if (!confirm(`Delete memory #${id}?`)) return;
+  const memoryId = String(id || "");
+  const memory = latestMemories.find((item) => memoryIdText(item) === memoryId);
+  const title = memory && memory.title ? ` — "${memory.title}"` : "";
+  const status = document.getElementById("memoryListStatus");
+  if (!confirm(`Delete memory #${memoryId}${title}?\n\nThis permanently removes this continuity record.`)) {
+    if (status) {
+      status.textContent = `Deletion cancelled for memory #${memoryId}.`;
+    }
+    return;
+  }
 
-  const ok = await window.adminActor.deleteSummaryById(BigInt(id));
+  const ok = await window.adminActor.deleteSummaryById(BigInt(memoryId));
 
   if (ok) {
+    if (status) {
+      status.textContent = `Memory #${memoryId} deleted. Refreshing saved memories...`;
+    }
     await loadMemories();
+    if (status) {
+      status.textContent = `Memory #${memoryId} deleted. Showing ${currentVisibleMemories().length} of ${latestMemories.length} loaded memories.`;
+    }
   } else {
+    if (status) {
+      status.textContent = `Delete failed for memory #${memoryId}.`;
+    }
     alert("Delete failed or memory not found.");
   }
 };
 
 let latestMemories = [];
 let latestFeedback = [];
+let latestMemoryUnavailable = false;
+let latestFeedbackUnavailable = false;
 
 window.loadFeedback = async function loadFeedback() {
   const list = document.getElementById("feedbackList");
@@ -788,6 +1112,7 @@ window.loadFeedback = async function loadFeedback() {
     console.log("Feedback loaded:", feedback);
 
     latestFeedback = feedback;
+    latestFeedbackUnavailable = false;
 
     document.getElementById("feedbackTotal").textContent = feedback.length;
     document.getElementById("feedbackUp").textContent =
@@ -825,8 +1150,11 @@ window.loadFeedback = async function loadFeedback() {
 
   } catch (err) {
     console.error("Failed to load feedback:", err);
+    latestFeedback = [];
+    latestFeedbackUnavailable = true;
+    renderFeedbackDashboardSignal([]);
     list.innerHTML =
-      `<p>Failed to load feedback. ${escapeHtml(err.message || String(err))}</p>`;
+      "<p>Failed to load feedback.</p>";
   }
 };
 
@@ -1060,18 +1388,26 @@ window.loadGoldenTests = async function loadGoldenTests() {
 
     const data = await res.json();
     if (data && Array.isArray(data.results) && data.results.length > 0) {
-      renderGoldenTests(data, { save: true });
+      renderGoldenTests(data, { save: true, provenance: { kind: "LIVE", detail: "fetched now" } });
     } else {
-      
-
-const savedGolden = loadSavedGoldenResults();
+      const savedGolden = loadSavedGoldenResults();
       if (savedGolden) {
-        renderGoldenTests(savedGolden, { save: false });
+        renderGoldenTests(savedGolden, { save: false, provenance: { kind: "CACHED", detail: "browser cache" } });
+      } else {
+        setGoldenDashboardProvenance("LIVE", "no run found");
+        renderGoldenDashboardSignal(null);
       }
     }
 
   } catch (err) {
     console.error("Failed to load golden tests:", err);
+    const savedGolden = loadSavedGoldenResults();
+    if (savedGolden) {
+      renderGoldenTests(savedGolden, { save: false, provenance: { kind: "CACHED", detail: "live fetch unavailable", unavailable: true } });
+    } else {
+      setGoldenDashboardProvenance("LIVE", "fetch unavailable", { unavailable: true });
+      renderGoldenDashboardSignal(null);
+    }
   }
 };
 
@@ -1091,7 +1427,7 @@ window.runGoldenTests = async function runGoldenTests() {
     );
 
     const data = await res.json();
-    renderGoldenTests(data, { save: true });
+    renderGoldenTests(data, { save: true, provenance: { kind: "LIVE", detail: "run now" } });
     if (typeof updateAdminDashboardChecklist === "function") {
       updateAdminDashboardChecklist({ quality: true });
     }
@@ -1101,6 +1437,8 @@ window.runGoldenTests = async function runGoldenTests() {
 
   } catch (err) {
     console.error("Failed to run golden tests:", err);
+    setGoldenDashboardProvenance("LIVE", "run unavailable", { unavailable: true });
+    renderGoldenDashboardSignal(null);
   } finally {
     button.disabled = false;
     button.textContent = "Run quality checks";
@@ -1196,74 +1534,6 @@ window.runPublicRetrievalPreview = async function runPublicRetrievalPreview() {
   }
 };
 
-window.runRetrievalDebug = async function runRetrievalDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const query = document.getElementById("retrievalQuery").value.trim();
-
-  if (!query) {
-    alert("Enter a query.");
-    return;
-  }
-
-  const container = document.getElementById("retrievalResults");
-
-  container.innerHTML = "<p>Searching...</p>";
-
-  try {
-    const res = await fetch(
-      "https://aionic-agent-api.onrender.com/admin/retrieval-debug",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ query })
-      }
-    );
-
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML =
-        `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const results = data.results || [];
-
-    if (results.length === 0) {
-      container.innerHTML = "<p>No chunks found.</p>";
-      return;
-    }
-
-    container.innerHTML = results
-      .map((r) => `
-        <div class="memory-card">
-          <h3>Rank ${escapeHtml(r.rank)}</h3>
-
-          <p class="meta">
-            Document: ${escapeHtml(r.document_id || "Unknown")} |
-            Title: ${escapeHtml(r.title || "Untitled")} |
-            Score: ${escapeHtml(r.score ?? "N/A")} |
-            Boosted: ${escapeHtml(r.boosted_score ?? "N/A")} |
-            Type: ${escapeHtml(r.source_type || "Unknown")}
-          </p>
-
-          <pre>${escapeHtml(r.text || "")}</pre>
-        </div>
-      `)
-      .join("");
-
-  } catch (err) {
-    console.error("Retrieval debug failed:", err);
-    container.innerHTML = "<p>Retrieval debug failed.</p>";
-  }
-};
-
 function serializeNat(value, fallback = "0") {
   if (value === null || value === undefined) {
     return fallback;
@@ -1343,6 +1613,36 @@ function renderMemoryRef(memory = {}) {
   }
 
   return `${memory.title || "Untitled"} (ID: ${memory.id ?? "n/a"}, Type: ${memory.type || "session"})`;
+}
+
+function memoryReviewActionsHtml(...memories) {
+  const buttons = memories
+    .flat()
+    .filter(Boolean)
+    .map((memory) => {
+      const id = memoryIdText(memory);
+      if (!id) return "";
+      return `<button type="button" class="admin-memory-clear" onclick="reviewMemoryById(${escapeHtml(JSON.stringify(id))})">Review memory #${escapeHtml(id)}</button>`;
+    })
+    .filter(Boolean);
+  if (!buttons.length) return "";
+  return `<div class="admin-memory-ref-actions">${buttons.join("")}</div>`;
+}
+
+function dashboardNextActionMemories(health, consolidation, decisionEvolution) {
+  const suggestions = consolidation.suggestions || [];
+  const merge = suggestions.find((suggestion) => suggestion.action === "merge_candidate");
+  const deprecate = suggestions.find((suggestion) => suggestion.action === "deprecate_candidate");
+  const orphan = (health.orphanMemories || [])[0];
+  const unresolved = (decisionEvolution.unresolvedOlderDecisionReferences || [])[0];
+  const review = suggestions.find((suggestion) => suggestion.action === "needs_review");
+
+  if (merge) return [merge.keepMemory, merge.deprecateMemory];
+  if (deprecate) return [deprecate.keepMemory, deprecate.reviewMemory, deprecate.memory].filter(Boolean);
+  if (orphan) return [orphan];
+  if (unresolved) return [unresolved.olderMemory];
+  if (review) return [review.keepMemory, review.reviewMemory, review.memory].filter(Boolean);
+  return [];
 }
 
 async function postMemoryDryRun(path, payload) {
@@ -1477,7 +1777,7 @@ window.runMemoryHealthDashboard = async function runMemoryHealthDashboard() {
 
   try {
     const memories = await window.adminActor.getMyAllSummaries();
-    latestMemories = memories;
+    applyLoadedMemories(memories);
 
     const serializedMemories = memories.map(serializeMemoryForRanking);
     const [health, consolidation, decisionEvolution] = await Promise.all([
@@ -1523,6 +1823,7 @@ window.runMemoryHealthDashboard = async function runMemoryHealthDashboard() {
       <div class="memory-card">
         <h3>Recommended Next Manual Action</h3>
         <p>${escapeHtml(buildDashboardNextAction(health, consolidation, decisionEvolution))}</p>
+        ${memoryReviewActionsHtml(dashboardNextActionMemories(health, consolidation, decisionEvolution))}
       </div>
 
       <div class="memory-card">
@@ -1595,6 +1896,7 @@ function renderMaintenanceActions(actions = []) {
       <p>${escapeHtml(action.reason || "")}</p>
       <p><strong>Keep:</strong> ${escapeHtml(renderMemoryRef(action.keepMemory || null))}</p>
       <p><strong>Review:</strong> ${escapeHtml(renderMemoryRef(action.reviewMemory || null))}</p>
+      ${memoryReviewActionsHtml([action.keepMemory, action.reviewMemory, action.memory])}
       <p><strong>Relationship:</strong> ${escapeHtml(renderMaintenanceRelationship(action.relationship))}</p>
       <p>${escapeHtml(action.recommendation || "")}</p>
       <div>
@@ -1667,7 +1969,7 @@ window.runMemoryMaintenancePlanDebug = async function runMemoryMaintenancePlanDe
 
   try {
     const memories = await window.adminActor.getMyAllSummaries();
-    latestMemories = memories;
+    applyLoadedMemories(memories);
 
     const serializedMemories = memories.map(serializeMemoryForRanking);
     const data = await postMemoryDryRun("/admin/memory-maintenance-plan", {
@@ -1724,127 +2026,6 @@ window.runMemoryMaintenancePlanDebug = async function runMemoryMaintenancePlanDe
   } catch (err) {
     console.error("Memory maintenance plan dry run failed:", err);
     container.innerHTML = `<p>Memory maintenance plan dry run failed: ${escapeHtml(err.message || err)}</p>`;
-  }
-};
-
-function renderOperatorInsightFindings(findings = []) {
-  if (!Array.isArray(findings) || findings.length === 0) {
-    return "<p>No operator insight findings returned.</p>";
-  }
-
-  return findings.map((finding, index) => `
-    <div>
-      <strong>${index + 1}. ${escapeHtml(finding.finding || "Untitled finding")}</strong>
-      <p class="meta">
-        Type: ${escapeHtml(finding.type || "insight")} |
-        Confidence: ${escapeHtml(finding.confidence || "medium")} |
-        Sources: ${escapeHtml((finding.sources || []).join(", ") || "n/a")}
-      </p>
-      <p><strong>Operator question:</strong> ${escapeHtml(finding.operatorQuestion || "")}</p>
-    </div>
-  `).join("");
-}
-
-function renderOperatorInsightReportExport(text = "") {
-  if (!text) {
-    return "<p>No operator insight report memo available.</p>";
-  }
-
-  return `
-    <textarea
-      id="operatorInsightReportExportText"
-      readonly
-      style="width: 100%; min-height: 340px; padding: 10px; font-family: monospace; white-space: pre-wrap;"
-    >${escapeHtml(text)}</textarea>
-    <button onclick="copyOperatorInsightReportExport()">Copy Memo</button>
-  `;
-}
-
-window.copyOperatorInsightReportExport = async function copyOperatorInsightReportExport() {
-  const exportBox = document.getElementById("operatorInsightReportExportText");
-
-  if (!exportBox) {
-    alert("No operator insight report memo is available yet.");
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(exportBox.value);
-    alert("Operator insight report memo copied.");
-  } catch (err) {
-    exportBox.focus();
-    exportBox.select();
-    alert("Copy failed. The memo is selected so you can copy it manually.");
-  }
-};
-
-window.runOperatorInsightReportDebug = async function runOperatorInsightReportDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("operatorInsightReportResults");
-  container.innerHTML = "<p>Building operator insight report...</p>";
-
-  try {
-    const memories = await window.adminActor.getMyAllSummaries();
-    latestMemories = memories;
-
-    const serializedMemories = memories.map(serializeMemoryForRanking);
-    const data = await postMemoryDryRun("/admin/operator-insight-report", {
-      memories: serializedMemories,
-      limit: 10,
-    });
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>Operator Insight Report Summary</h3>
-        <p class="meta">
-          Memories reviewed: ${escapeHtml(data.memoryCount ?? serializedMemories.length)} |
-          Status: ${escapeHtml(data.reportStatus || "n/a")} |
-          Key findings: ${escapeHtml(data.keyFindingCount ?? 0)} |
-          Questioned assumptions: ${escapeHtml(data.sourceSummary?.questionedAssumptionCount ?? 0)}
-        </p>
-      </div>
-
-      <div class="memory-card">
-        <h3>Key Findings</h3>
-        ${renderOperatorInsightFindings(data.keyFindings)}
-      </div>
-
-      <div class="memory-card">
-        <h3>Next Review Focus</h3>
-        <p>${escapeHtml(data.nextReviewFocus || "")}</p>
-      </div>
-
-      <div class="memory-card">
-        <h3>Operator Notes</h3>
-        ${
-          Array.isArray(data.operatorNotes) && data.operatorNotes.length
-            ? `<ul>${data.operatorNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`
-            : "<p>No operator notes returned.</p>"
-        }
-      </div>
-
-      <div class="memory-card">
-        <h3>Guardrails</h3>
-        ${
-          Array.isArray(data.guardrails) && data.guardrails.length
-            ? `<ul>${data.guardrails.map((guardrail) => `<li>${escapeHtml(guardrail)}</li>`).join("")}</ul>`
-            : "<p>No guardrails returned.</p>"
-        }
-      </div>
-
-      <div class="memory-card">
-        <h3>Export Memo</h3>
-        ${renderOperatorInsightReportExport(data.exportText)}
-      </div>
-    `;
-
-  } catch (err) {
-    console.error("Operator insight report dry run failed:", err);
-    container.innerHTML = `<p>Operator insight report dry run failed: ${escapeHtml(err.message || err)}</p>`;
   }
 };
 
@@ -2176,308 +2357,22 @@ function renderMetricGrid(metrics = {}) {
   `;
 }
 
-window.runAionProviderRoutingPolicyDebug = async function runAionProviderRoutingPolicyDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("aionProviderRoutingPolicyResults");
-  container.innerHTML = "<p>Building Aion provider routing policy...</p>";
-
-  try {
-    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-provider-routing-policy");
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const routeRows = Array.isArray(data.routes) ? data.routes.map((route) => `
-      <tr><td><strong>${escapeHtml(route.operation || "")}</strong></td><td>${escapeHtml(route.provider || "")}</td><td>${escapeHtml(route.model || "")}</td><td>${escapeHtml(route.status || "")}</td><td>${escapeHtml(route.rule || "")}</td></tr>
-    `).join("") : "";
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Aion Provider Routing Policy")}</h3>
-        <p>${escapeHtml(data.summary || "")}</p>
-        <p class="meta">Dry run: ${data.dryRunOnly ? "yes" : "no"} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
-      </div>
-      <div class="memory-card"><h3>Permitted Routes</h3><table><thead><tr><th>Operation</th><th>Provider</th><th>Model</th><th>Status</th><th>Rule</th></tr></thead><tbody>${routeRows}</tbody></table></div>
-      <div class="memory-card"><h3>Decision Order</h3><ul>${(data.decisionOrder || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-      <div class="memory-card"><h3>Failure Policy</h3><ul>${(data.failurePolicy || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-      <div class="memory-card"><h3>Future Motoko Policy Contract</h3>${renderCountMap(data.futureMotokoContract || {})}</div>
-      <div class="memory-card"><h3>Promotion Requirements</h3><ul>${(data.promotionRequirements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-    `;
-  } catch (err) {
-    console.error("Aion provider routing policy failed:", err);
-    container.innerHTML = `<p>Aion provider routing policy failed: ${escapeHtml(err.message || err)}</p>`;
-  }
+const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
+let goldenDashboardProvenance = {
+  kind: "CACHED",
+  detail: "browser cache",
+  unavailable: false,
+  stale: false,
 };
 
-function nativeOperationKey(operation = {}) {
-  return Object.keys(operation)[0] || "unknown";
-}
-
-function policyParityChecks(route, nativeDecision) {
-  const expected = route.nativeDecision || {};
-
-  return {
-    operation: nativeOperationKey(nativeDecision.operation) === route.operationId,
-    provider: nativeDecision.providerId === expected.providerId,
-    route: nativeDecision.routeId === expected.routeId,
-    invocation: nativeDecision.invocationPermitted === expected.invocationPermitted,
-    operatorAction: nativeDecision.explicitOperatorAction === expected.explicitOperatorAction,
-    promotion: nativeDecision.promotionRequired === expected.promotionRequired,
-    fallback: nativeDecision.automaticFallback === expected.automaticFallback,
+function setGoldenDashboardProvenance(kind, detail = "", options = {}) {
+  goldenDashboardProvenance = {
+    kind,
+    detail,
+    unavailable: options.unavailable === true,
+    stale: options.stale === true,
   };
 }
-
-window.runAionProviderPolicyParityDebug = async function runAionProviderPolicyParityDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("aionProviderPolicyParityResults");
-  container.innerHTML = "<p>Comparing Render and native provider policy...</p>";
-
-  try {
-    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-provider-routing-policy");
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const routes = Array.isArray(data.routes)
-      ? data.routes.filter((route) => route.operationId && route.nativeDecision)
-      : [];
-
-    if (routes.length !== 3) {
-      container.innerHTML = "<p>Policy parity metadata is incomplete.</p>";
-      return;
-    }
-
-    const results = await Promise.all(routes.map(async (route) => {
-      try {
-        const nativeDecision = await window.adminActor.previewAionProviderRoute({
-          [route.operationId]: null,
-        });
-        const checks = policyParityChecks(route, nativeDecision);
-        const matches = Object.values(checks).every(Boolean);
-
-        return { route, nativeDecision, checks, matches, error: "" };
-      } catch (err) {
-        return {
-          route,
-          nativeDecision: null,
-          checks: {},
-          matches: false,
-          error: err.message || String(err),
-        };
-      }
-    }));
-
-    const matchedCount = results.filter((result) => result.matches).length;
-    const allMatch = matchedCount === results.length;
-    const rows = results.map((result) => {
-      const expected = result.route.nativeDecision || {};
-      const actual = result.nativeDecision;
-      const actualRoute = actual
-        ? `${actual.providerId || ""} / ${actual.routeId || ""}`
-        : "No native result";
-      const checkSummary = result.error
-        ? escapeHtml(result.error)
-        : Object.entries(result.checks)
-          .map(([name, passed]) => `${name}: ${passed ? "pass" : "review"}`)
-          .join(" | ");
-
-      return `
-        <tr>
-          <td><strong>${escapeHtml(result.route.operation || "")}</strong></td>
-          <td>${escapeHtml(`${expected.providerId || ""} / ${expected.routeId || ""}`)}</td>
-          <td>${escapeHtml(actualRoute)}</td>
-          <td><span class="status-badge ${result.matches ? "success" : "error"}">${result.matches ? "match" : "review"}</span></td>
-          <td>${escapeHtml(checkSummary)}</td>
-        </tr>
-      `;
-    }).join("");
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>Native Provider Policy Parity</h3>
-        <p>Render policy and the live ICP route preview are compared for fixed operations only.</p>
-        <p class="meta">Phase: 7.44 | Provider calls: no | Memory writes: no | Automatic switching: no</p>
-        <p><span class="status-badge ${allMatch ? "success" : "error"}">${allMatch ? "parity confirmed" : "parity review needed"}</span> ${matchedCount}/${results.length} routes matched</p>
-      </div>
-      <div class="memory-card">
-        <h3>Route Comparison</h3>
-        <table>
-          <thead><tr><th>Operation</th><th>Render expectation</th><th>Native result</th><th>Status</th><th>Checks</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div class="memory-card">
-        <h3>Boundary</h3>
-        <p>This report compares policy descriptions. It does not invoke OpenAI, ICP LLM, or any other reasoning provider, and it does not authorize route enforcement.</p>
-      </div>
-    `;
-  } catch (err) {
-    console.error("Aion provider policy parity failed:", err);
-    container.innerHTML = `<p>Aion provider policy parity failed: ${escapeHtml(err.message || err)}</p>`;
-  }
-};
-
-window.runAionRouteEnforcementHandoffDebug = async function runAionRouteEnforcementHandoffDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("aionRouteEnforcementHandoffResults");
-  container.innerHTML = "<p>Building route-enforcement handoff design...</p>";
-
-  try {
-    const res = await fetch("https://aionic-agent-api.onrender.com/admin/aion-route-enforcement-handoff");
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const routeRows = Array.isArray(data.routeMatrix) ? data.routeMatrix.map((route) => `
-      <tr>
-        <td><strong>${escapeHtml(route.operation || "")}</strong></td>
-        <td>${escapeHtml(route.nativeRoute || "")}</td>
-        <td>${escapeHtml(route.adapter || "")}</td>
-        <td>${escapeHtml(route.enforcementStatus || "")}</td>
-        <td>${escapeHtml(route.requirement || "")}</td>
-      </tr>
-    `).join("") : "";
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Aion Route Enforcement Handoff Design")}</h3>
-        <p>${escapeHtml(data.summary || "")}</p>
-        <p class="meta">Phase: ${escapeHtml(data.phase || "7.45")} | Dry run: ${data.dryRunOnly ? "yes" : "no"} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
-      </div>
-      <div class="memory-card"><h3>Parity Evidence</h3>${renderCountMap(data.parityEvidence || {})}</div>
-      <div class="memory-card"><h3>Native Decision Contract</h3>${renderCountMap(data.nativeDecisionContract || {})}</div>
-      <div class="memory-card"><h3>Aion Request Boundary</h3>${renderCountMap(data.aionRequestBoundary || {})}</div>
-      <div class="memory-card"><h3>Handoff Sequence</h3><ol>${(data.handoffSequence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>
-      <div class="memory-card"><h3>Route Matrix</h3><table><thead><tr><th>Operation</th><th>Native route</th><th>External adapter</th><th>Enforcement</th><th>Requirement</th></tr></thead><tbody>${routeRows}</tbody></table></div>
-      <div class="memory-card"><h3>Failure Policy</h3><ul>${(data.failurePolicy || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-      <div class="memory-card"><h3>Promotion Requirements</h3><ul>${(data.promotionRequirements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-      <div class="memory-card"><h3>Non-Goals</h3><ul>${(data.nonGoals || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-    `;
-  } catch (err) {
-    console.error("Aion route enforcement handoff design failed:", err);
-    container.innerHTML = `<p>Aion route enforcement handoff design failed: ${escapeHtml(err.message || err)}</p>`;
-  }
-};
-
-window.runProviderAdapterGuardDebug = async function runProviderAdapterGuardDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("providerAdapterGuardResults");
-  container.innerHTML = "<p>Running provider adapter guard fixtures...</p>";
-
-  try {
-    const res = await fetch("https://aionic-agent-api.onrender.com/admin/provider-adapter-guard");
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const summary = data.summaryCounts || {};
-    const rows = Array.isArray(data.fixtureResults) ? data.fixtureResults.map((fixture) => `
-      <tr>
-        <td><strong>${escapeHtml(fixture.name || "")}</strong></td>
-        <td>${escapeHtml(fixture.expected || "")}</td>
-        <td>${escapeHtml(fixture.actual || "")}</td>
-        <td><span class="status-badge ${fixture.passed ? "success" : "error"}">${fixture.passed ? "pass" : "review"}</span></td>
-      </tr>
-    `).join("") : "";
-    const fullyGreen = Number(summary.review || 0) === 0;
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Provider Adapter Guard Fixture Run")}</h3>
-        <p>${escapeHtml(data.summary || "")}</p>
-        <p class="meta">Phase: ${escapeHtml(data.phase || "7.48")} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Memory writes: ${data.memoryWrites ? "yes" : "no"} | Automatic switching: ${data.automaticSwitching ? "yes" : "no"}</p>
-        <p><span class="status-badge ${fullyGreen ? "success" : "error"}">${fullyGreen ? "fixtures passed" : "review required"}</span> ${escapeHtml(summary.passed || 0)}/${escapeHtml(summary.fixtures || 0)} passed</p>
-      </div>
-      <div class="memory-card"><h3>Contract Boundary</h3>${renderCountMap(data.contractBoundary || {})}</div>
-      <div class="memory-card"><h3>Normalized Errors</h3><p>${(data.normalizedErrors || []).map((item) => `<code>${escapeHtml(item)}</code>`).join(" | ")}</p></div>
-      <div class="memory-card"><h3>Fixture Results</h3><table><thead><tr><th>Fixture</th><th>Expected</th><th>Actual</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="memory-card"><h3>Guardrails</h3><ul>${(data.guardrails || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-    `;
-  } catch (err) {
-    console.error("Provider adapter guard fixtures failed:", err);
-    container.innerHTML = `<p>Provider adapter guard fixtures failed: ${escapeHtml(err.message || err)}</p>`;
-  }
-};
-
-window.runRenderNativeProviderPolicyQueryDebug = async function runRenderNativeProviderPolicyQueryDebug() {
-  if (!isAuthenticated) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  const container = document.getElementById("renderNativeProviderPolicyQueryResults");
-  container.innerHTML = "<p>Querying the native policy from Render...</p>";
-
-  try {
-    const res = await fetch("https://aionic-agent-api.onrender.com/admin/render-native-provider-policy-query");
-    const data = await res.json();
-
-    if (data.error) {
-      container.innerHTML = `<p>Error: ${escapeHtml(data.error)}</p>`;
-      return;
-    }
-
-    const summary = data.summaryCounts || {};
-    const allPassed = Number(summary.review || 0) === 0;
-    const rows = Array.isArray(data.results) ? data.results.map((result) => `
-      <tr>
-        <td><strong>${escapeHtml(result.operation || "")}</strong></td>
-        <td>${escapeHtml(`${result.nativeDecision?.providerId || ""} / ${result.nativeDecision?.routeId || ""}`)}</td>
-        <td>${result.policyParity ? "pass" : "review"}</td>
-        <td>${escapeHtml(result.handoffValidation || "")}</td>
-        <td>${escapeHtml(result.adapterInvocation || "")}</td>
-        <td><span class="status-badge ${result.passed ? "success" : "error"}">${result.passed ? "pass" : "review"}</span></td>
-      </tr>
-    `).join("") : "";
-    const trust = data.trustBoundary || {};
-
-    container.innerHTML = `
-      <div class="memory-card">
-        <h3>${escapeHtml(data.title || "Render-Initiated Native Policy Query")}</h3>
-        <p>${escapeHtml(data.summary || "")}</p>
-        <p class="meta">Phase: ${escapeHtml(data.phase || "7.50")} | ICP queries: ${escapeHtml(data.canisterCallsMade || 0)} | Provider calls: ${data.providerCallsMade ? "yes" : "no"} | Memory writes: ${data.memoryWrites ? "yes" : "no"}</p>
-        <p><span class="status-badge ${allPassed ? "success" : "error"}">${allPassed ? "server query confirmed" : "query review needed"}</span> ${escapeHtml(summary.passed || 0)}/${escapeHtml(summary.operations || 0)} operations passed</p>
-      </div>
-      <div class="memory-card"><h3>Canister Query</h3>${renderCountMap(data.canister || {})}</div>
-      <div class="memory-card"><h3>Trust Boundary</h3>${renderCountMap(trust)}</div>
-      <div class="memory-card"><h3>Server Query Matrix</h3><table><thead><tr><th>Operation</th><th>Native decision</th><th>Policy parity</th><th>Guard result</th><th>Adapter state</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="memory-card"><h3>Guardrails</h3><ul>${(data.guardrails || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
-    `;
-  } catch (err) {
-    console.error("Render native provider policy query failed:", err);
-    container.innerHTML = `<p>Render native provider policy query failed: ${escapeHtml(err.message || err)}</p>`;
-  }
-};
-
-const GOLDEN_RESULTS_KEY = "aion_admin_golden_results";
 
 function saveGoldenResults(data) {
   localStorage.setItem(
@@ -2506,6 +2401,17 @@ function renderGoldenTests(data, options = {}) {
     data &&
     Array.isArray(data.results) &&
     data.results.length > 0;
+
+  if (options.provenance) {
+    setGoldenDashboardProvenance(
+      options.provenance.kind,
+      options.provenance.detail,
+      {
+        unavailable: options.provenance.unavailable === true,
+        stale: options.provenance.stale === true,
+      }
+    );
+  }
 
   if (shouldSave) {
     saveGoldenResults(data);
@@ -2565,6 +2471,9 @@ function goldenFreshnessStatus(data) {
 }
 
 function goldenQualityStatus(data = loadSavedGoldenResults()) {
+  if (goldenDashboardProvenance && goldenDashboardProvenance.unavailable) {
+    return { label: "Tests unavailable", className: "stale", detailId: "goldenTestsPanel" };
+  }
   if (!data || !Number.isFinite(Number(data.total)) || Number(data.total) === 0) {
     return { label: "Run golden tests", className: "pending", detailId: "goldenTestsPanel" };
   }
@@ -2588,6 +2497,9 @@ function goldenQualityStatus(data = loadSavedGoldenResults()) {
 }
 
 function feedbackQualityStatus(feedback = latestFeedback) {
+  if (latestFeedbackUnavailable) {
+    return { label: "Feedback unavailable", className: "stale", detailId: "feedbackDashboardPanel" };
+  }
   const items = Array.isArray(feedback) ? feedback : [];
   if (items.length === 0) {
     return { label: "No feedback", className: "pending", detailId: "feedbackDashboardPanel" };
@@ -2602,6 +2514,18 @@ function feedbackQualityStatus(feedback = latestFeedback) {
     return { label: "Review feedback", className: "stale", detailId: "feedbackDashboardPanel" };
   }
   return { label: "Feedback watch", className: "watch", detailId: "feedbackDashboardPanel" };
+}
+
+function dashboardLiveDataStatus() {
+  const unavailable = [];
+  if (latestMemoryUnavailable) unavailable.push("memories");
+  if (latestFeedbackUnavailable) unavailable.push("feedback");
+  if (goldenDashboardProvenance && goldenDashboardProvenance.unavailable) unavailable.push("golden tests");
+  return {
+    className: unavailable.length ? "stale" : "healthy",
+    label: unavailable.length ? "Refresh unavailable" : "Live data ready",
+    unavailable,
+  };
 }
 
 function combinedQualityAttentionStatus(data = loadSavedGoldenResults(), feedback = latestFeedback) {
@@ -2625,6 +2549,35 @@ function renderDashboardQualityAttention(data = loadSavedGoldenResults(), feedba
   }
 }
 
+function renderOverviewQualityState(data = loadSavedGoldenResults(), feedback = latestFeedback) {
+  const element = document.getElementById("healthGoldenTests");
+  const status = combinedQualityAttentionStatus(data, feedback);
+  const golden = data && Number.isFinite(Number(data.total))
+    ? `${Number(data.passed || 0)}/${Number(data.total || 0)} tests`
+    : "No test run";
+  const items = Array.isArray(feedback) ? feedback : [];
+  const down = latestFeedbackUnavailable ? null : items.filter((item) => item.rating === "down").length;
+  const feedbackLabel = latestFeedbackUnavailable
+    ? "feedback unavailable"
+    : items.length
+      ? `${down} negative feedback`
+      : "no feedback";
+  if (element) {
+    element.innerHTML = `${escapeHtml(status.label)} · ${escapeHtml(golden)} · ${escapeHtml(feedbackLabel)}${renderDashboardBadge(status.className === "healthy" ? "Clear" : "Review", status.className === "healthy" ? "success" : status.className)}`;
+  }
+  setAdminMetricProvenance(
+    "healthGoldenTests",
+    latestFeedbackUnavailable || (goldenDashboardProvenance && goldenDashboardProvenance.unavailable)
+      ? "LIVE"
+      : "DERIVED",
+    latestFeedbackUnavailable || (goldenDashboardProvenance && goldenDashboardProvenance.unavailable)
+      ? "ICP unavailable"
+      : "from tests and feedback",
+    { unavailable: latestFeedbackUnavailable || (goldenDashboardProvenance && goldenDashboardProvenance.unavailable), stale: status.className === "stale" }
+  );
+  renderDashboardQualityAttention(data, feedback);
+}
+
 function refreshRecommendedActionFromQuality() {
   if (typeof renderCycleSnapshot === "function") {
     renderCycleSnapshot(loadCycleSnapshot());
@@ -2632,59 +2585,48 @@ function refreshRecommendedActionFromQuality() {
 }
 
 function renderGoldenDashboardSignal(data = null) {
-  const element = document.getElementById("healthGoldenTests");
+  const provenance = goldenDashboardProvenance || {};
   if (!data || !Number.isFinite(Number(data.total)) || Number(data.total) === 0) {
-    if (element) {
-      element.innerHTML = renderDashboardBadge("No run", "pending");
-    }
-    renderDashboardQualityAttention(data, latestFeedback);
+    setAdminMetricProvenance(
+      "healthGoldenTests",
+      provenance.kind || "LIVE",
+      provenance.detail || "no run found",
+      { unavailable: provenance.unavailable === true, stale: provenance.stale === true }
+    );
+    renderOverviewQualityState(data, latestFeedback);
     refreshRecommendedActionFromQuality();
     return;
   }
 
   const total = Number(data.total || 0);
   const passed = Number(data.passed || 0);
-  const label = `${passed}/${total} passed`;
   const freshness = passed === total ? goldenFreshnessStatus(data) : null;
-  const className = passed === total
-    ? freshness.className === "healthy" ? "success" : "warning"
-    : passed > 0 ? "warning" : "error";
-  const badge = passed === total
-    ? freshness.label === "Fresh" ? "Passing" : freshness.label
-    : "Review";
-  if (element) {
-    element.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(badge, className)}`;
-  }
-  renderDashboardQualityAttention(data, latestFeedback);
+  setAdminMetricProvenance(
+    "healthGoldenTests",
+    provenance.kind || "CACHED",
+    provenance.detail || (provenance.kind === "LIVE" ? "fetched now" : "browser cache"),
+    { unavailable: provenance.unavailable === true, stale: freshness && freshness.className === "stale" }
+  );
+  renderOverviewQualityState(data, latestFeedback);
   refreshRecommendedActionFromQuality();
 }
 
 function renderFeedbackDashboardSignal(feedback = []) {
-  const countElement = document.getElementById("healthFeedbackCount");
-  const signalElement = document.getElementById("healthFeedbackSignal");
+  if (latestFeedbackUnavailable) {
+    renderOverviewQualityState(loadSavedGoldenResults(), []);
+    refreshRecommendedActionFromQuality();
+    return;
+  }
   const items = Array.isArray(feedback) ? feedback : [];
-  const up = items.filter((item) => item.rating === "up").length;
-  const down = items.filter((item) => item.rating === "down").length;
   const total = items.length;
 
-  if (countElement) {
-    countElement.textContent = total;
-  }
   if (total === 0) {
-    if (signalElement) {
-      signalElement.innerHTML = renderDashboardBadge("No feedback", "pending");
-    }
-    renderDashboardQualityAttention(loadSavedGoldenResults(), items);
+    renderOverviewQualityState(loadSavedGoldenResults(), items);
     refreshRecommendedActionFromQuality();
     return;
   }
 
-  const label = `${up} helpful · ${down} needs work`;
-  const className = down === 0 ? "success" : down > up ? "warning" : "healthy";
-  if (signalElement) {
-    signalElement.innerHTML = `${escapeHtml(label)}${renderDashboardBadge(down === 0 ? "Clean" : "Review", className)}`;
-  }
-  renderDashboardQualityAttention(loadSavedGoldenResults(), items);
+  renderOverviewQualityState(loadSavedGoldenResults(), items);
   refreshRecommendedActionFromQuality();
 }
 // Admin dashboard quality signals end
@@ -2692,308 +2634,22 @@ function renderFeedbackDashboardSignal(feedback = []) {
 // Admin cycles visibility start
 const ADMIN_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshots_v2";
 const ADMIN_LEGACY_CYCLE_SNAPSHOT_KEY = "aion_admin_cycle_snapshot_v1";
-const ADMIN_DASHBOARD_REVIEW_KEY = "aion_admin_dashboard_review_v1";
 const ADMIN_DASHBOARD_REFRESH_KEY = "aion_admin_dashboard_refresh_v1";
-const ADMIN_DASHBOARD_ACTIVITY_KEY = "aion_admin_dashboard_activity_v1";
-const ADMIN_DASHBOARD_NOTE_KEY = "aion_admin_dashboard_note_v1";
-const ADMIN_DASHBOARD_NOTE_DRAFT_KEY = "aion_admin_dashboard_note_draft_v1";
-const ADMIN_DASHBOARD_CHECKLIST_KEY = "aion_admin_dashboard_checklist_v1";
 const ADMIN_DASHBOARD_REVIEW_EVIDENCE_KEY = "aion_admin_dashboard_review_evidence_v1";
-const ADMIN_CYCLE_HISTORY_KEY = "aion_admin_cycle_history_v1";
 const ADMIN_CYCLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const ADMIN_CYCLE_LABELS = {
   frontend: "Frontend",
   backend: "Backend",
   wallet: "Wallet",
 };
-const ADMIN_DASHBOARD_CHECKLIST_ITEMS = [
-  { key: "snapshots", inputId: "adminChecklistSnapshots", label: "Snapshots reviewed" },
-  { key: "wallet", inputId: "adminChecklistWallet", label: "Wallet checked" },
-  { key: "quality", inputId: "adminChecklistQuality", label: "Quality reviewed" },
-  { key: "evidence", inputId: "adminChecklistEvidence", label: "Evidence saved" },
-  { key: "note", inputId: "adminChecklistNote", label: "Handoff note ready" },
-];
 const ADMIN_FRONTEND_DEPLOY_RESERVE = 100_000_000_000;
 let currentAdminRecommendedAction = {
-  label: "Paste snapshots",
+  label: "Refresh dashboard",
   className: "pending",
-  detailId: "cycleRunwayPanel",
+  command: "refresh",
 };
 
-function loadAdminDashboardActivity() {
-  try {
-    const raw = localStorage.getItem(ADMIN_DASHBOARD_ACTIVITY_KEY);
-    if (raw) {
-      const entries = JSON.parse(raw);
-      if (Array.isArray(entries)) {
-        persistAdminDashboardActivity(entries);
-        return entries.slice(0, 8);
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard activity:", err);
-  }
-
-  try {
-    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_ACTIVITY_KEY);
-    const entries = cookieRaw ? JSON.parse(cookieRaw) : [];
-    if (Array.isArray(entries)) {
-      persistAdminDashboardActivity(entries);
-      return entries.slice(0, 8);
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard activity from cookie:", err);
-  }
-
-  return [];
-}
-
-function persistAdminDashboardActivity(entries) {
-  const serialized = JSON.stringify((entries || []).slice(0, 8));
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_ACTIVITY_KEY, serialized);
-  } catch (err) {
-    console.warn("Could not save dashboard activity:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_DASHBOARD_ACTIVITY_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save dashboard activity to cookie:", err);
-  }
-}
-
-function formatAdminActivityTime(timestamp) {
-  if (!timestamp) return "Pending";
-  const time = new Date(timestamp);
-  if (!Number.isFinite(time.getTime())) return "Pending";
-  return time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-function renderAdminDashboardActivity(entries = loadAdminDashboardActivity()) {
-  const list = document.getElementById("adminDashboardActivityList");
-  if (!list) return;
-  if (!entries.length) {
-    list.innerHTML = `<li><span>No recent activity yet.</span><time>Pending</time></li>`;
-    if (typeof renderAdminReviewPacket === "function") {
-      renderAdminReviewPacket();
-    }
-    return;
-  }
-
-  list.innerHTML = entries
-    .slice(0, 5)
-    .map((entry) => {
-      const detail = entry.detail ? ` <span class="meta">${escapeHtml(entry.detail)}</span>` : "";
-      const timestamp = entry.timestamp || "";
-      return `<li><span><strong>${escapeHtml(entry.label || "Dashboard update")}</strong>${detail}</span><time datetime="${escapeHtml(timestamp)}">${escapeHtml(formatAdminActivityTime(timestamp))}</time></li>`;
-    })
-    .join("");
-  if (typeof renderAdminReviewPacket === "function") {
-    renderAdminReviewPacket();
-  }
-}
-
-function recordAdminDashboardActivity(label, detail = "") {
-  const entries = loadAdminDashboardActivity();
-  const next = [
-    {
-      label,
-      detail,
-      timestamp: new Date().toISOString(),
-    },
-    ...entries,
-  ].slice(0, 8);
-  persistAdminDashboardActivity(next);
-  renderAdminDashboardActivity(next);
-}
-
-window.clearAdminDashboardActivity = function clearAdminDashboardActivity() {
-  persistAdminDashboardActivity([]);
-  renderAdminDashboardActivity([]);
-};
-
-function loadAdminDashboardNote() {
-  try {
-    const note = localStorage.getItem(ADMIN_DASHBOARD_NOTE_KEY);
-    if (note !== null) {
-      persistAdminDashboardNote(note);
-      return note;
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard note:", err);
-  }
-
-  try {
-    return getAdminCookieValue(ADMIN_DASHBOARD_NOTE_KEY) || "";
-  } catch (err) {
-    console.warn("Could not load dashboard note from cookie:", err);
-    return "";
-  }
-}
-
-function persistAdminDashboardNote(note) {
-  const value = note || "";
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_NOTE_KEY, value);
-  } catch (err) {
-    console.warn("Could not save dashboard note:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_DASHBOARD_NOTE_KEY}=${encodeURIComponent(value)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save dashboard note to cookie:", err);
-  }
-}
-
-function loadAdminDashboardNoteDraft() {
-  try {
-    return localStorage.getItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY) || "";
-  } catch (err) {
-    console.warn("Could not load dashboard note draft:", err);
-    return "";
-  }
-}
-
-function persistAdminDashboardNoteDraft(note) {
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY, note || "");
-  } catch (err) {
-    console.warn("Could not save dashboard note draft:", err);
-  }
-}
-
-function clearAdminDashboardNoteDraft() {
-  try {
-    localStorage.removeItem(ADMIN_DASHBOARD_NOTE_DRAFT_KEY);
-  } catch (err) {
-    console.warn("Could not clear dashboard note draft:", err);
-  }
-}
-
-function renderAdminDashboardNote(note = loadAdminDashboardNote()) {
-  const input = document.getElementById("adminDashboardNoteInput");
-  const status = document.getElementById("adminDashboardNoteStatus");
-  const draft = loadAdminDashboardNoteDraft();
-  if (input && !input.value.trim()) {
-    input.value = draft || note || "";
-    if (!input.dataset.adminDraftBound) {
-      input.addEventListener("input", () => {
-        persistAdminDashboardNoteDraft(input.value);
-        if (status) {
-          status.textContent = input.value.trim() ? "Draft saved locally" : (note ? "Saved locally" : "Not saved");
-        }
-        if (typeof renderAdminReviewPacket === "function") {
-          renderAdminReviewPacket();
-        }
-        if (typeof renderLocalBackupMetric === "function") {
-          renderLocalBackupMetric();
-        }
-      });
-      input.dataset.adminDraftBound = "true";
-    }
-  }
-  if (status) {
-    status.textContent = draft ? "Draft saved locally" : note ? "Saved locally" : "Not saved";
-  }
-  if (typeof renderAdminReviewPacket === "function") {
-    renderAdminReviewPacket();
-  }
-  if (typeof renderLocalBackupMetric === "function") {
-    renderLocalBackupMetric();
-  }
-}
-
-function buildAdminDashboardNoteTemplate(kind = "daily") {
-  const templates = {
-    daily: {
-      title: "Daily operator review",
-      focus: "Refresh dashboard data, check quality, and leave the next operator with the current state.",
-    },
-    deploy: {
-      title: "Before deploy review",
-      focus: "Confirm cycles, local checks, deploy readiness, and handoff evidence before production work.",
-    },
-    weekly: {
-      title: "Weekly maintenance review",
-      focus: "Look for drift across memory, feedback, quality signals, providers, and operator evidence.",
-    },
-  };
-  const template = templates[kind] || templates.daily;
-  const checklist = loadAdminDashboardChecklist();
-  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-  const topUpAmount = recommendedFrontendTopUpAmount(loadCycleSnapshot());
-  const lines = [
-    `${template.title} — ${new Date().toLocaleString()}`,
-    "",
-    `Focus: ${template.focus}`,
-    `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
-    `Recommended action: ${dashboardMetricText("healthCycleAction")}`,
-    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
-    `Data refresh: ${dashboardMetricText("healthDataRefresh")}`,
-    `Freshness: ${dashboardMetricText("healthFreshness")}`,
-    `Deploy readiness: ${dashboardMetricText("healthDeployReadiness")}`,
-    `Deploy buffer: ${dashboardMetricText("healthDeployBuffer")}`,
-    `Pre-deploy check: ${dashboardMetricText("healthPreDeployCheck")}`,
-    `Quality: ${dashboardMetricText("adminAttentionQuality")}`,
-    `Review evidence: ${evidence.label}`,
-    `Local backup: ${dashboardMetricText("healthLocalBackup")}`,
-    `Cycle movement: ${dashboardMetricText("healthCycleMovement")}`,
-    `Frontend cycles: ${dashboardMetricText("healthFrontendCycles")}`,
-    `Backend cycles: ${dashboardMetricText("healthBackendCycles")}`,
-    `Wallet cycles: ${dashboardMetricText("healthWalletCycles")}`,
-    `Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
-    "",
-    "Checklist:",
-  ];
-  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
-    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
-  });
-  lines.push("");
-  lines.push("Operator notes:");
-  lines.push("- ");
-  return lines.join("\n");
-}
-
-window.fillAdminDashboardNoteTemplate = function fillAdminDashboardNoteTemplate(kind = "daily") {
-  const input = document.getElementById("adminDashboardNoteInput");
-  if (!input) return;
-  input.value = buildAdminDashboardNoteTemplate(kind);
-  persistAdminDashboardNoteDraft(input.value);
-  input.focus();
-  const label = kind === "deploy" ? "Deploy note template inserted" : kind === "weekly" ? "Weekly note template inserted" : "Daily note template inserted";
-  recordAdminDashboardActivity(label, "Review and save when ready");
-  renderAdminDashboardNote();
-  if (typeof renderAdminReviewPacket === "function") {
-    renderAdminReviewPacket();
-  }
-};
-
-window.startAdminDashboardCadenceReview = function startAdminDashboardCadenceReview(kind = "daily") {
-  if (typeof openAdminDetailPanel === "function") {
-    openAdminDetailPanel("adminDashboardHandoff");
-  }
-  window.fillAdminDashboardNoteTemplate(kind);
-};
-
-window.saveAdminDashboardNote = function saveAdminDashboardNote() {
-  const input = document.getElementById("adminDashboardNoteInput");
-  const note = input ? input.value.trim() : "";
-  persistAdminDashboardNote(note);
-  clearAdminDashboardNoteDraft();
-  renderAdminDashboardNote(note);
-  updateAdminDashboardChecklist({ note: Boolean(note) });
-  recordAdminDashboardActivity("Operator note saved", note ? "Included in copied summaries" : "Empty note saved");
-};
-
-window.clearAdminDashboardNote = function clearAdminDashboardNote() {
-  const input = document.getElementById("adminDashboardNoteInput");
-  if (input) input.value = "";
-  persistAdminDashboardNote("");
-  clearAdminDashboardNoteDraft();
-  renderAdminDashboardNote("");
-  updateAdminDashboardChecklist({ note: false });
-  recordAdminDashboardActivity("Operator note cleared");
-};
+function recordAdminDashboardActivity(_label, _detail = "") {}
 
 function loadAdminReviewEvidence() {
   try {
@@ -3071,7 +2727,6 @@ function reviewEvidenceStatus(evidence = loadAdminReviewEvidence()) {
 function renderAdminReviewEvidence(evidence = loadAdminReviewEvidence()) {
   const input = document.getElementById("adminDashboardReviewEvidenceInput");
   const status = document.getElementById("adminDashboardReviewEvidenceStatus");
-  const metric = document.getElementById("healthReviewEvidence");
   const checksList = document.getElementById("adminDashboardReviewEvidenceChecks");
   const evidenceStatus = reviewEvidenceStatus(evidence);
   if (input && !input.value.trim() && evidence && evidence.raw) {
@@ -3091,10 +2746,6 @@ function renderAdminReviewEvidence(evidence = loadAdminReviewEvidence()) {
       ? `Saved locally · ${evidenceStatus.label} · ${new Date(evidence.savedAt).toLocaleString()}`
       : "Not saved";
   }
-  if (metric) {
-    metric.innerHTML = `<span class="admin-cycle-runway-label ${evidenceStatus.className}">${escapeHtml(evidenceStatus.label)}</span>`;
-  }
-  renderDashboardFreshness();
   if (typeof renderAdminReviewPacket === "function") {
     renderAdminReviewPacket();
   }
@@ -3138,208 +2789,11 @@ window.clearAdminReviewEvidence = function clearAdminReviewEvidence() {
   if (input) input.value = "";
   persistAdminReviewEvidence(null);
   renderAdminReviewEvidence(null);
-  updateAdminDashboardChecklist({ evidence: false });
   recordAdminDashboardActivity("Review evidence cleared");
 };
 
-function normalizeAdminDashboardChecklist(checklist = {}) {
-  return ADMIN_DASHBOARD_CHECKLIST_ITEMS.reduce((next, item) => {
-    next[item.key] = Boolean(checklist[item.key]);
-    return next;
-  }, {});
-}
-
-function loadAdminDashboardChecklist() {
-  try {
-    const raw = localStorage.getItem(ADMIN_DASHBOARD_CHECKLIST_KEY);
-    if (raw) {
-      const checklist = normalizeAdminDashboardChecklist(JSON.parse(raw));
-      persistAdminDashboardChecklist(checklist);
-      return checklist;
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard checklist:", err);
-  }
-
-  try {
-    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_CHECKLIST_KEY);
-    if (cookieRaw) {
-      const checklist = normalizeAdminDashboardChecklist(JSON.parse(cookieRaw));
-      persistAdminDashboardChecklist(checklist);
-      return checklist;
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard checklist from cookie:", err);
-  }
-
-  return normalizeAdminDashboardChecklist();
-}
-
-function persistAdminDashboardChecklist(checklist) {
-  const serialized = JSON.stringify(normalizeAdminDashboardChecklist(checklist));
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_CHECKLIST_KEY, serialized);
-  } catch (err) {
-    console.warn("Could not save dashboard checklist:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_DASHBOARD_CHECKLIST_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save dashboard checklist to cookie:", err);
-  }
-}
-
-function readAdminDashboardChecklistFromInputs() {
-  return ADMIN_DASHBOARD_CHECKLIST_ITEMS.reduce((next, item) => {
-    const input = document.getElementById(item.inputId);
-    next[item.key] = Boolean(input && input.checked);
-    return next;
-  }, {});
-}
-
-function formatAdminChecklistSummary(checklist = loadAdminDashboardChecklist()) {
-  const normalized = normalizeAdminDashboardChecklist(checklist);
-  const completed = ADMIN_DASHBOARD_CHECKLIST_ITEMS.filter((item) => normalized[item.key]).length;
-  return `${completed} of ${ADMIN_DASHBOARD_CHECKLIST_ITEMS.length} complete`;
-}
-
-function adminChecklistStatus(checklist = loadAdminDashboardChecklist()) {
-  const normalized = normalizeAdminDashboardChecklist(checklist);
-  const completed = ADMIN_DASHBOARD_CHECKLIST_ITEMS.filter((item) => normalized[item.key]).length;
-  if (completed === ADMIN_DASHBOARD_CHECKLIST_ITEMS.length) {
-    return { label: "Ready", className: "healthy", completed };
-  }
-  if (completed > 0) {
-    return { label: `${completed}/${ADMIN_DASHBOARD_CHECKLIST_ITEMS.length} complete`, className: "watch", completed };
-  }
-  return { label: "Checklist pending", className: "pending", completed };
-}
-
-function renderAdminDashboardChecklist(checklist = loadAdminDashboardChecklist()) {
-  const normalized = normalizeAdminDashboardChecklist(checklist);
-  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
-    const input = document.getElementById(item.inputId);
-    if (input) {
-      input.checked = Boolean(normalized[item.key]);
-      input.onchange = () => {
-        const checklist = readAdminDashboardChecklistFromInputs();
-        persistAdminDashboardChecklist(checklist);
-        renderAdminDashboardChecklist(checklist);
-        recordAdminDashboardActivity("Operator checklist updated", formatAdminChecklistSummary(checklist));
-      };
-    }
-  });
-  const status = document.getElementById("adminDashboardChecklistStatus");
-  if (status) {
-    const checklistStatus = adminChecklistStatus(normalized);
-    status.textContent = checklistStatus.completed ? `Saved locally · ${formatAdminChecklistSummary(normalized)}` : "Not saved";
-  }
-  const metric = document.getElementById("healthHandoffReadiness");
-  if (metric) {
-    const checklistStatus = adminChecklistStatus(normalized);
-    metric.innerHTML = `<span class="admin-cycle-runway-label ${checklistStatus.className}">${escapeHtml(checklistStatus.label)}</span>`;
-  }
-  if (typeof refreshAdminRecommendedAction === "function") {
-    refreshAdminRecommendedAction();
-  }
-  if (typeof renderAdminReviewPacket === "function") {
-    renderAdminReviewPacket();
-  }
-}
-
-function updateAdminDashboardChecklist(updates = {}, options = {}) {
-  const current = loadAdminDashboardChecklist();
-  const allowed = new Set(ADMIN_DASHBOARD_CHECKLIST_ITEMS.map((item) => item.key));
-  const next = { ...current };
-  Object.entries(updates || {}).forEach(([key, value]) => {
-    if (allowed.has(key)) {
-      next[key] = Boolean(value);
-    }
-  });
-  persistAdminDashboardChecklist(next);
-  renderAdminDashboardChecklist(next);
-  if (options.activityLabel) {
-    recordAdminDashboardActivity(options.activityLabel, formatAdminChecklistSummary(next));
-  }
-  return next;
-}
-
-window.saveAdminDashboardChecklist = function saveAdminDashboardChecklist() {
-  const checklist = readAdminDashboardChecklistFromInputs();
-  persistAdminDashboardChecklist(checklist);
-  renderAdminDashboardChecklist(checklist);
-  recordAdminDashboardActivity("Operator checklist saved", formatAdminChecklistSummary(checklist));
-};
-
-window.clearAdminDashboardChecklist = function clearAdminDashboardChecklist() {
-  persistAdminDashboardChecklist(normalizeAdminDashboardChecklist());
-  renderAdminDashboardChecklist();
-  recordAdminDashboardActivity("Operator checklist cleared");
-};
-
-function buildAdminDashboardState() {
-  return {
-    version: 2,
-    exportedAt: new Date().toISOString(),
-    cycleSnapshots: loadCycleSnapshot(),
-    cycleHistory: loadCycleHistory(),
-    dashboardRefresh: loadDashboardRefresh(),
-    dashboardReview: loadDashboardReview(),
-    dashboardActivity: loadAdminDashboardActivity(),
-    dashboardNote: loadAdminDashboardNote(),
-    dashboardNoteDraft: loadAdminDashboardNoteDraft(),
-    dashboardChecklist: loadAdminDashboardChecklist(),
-    reviewEvidence: loadAdminReviewEvidence(),
-    goldenResults: typeof loadSavedGoldenResults === "function" ? loadSavedGoldenResults() : null,
-  };
-}
-
-function applyAdminDashboardState(state) {
-  if (!state || typeof state !== "object") {
-    throw new Error("Dashboard state must be a JSON object.");
-  }
-
-  if (state.cycleSnapshots && typeof state.cycleSnapshots === "object") {
-    persistCycleSnapshots(state.cycleSnapshots);
-  }
-  if (Array.isArray(state.cycleHistory)) {
-    persistCycleHistory(state.cycleHistory);
-  }
-  if (state.dashboardRefresh && state.dashboardRefresh.refreshedAt) {
-    persistDashboardRefresh(state.dashboardRefresh);
-  }
-  if (state.dashboardReview && state.dashboardReview.reviewedAt) {
-    persistDashboardReview(state.dashboardReview);
-  }
-  if (Array.isArray(state.dashboardActivity)) {
-    persistAdminDashboardActivity(state.dashboardActivity);
-  }
-  if (typeof state.dashboardNote === "string") {
-    persistAdminDashboardNote(state.dashboardNote);
-  }
-  if (typeof state.dashboardNoteDraft === "string") {
-    persistAdminDashboardNoteDraft(state.dashboardNoteDraft);
-  }
-  if (state.dashboardChecklist && typeof state.dashboardChecklist === "object") {
-    persistAdminDashboardChecklist(state.dashboardChecklist);
-  }
-  if (state.reviewEvidence && typeof state.reviewEvidence === "object") {
-    persistAdminReviewEvidence(state.reviewEvidence);
-  }
-  if (state.goldenResults && typeof saveGoldenResults === "function") {
-    saveGoldenResults(state.goldenResults);
-    renderGoldenDashboardSignal(state.goldenResults);
-  }
-
-  renderCycleSnapshot(loadCycleSnapshot());
-  renderCycleMovement();
-  renderDashboardRefresh();
-  renderDashboardReview();
-  renderAdminReviewEvidence();
-  renderAdminDashboardNote();
-  renderAdminDashboardChecklist();
-  renderAdminDashboardActivity();
-  renderAdminReviewPacket();
+function updateAdminDashboardChecklist(_updates = {}, _options = {}) {
+  return {};
 }
 
 async function readTextFromClipboardOrPrompt(message) {
@@ -3349,91 +2803,6 @@ async function readTextFromClipboardOrPrompt(message) {
   }
   return window.prompt(message) || "";
 }
-
-window.copyAdminDashboardState = async function copyAdminDashboardState() {
-  const button = document.getElementById("adminDashboardCopyStateButton");
-  const previousText = button ? button.textContent : "";
-  try {
-    await copyTextToClipboard(JSON.stringify(buildAdminDashboardState(), null, 2));
-    recordAdminDashboardActivity("Dashboard state copied", "Local backup JSON");
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy dashboard state";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy dashboard state:", err);
-    if (button) {
-      button.textContent = "Copy failed";
-      button.title = "Could not copy dashboard state. Use the visible dashboard values or try again.";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy dashboard state";
-        button.removeAttribute("title");
-      }, 2200);
-    }
-  }
-};
-
-window.copyAdminReviewCommands = async function copyAdminReviewCommands() {
-  const button = document.getElementById("adminDashboardCopyReviewCommandsButton");
-  const previousText = button ? button.textContent : "";
-  const commands = [
-    "Aion Admin validation checklist",
-    "",
-    "git diff --check",
-    "node --check src/teves_consulting_frontend/admin.js",
-    "mops test",
-  ].join("\n");
-  try {
-    await copyTextToClipboard(commands);
-    recordAdminDashboardActivity("Review commands copied", "No deploy command included");
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy validation checks";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy review commands:", err);
-    if (button) {
-      button.textContent = "Copy failed";
-      button.title = "Could not copy validation checks. Copy the visible commands manually or try again.";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy validation checks";
-        button.removeAttribute("title");
-      }, 2200);
-    }
-  }
-};
-
-window.restoreAdminDashboardState = async function restoreAdminDashboardState() {
-  const button = document.getElementById("adminDashboardRestoreStateButton");
-  const previousText = button ? button.textContent : "";
-  try {
-    const raw = await readTextFromClipboardOrPrompt("Paste dashboard state JSON.");
-    if (!raw.trim()) return;
-    const state = JSON.parse(raw);
-    applyAdminDashboardState(state);
-    recordAdminDashboardActivity("Dashboard state restored", "Local backup JSON");
-    if (button) {
-      button.textContent = "Restored";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Restore dashboard state";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not restore dashboard state:", err);
-    if (button) {
-      button.textContent = "Restore failed";
-      button.title = "Could not restore dashboard state. Paste valid dashboard-state JSON and try again.";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Restore dashboard state";
-        button.removeAttribute("title");
-      }, 2400);
-    }
-  }
-};
 
 function parseCycleNumber(value) {
   if (!value) return null;
@@ -3580,38 +2949,6 @@ function recommendedFrontendTopUpAmount(snapshots = loadCycleSnapshot()) {
   return rounded >= 1_000_000_000 ? rounded : null;
 }
 
-function topUpPlanStatus(snapshots = loadCycleSnapshot()) {
-  const frontend = snapshots.frontend || null;
-  const wallet = snapshots.wallet || null;
-  if (!frontend || !wallet) {
-    return { label: "Add snapshots", className: "pending" };
-  }
-
-  const walletBuffer = 25_000_000_000;
-  const frontendTarget = Number.isFinite(frontend.reservedLimit)
-    ? frontend.reservedLimit
-    : 5_000_000_000_000;
-  const needed = Math.max(0, frontendTarget - frontend.cycles);
-  const available = Math.max(0, wallet.cycles - walletBuffer);
-  if (needed <= 0) {
-    return { label: "No top-up needed", className: "healthy" };
-  }
-  if (available < 1_000_000_000) {
-    return { label: "Wallet short", className: "top-up" };
-  }
-
-  const amount = recommendedFrontendTopUpAmount(snapshots);
-  if (!amount) {
-    return { label: "Top-up pending", className: "watch" };
-  }
-  const walletAfter = Math.max(0, wallet.cycles - amount);
-  const className = amount < needed ? "watch" : "healthy";
-  return {
-    label: `${formatCycles(amount)} · wallet after ${formatCycles(walletAfter)}`,
-    className,
-  };
-}
-
 function canisterStateStatus(snapshots = loadCycleSnapshot()) {
   const items = ["frontend", "backend"].map((key) => snapshots[key]).filter(Boolean);
   if (!items.length) {
@@ -3710,20 +3047,6 @@ function persistCycleSnapshots(snapshots) {
   }
 }
 
-function persistDashboardReview(review) {
-  const serialized = JSON.stringify(review || {});
-  try {
-    localStorage.setItem(ADMIN_DASHBOARD_REVIEW_KEY, serialized);
-  } catch (err) {
-    console.warn("Could not save dashboard review to local storage:", err);
-  }
-  try {
-    document.cookie = `${ADMIN_DASHBOARD_REVIEW_KEY}=${encodeURIComponent(serialized)}; Max-Age=${ADMIN_CYCLE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
-  } catch (err) {
-    console.warn("Could not save dashboard review to cookie:", err);
-  }
-}
-
 function persistDashboardRefresh(refresh) {
   const serialized = JSON.stringify(refresh || {});
   try {
@@ -3768,61 +3091,6 @@ function loadDashboardRefresh() {
   return null;
 }
 
-function loadDashboardReview() {
-  try {
-    const raw = localStorage.getItem(ADMIN_DASHBOARD_REVIEW_KEY);
-    if (raw) {
-      const review = JSON.parse(raw);
-      if (review && review.reviewedAt) {
-        persistDashboardReview(review);
-        return review;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard review from local storage:", err);
-  }
-
-  try {
-    const cookieRaw = getAdminCookieValue(ADMIN_DASHBOARD_REVIEW_KEY);
-    if (cookieRaw) {
-      const review = JSON.parse(cookieRaw);
-      if (review && review.reviewedAt) {
-        persistDashboardReview(review);
-        return review;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load dashboard review from cookie:", err);
-  }
-
-  return null;
-}
-
-function dashboardReviewAgeHours(review) {
-  if (!review || !review.reviewedAt) return null;
-  const reviewedTime = new Date(review.reviewedAt).getTime();
-  if (!Number.isFinite(reviewedTime)) return null;
-  const hours = (Date.now() - reviewedTime) / 36e5;
-  return Number.isFinite(hours) && hours >= 0 ? hours : null;
-}
-
-function dashboardReviewStatus(review) {
-  const hours = dashboardReviewAgeHours(review);
-  if (!Number.isFinite(hours)) return { label: "Review needed", className: "pending" };
-  if (hours <= 24) return { label: "Reviewed", className: "fresh" };
-  if (hours <= 168) return { label: "Aging", className: "aging" };
-  return { label: "Stale", className: "stale" };
-}
-
-function formatDashboardReviewAge(review) {
-  const hours = dashboardReviewAgeHours(review);
-  if (!Number.isFinite(hours)) return "Not reviewed";
-  if (hours < 1) return "Less than 1 hour";
-  if (hours < 24) return `${Math.floor(hours)} hours`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "1 day" : `${days} days`;
-}
-
 function dashboardRefreshAgeHours(refresh) {
   if (!refresh || !refresh.refreshedAt) return null;
   const refreshedTime = new Date(refresh.refreshedAt).getTime();
@@ -3851,43 +3119,28 @@ function formatDashboardRefreshAge(refresh) {
 function renderDashboardRefresh(refresh = loadDashboardRefresh()) {
   const refreshElement = document.getElementById("healthDataRefresh");
   const refreshStatus = dashboardRefreshStatus(refresh);
+  const dataStatus = dashboardLiveDataStatus();
+  const effectiveStatus = dataStatus.className === "stale"
+    ? { label: "Partial", className: "stale" }
+    : refreshStatus;
   const ageLabel = formatDashboardRefreshAge(refresh);
   if (refreshElement) {
-    refreshElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${refreshStatus.className}">${escapeHtml(refreshStatus.label)}</span>`;
+    refreshElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${effectiveStatus.className}">${escapeHtml(effectiveStatus.label)}</span>`;
   }
-  renderDashboardFreshness();
-}
-
-function renderDashboardReview(review = loadDashboardReview()) {
-  const reviewElement = document.getElementById("healthDashboardReviewed");
-  const statusElement = document.getElementById("dashboardReviewStatus");
-  const reviewStatus = dashboardReviewStatus(review);
-  const ageLabel = formatDashboardReviewAge(review);
-  const reviewedAtLabel = review && review.reviewedAt
-    ? new Date(review.reviewedAt).toLocaleString()
-    : "";
-
-  if (reviewElement) {
-    reviewElement.innerHTML = `${escapeHtml(ageLabel)}<span class="admin-cycle-freshness-label ${reviewStatus.className}">${escapeHtml(reviewStatus.label)}</span>`;
-  }
-  if (statusElement) {
-    statusElement.textContent = reviewedAtLabel
-      ? `Dashboard last reviewed at ${reviewedAtLabel}.`
-      : "Mark the dashboard reviewed after checking the current operator state.";
-  }
-  renderDashboardFreshness();
+  setAdminMetricProvenance(
+    "healthDataRefresh",
+    "SNAPSHOT",
+    refresh ? `${formatProvenanceAge(refresh.refreshedAt) || "browser timestamp"} · memory/tests/feedback only` : "memory/tests/feedback only",
+    { stale: effectiveStatus.className === "stale", unavailable: dataStatus.className === "stale" }
+  );
 }
 
 function dashboardFreshnessStatus(snapshots = loadCycleSnapshot()) {
-  const snapshotStatus = snapshotAttentionStatus(snapshots);
   const refreshStatus = dashboardRefreshStatus(loadDashboardRefresh());
-  const reviewStatus = dashboardReviewStatus(loadDashboardReview());
-  const evidenceStatus = reviewEvidenceStatus(loadAdminReviewEvidence());
+  const liveDataStatus = dashboardLiveDataStatus();
   const checks = [
-    { label: "Snapshots", className: snapshotStatus.className === "healthy" ? "fresh" : snapshotStatus.className },
     { label: "Refresh", className: refreshStatus.className },
-    { label: "Review", className: reviewStatus.className },
-    { label: "Evidence", className: evidenceStatus.className === "healthy" ? "fresh" : evidenceStatus.className },
+    { label: "Live data", className: liveDataStatus.className === "healthy" ? "fresh" : liveDataStatus.className },
   ];
   const priority = { stale: 4, "top-up": 4, aging: 3, watch: 3, pending: 2, fresh: 0, healthy: 0 };
   const worst = checks
@@ -3907,14 +3160,6 @@ function dashboardFreshnessStatus(snapshots = loadCycleSnapshot()) {
         ? "Needs data"
         : worst.label;
   return { label: `${label} · ${current}/${checks.length} current`, className, current, total: checks.length, missing };
-}
-
-function renderDashboardFreshness(snapshots = loadCycleSnapshot()) {
-  const element = document.getElementById("healthFreshness");
-  if (!element) return;
-  const status = dashboardFreshnessStatus(snapshots);
-  const title = status.missing.length ? `Needs: ${status.missing.join(", ")}` : "Dashboard freshness checks are current.";
-  element.innerHTML = `<span class="admin-cycle-freshness-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
 }
 
 function loadCycleSnapshot() {
@@ -3954,101 +3199,6 @@ function loadCycleSnapshot() {
   }
 }
 
-function loadCycleHistory() {
-  try {
-    const raw = localStorage.getItem(ADMIN_CYCLE_HISTORY_KEY);
-    const entries = raw ? JSON.parse(raw) : [];
-    return Array.isArray(entries) ? entries.slice(0, 24) : [];
-  } catch (err) {
-    console.warn("Could not load cycle history:", err);
-    return [];
-  }
-}
-
-function persistCycleHistory(entries) {
-  try {
-    localStorage.setItem(ADMIN_CYCLE_HISTORY_KEY, JSON.stringify((entries || []).slice(0, 24)));
-  } catch (err) {
-    console.warn("Could not save cycle history:", err);
-  }
-}
-
-function recordCycleHistory(updates, previousSnapshots = loadCycleSnapshot()) {
-  const entries = Object.entries(updates || {})
-    .map(([kind, snapshot]) => {
-      const previous = previousSnapshots ? previousSnapshots[kind] : null;
-      if (!snapshot || !Number.isFinite(snapshot.cycles) || !previous || !Number.isFinite(previous.cycles)) {
-        return null;
-      }
-      const previousCapturedAt = previous.capturedAt || "";
-      const nextCapturedAt = snapshot.capturedAt || "";
-      if (previous.cycles === snapshot.cycles && previousCapturedAt === nextCapturedAt) {
-        return null;
-      }
-      return {
-        kind,
-        cycles: snapshot.cycles,
-        previousCycles: previous.cycles,
-        delta: snapshot.cycles - previous.cycles,
-        capturedAt: nextCapturedAt,
-        recordedAt: new Date().toISOString(),
-      };
-    })
-    .filter(Boolean);
-  if (!entries.length) return;
-  persistCycleHistory([...entries, ...loadCycleHistory()]);
-}
-
-function formatCycleDelta(delta) {
-  if (!Number.isFinite(delta)) return "Pending";
-  if (delta === 0) return "No change";
-  const sign = delta > 0 ? "+" : "-";
-  return `${sign}${formatCycles(Math.abs(delta))}`;
-}
-
-function cycleMovementStatus(entry) {
-  if (!entry) return { label: "Collecting", className: "pending" };
-  const label = `${ADMIN_CYCLE_LABELS[entry.kind] || entry.kind} ${formatCycleDelta(entry.delta)}`;
-  if (entry.delta < -100_000_000_000) return { label, className: "top-up" };
-  if (entry.delta < 0) return { label, className: "watch" };
-  if (entry.delta > 0) return { label, className: "healthy" };
-  return { label, className: "fresh" };
-}
-
-function renderCycleMovement() {
-  const element = document.getElementById("healthCycleMovement");
-  const entry = loadCycleHistory()[0] || null;
-  const status = cycleMovementStatus(entry);
-  const title = entry
-    ? `Previous: ${formatCycles(entry.previousCycles)} · Current: ${formatCycles(entry.cycles)}`
-    : "Paste a second snapshot to compare movement.";
-  if (element) {
-    element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
-  }
-  renderCycleMovementHistory();
-}
-
-function renderCycleMovementHistory(entries = loadCycleHistory()) {
-  const panel = document.getElementById("cycleMovementHistory");
-  const list = document.getElementById("cycleMovementHistoryList");
-  if (!panel || !list) return;
-  const heading = panel.querySelector("span");
-  if (!entries.length) {
-    if (heading) heading.innerHTML = "<strong>Recent movement:</strong> Collecting";
-    list.innerHTML = "<li><span>Paste a second snapshot to compare movement.</span><time>Pending</time></li>";
-    return;
-  }
-  if (heading) heading.innerHTML = "<strong>Recent movement:</strong> Latest cycle changes";
-  list.innerHTML = entries.slice(0, 5).map((entry) => {
-    const status = cycleMovementStatus(entry);
-    const recorded = entry.recordedAt ? new Date(entry.recordedAt) : null;
-    const time = recorded && Number.isFinite(recorded.getTime())
-      ? recorded.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-      : "Pending";
-    return `<li><span><strong>${escapeHtml(status.label)}</strong> from ${escapeHtml(formatCycles(entry.previousCycles))} to ${escapeHtml(formatCycles(entry.cycles))}</span><time datetime="${escapeHtml(entry.recordedAt || "")}">${escapeHtml(time)}</time></li>`;
-  }).join("");
-}
-
 function cycleSnapshotSummaryHtml(snapshot, label) {
   if (!snapshot) {
     return `
@@ -4068,21 +3218,12 @@ function cycleSnapshotSummaryHtml(snapshot, label) {
   const deploymentNote = frontend && percent !== null && percent <= 20
     ? `<span><strong>Deployment:</strong> Top up before frontend upgrades.</span>`
     : "";
-  const capturedLabel = snapshot.capturedAt
-    ? new Date(snapshot.capturedAt).toLocaleString()
-    : "Unknown";
-
   return `
     <span><strong>${escapeHtml(label)}:</strong> ${formatCycles(snapshot.cycles)}${percentLabel}</span>
-    <span><strong>Canister:</strong> ${escapeHtml(snapshot.canisterName || label)}</span>
-    <span><strong>Status:</strong> ${escapeHtml(snapshot.status || "Unknown")}</span>
-    <span><strong>Memory:</strong> ${formatCycles(snapshot.memorySize)}</span>
-    <span><strong>Reserved limit:</strong> ${formatCycles(snapshot.reservedLimit)}</span>
-    <span><strong>Burn:</strong> ${formatCycles(snapshot.burnPerDay)} / day</span>
+    <span><strong>State:</strong> ${escapeHtml(snapshot.status || "Unknown")}</span>
     <span><strong>Idle runway:</strong> ${formatCycleRunway(snapshot)} <span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span></span>
     ${deploymentNote}
     <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
-    <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
   `;
 }
 
@@ -4102,7 +3243,6 @@ function walletCycleSnapshotSummaryHtml(snapshot) {
     : "Unknown";
   return `
     <span><strong>Wallet:</strong> ${formatCycles(snapshot.cycles)}</span>
-    <span><strong>Available:</strong> ${formatCycles(snapshot.cycles)} cycles</span>
     <span><strong>Snapshot:</strong> ${formatSnapshotAge(snapshot)} <span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span></span>
     <span><strong>Updated:</strong> ${escapeHtml(capturedLabel)}</span>
   `;
@@ -4115,7 +3255,6 @@ function frontendTopUpSummaryHtml(snapshots = loadCycleSnapshot()) {
     return `
       <span><strong>Top-up plan:</strong> Add wallet and frontend snapshots</span>
       <span><strong>Recommended:</strong> Pending</span>
-      <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
       <span><strong>Wallet after:</strong> Pending</span>
     `;
   }
@@ -4123,9 +3262,8 @@ function frontendTopUpSummaryHtml(snapshots = loadCycleSnapshot()) {
   const amount = recommendedFrontendTopUpAmount(snapshots);
   if (!amount) {
     return `
-      <span><strong>Top-up plan:</strong> No wallet amount available</span>
-      <span><strong>Recommended:</strong> Pending</span>
-      <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
+      <span><strong>Top-up plan:</strong> No top-up needed now</span>
+      <span><strong>Recommended:</strong> None</span>
       <span><strong>Wallet after:</strong> ${formatCycles(wallet.cycles)}</span>
     `;
   }
@@ -4135,8 +3273,27 @@ function frontendTopUpSummaryHtml(snapshots = loadCycleSnapshot()) {
   return `
     <span><strong>Top-up plan:</strong> Frontend toward ${escapeHtml(target)}</span>
     <span><strong>Recommended:</strong> ${formatCycles(amount)} (${escapeHtml(formatTopUpAmount(amount))})</span>
-    <span><strong>Deploy reserve:</strong> ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)} suggested</span>
     <span><strong>Wallet after:</strong> ${formatCycles(walletAfter)}</span>
+  `;
+}
+
+function operationsReadinessSummaryHtml(snapshots = loadCycleSnapshot()) {
+  const canister = canisterStateStatus(snapshots);
+  const deploy = deployReadinessStatus(snapshots);
+  const buffer = frontendDeployBufferStatus(snapshots);
+  const oldest = oldestCycleSnapshot(snapshots);
+  const oldestSnapshot = oldest ? snapshots[oldest.key] : null;
+  const freshness = oldest
+    ? cycleFreshnessStatus(oldest.hours)
+    : { label: "Update before deploy", className: "pending" };
+  const deployLabel = deploy.className === "pending"
+    ? "Update before deploy"
+    : deploy.label;
+  return `
+    <span><strong>Operational readiness:</strong> <span class="admin-cycle-runway-label ${deploy.className}">${escapeHtml(deployLabel)}</span></span>
+    <span><strong>Canisters:</strong> <span class="admin-cycle-runway-label ${canister.className}">${escapeHtml(canister.label)}</span></span>
+    <span><strong>Freshness:</strong> ${oldestSnapshot ? escapeHtml(formatSnapshotAge(oldestSnapshot)) : "No snapshot"} <span class="admin-cycle-freshness-label ${freshness.className}">${escapeHtml(freshness.label)}</span></span>
+    <span><strong>Deploy buffer:</strong> <span class="admin-cycle-runway-label ${buffer.className}">${escapeHtml(buffer.label)}</span></span>
   `;
 }
 
@@ -4170,8 +3327,18 @@ function cycleRecommendedAction(snapshots) {
   const frontend = snapshots.frontend || null;
   const backend = snapshots.backend || null;
   const wallet = snapshots.wallet || null;
-  if (!frontend || !backend) {
-    return { label: "Paste snapshots", className: "pending", detailId: "cycleRunwayPanel" };
+
+  const liveData = dashboardLiveDataStatus();
+  if (liveData.className === "stale") {
+    return { label: "Review data refresh", className: "stale", command: "refresh" };
+  }
+
+  const canisterState = canisterStateStatus(snapshots);
+  if (canisterState.className === "top-up") {
+    return { label: "Review canisters", className: "top-up", detailId: "cycleRunwayPanel" };
+  }
+  if (canisterState.className === "watch") {
+    return { label: "Check canisters", className: "watch", detailId: "cycleRunwayPanel" };
   }
 
   const frontendPercent = cyclePercent(frontend);
@@ -4202,12 +3369,8 @@ function cycleRecommendedAction(snapshots) {
     return { label: "Review runway", className: "watch", detailId: "cycleRunwayPanel" };
   }
 
-  const oldest = oldestCycleSnapshot(snapshots);
-  if (oldest && oldest.hours > 168) {
-    return { label: "Refresh snapshots", className: "stale", detailId: "cycleRunwayPanel" };
-  }
-  if (oldest && oldest.hours > 24) {
-    return { label: "Snapshots aging", className: "aging", detailId: "cycleRunwayPanel" };
+  if (wallet && wallet.cycles < 25_000_000_000) {
+    return { label: "Buy cycles", className: "top-up", detailId: "cycleRunwayPanel" };
   }
 
   const dashboardRefresh = loadDashboardRefresh();
@@ -4217,18 +3380,6 @@ function cycleRecommendedAction(snapshots) {
   }
   if (dashboardRefreshAge > 24) {
     return { label: "Refresh dashboard", className: "stale", command: "refresh" };
-  }
-
-  const dashboardReview = loadDashboardReview();
-  const dashboardReviewAge = dashboardReviewAgeHours(dashboardReview);
-  if (!Number.isFinite(dashboardReviewAge)) {
-    return { label: "Review dashboard", className: "pending", detailId: "cycleRunwayPanel" };
-  }
-  if (dashboardReviewAge > 168) {
-    return { label: "Review dashboard", className: "stale", detailId: "cycleRunwayPanel" };
-  }
-  if (dashboardReviewAge > 24) {
-    return { label: "Review soon", className: "aging", detailId: "cycleRunwayPanel" };
   }
 
   if (typeof combinedQualityAttentionStatus === "function") {
@@ -4253,16 +3404,7 @@ function cycleRecommendedAction(snapshots) {
           : evidenceStatus.label,
       className: evidenceStatus.className,
       source: "evidence",
-      detailId: "adminDashboardHandoff",
-    };
-  }
-
-  const handoffStatus = adminChecklistStatus();
-  if (handoffStatus.className !== "healthy") {
-    return {
-      label: "Complete handoff",
-      className: handoffStatus.className === "pending" ? "pending" : "watch",
-      detailId: "adminDashboardHandoff",
+      detailId: "localValidationSnapshotPanel",
     };
   }
 
@@ -4334,53 +3476,6 @@ function frontendDeployBufferStatus(snapshots = loadCycleSnapshot()) {
   };
 }
 
-function renderFrontendDeployBuffer(snapshots = loadCycleSnapshot()) {
-  const element = document.getElementById("healthDeployBuffer");
-  if (!element) return;
-  const status = frontendDeployBufferStatus(snapshots);
-  const title = `Suggested frontend deployment reserve: ${formatCycles(status.reserve)} cycles`;
-  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
-}
-
-function preDeployCheckStatus(snapshots = loadCycleSnapshot()) {
-  const frontendAge = cycleSnapshotAgeHours(snapshots.frontend || null);
-  const quality = typeof combinedQualityAttentionStatus === "function"
-    ? combinedQualityAttentionStatus()
-    : { label: "Quality pending", className: "pending" };
-  const checks = [
-    { label: "Fresh frontend snapshot", ready: Number.isFinite(frontendAge) && frontendAge <= 24 },
-    { label: "Deploy readiness", ready: deployReadinessStatus(snapshots).className === "healthy" },
-    { label: "Deploy buffer", ready: frontendDeployBufferStatus(snapshots).className === "healthy" },
-    { label: "Dashboard reviewed", ready: dashboardReviewStatus(loadDashboardReview()).className === "healthy" },
-    { label: "Quality clear", ready: quality.className === "healthy" },
-    { label: "Evidence saved", ready: reviewEvidenceStatus(loadAdminReviewEvidence()).className === "healthy" },
-  ];
-  const completed = checks.filter((check) => check.ready).length;
-  const missing = checks.filter((check) => !check.ready).map((check) => check.label);
-  const className = completed === checks.length
-    ? "healthy"
-    : completed >= checks.length - 1
-      ? "watch"
-      : completed >= Math.ceil(checks.length / 2)
-        ? "aging"
-        : "pending";
-  return {
-    label: completed === checks.length ? "Ready" : `${completed}/${checks.length} ready`,
-    className,
-    completed,
-    total: checks.length,
-    missing,
-  };
-}
-
-function renderPreDeployCheck(snapshots = loadCycleSnapshot()) {
-  const element = document.getElementById("healthPreDeployCheck");
-  if (!element) return;
-  const status = preDeployCheckStatus(snapshots);
-  const title = status.missing.length ? `Missing: ${status.missing.join(", ")}` : "Pre-deploy checks are clear.";
-  element.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
-}
-
 function dashboardAttentionClass(className) {
   if (className === "healthy" || className === "fresh") return "is-clear";
   if (className === "watch" || className === "aging") return "is-watch";
@@ -4398,209 +3493,31 @@ function setDashboardAttentionItem(id, className, text) {
   }
 }
 
-function snapshotAttentionStatus(snapshots) {
-  const frontend = snapshots.frontend || null;
-  const backend = snapshots.backend || null;
-  if (!frontend || !backend) {
-    return { label: "Paste both snapshots", className: "pending" };
+function operationsAttentionStatus(snapshots = loadCycleSnapshot()) {
+  const canister = canisterStateStatus(snapshots);
+  if (canister.className === "top-up" || canister.className === "watch") {
+    return canister;
   }
 
-  const oldest = oldestCycleSnapshot(snapshots);
-  if (!oldest) return { label: "Snapshot age unknown", className: "pending" };
-  if (oldest.hours > 168) return { label: "Refresh snapshots", className: "stale" };
-  if (oldest.hours > 24) return { label: "Snapshots aging", className: "aging" };
-  return { label: "Fresh snapshots", className: "healthy" };
+  const deploy = deployReadinessStatus(snapshots);
+  if (deploy.className === "top-up" || deploy.className === "watch") {
+    return deploy;
+  }
+
+  const shortest = shortestCycleRunway(snapshots);
+  if (shortest) {
+    return cycleRunwayStatus(shortest.days, shortest.snapshot, shortest.key);
+  }
+
+  return { label: "Update before deploy", className: "pending" };
 }
 
 function renderDashboardAttention(snapshots) {
-  const snapshotStatus = snapshotAttentionStatus(snapshots);
-  const deployStatus = deployReadinessStatus(snapshots);
-  const review = loadDashboardReview();
-  const reviewStatus = dashboardReviewStatus(review);
-  const reviewLabel = review
-    ? `${formatDashboardReviewAge(review)} ago`
-    : "Not reviewed";
+  const dataStatus = dashboardFreshnessStatus(snapshots);
+  const operationsStatus = operationsAttentionStatus(snapshots);
 
-  setDashboardAttentionItem("adminAttentionSnapshots", snapshotStatus.className, snapshotStatus.label);
-  setDashboardAttentionItem("adminAttentionDeploy", deployStatus.className, deployStatus.label);
-  setDashboardAttentionItem("adminAttentionReview", reviewStatus.className, reviewLabel);
-}
-
-function dashboardActionQueue(snapshots = loadCycleSnapshot()) {
-  const queue = [];
-  const seen = new Set();
-  const add = (action) => {
-    if (!action || !action.label) return;
-    const key = `${action.label}:${action.detailId || action.command || ""}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    queue.push(action);
-  };
-
-  const primary = currentAdminRecommendedAction && currentAdminRecommendedAction.label
-    ? currentAdminRecommendedAction
-    : cycleRecommendedAction(snapshots);
-  if (primary.className !== "healthy") {
-    add({ ...primary, tag: "Next" });
-  }
-
-  const snapshotStatus = snapshotAttentionStatus(snapshots);
-  if (snapshotStatus.className !== "healthy") {
-    add({ label: snapshotStatus.label, className: snapshotStatus.className, detailId: "cycleRunwayPanel", tag: "Snapshots" });
-  }
-
-  const deployStatus = deployReadinessStatus(snapshots);
-  if (deployStatus.className !== "healthy") {
-    add({ label: deployStatus.label, className: deployStatus.className, detailId: "cycleRunwayPanel", tag: "Deploy" });
-  }
-
-  const deployBuffer = frontendDeployBufferStatus(snapshots);
-  if (deployBuffer.className !== "healthy") {
-    add({ label: `Deploy buffer: ${deployBuffer.label}`, className: deployBuffer.className, detailId: "cycleRunwayPanel", tag: "Buffer" });
-  }
-
-  const canisterState = canisterStateStatus(snapshots);
-  if (canisterState.className === "top-up" || canisterState.className === "watch" || canisterState.className === "aging") {
-    add({ label: `Canister state: ${canisterState.label}`, className: canisterState.className, detailId: "cycleRunwayPanel", tag: "Canisters" });
-  }
-
-  const topUpPlan = topUpPlanStatus(snapshots);
-  if (topUpPlan.className === "top-up" || topUpPlan.className === "watch") {
-    add({ label: `Top-up plan: ${topUpPlan.label}`, className: topUpPlan.className, detailId: "cycleRunwayPanel", tag: "Cycles" });
-  }
-
-  const preDeploy = preDeployCheckStatus(snapshots);
-  if (preDeploy.className !== "healthy") {
-    add({ label: `Pre-deploy: ${preDeploy.label}`, className: preDeploy.className, detailId: "cycleRunwayPanel", tag: "Deploy" });
-  }
-
-  const reviewStatus = dashboardReviewStatus(loadDashboardReview());
-  if (reviewStatus.className !== "healthy") {
-    add({ label: reviewStatus.label, className: reviewStatus.className, detailId: "cycleRunwayPanel", tag: "Review" });
-  }
-
-  if (typeof combinedQualityAttentionStatus === "function") {
-    const quality = combinedQualityAttentionStatus();
-    if (quality && quality.className !== "healthy") {
-      add({ label: quality.label, className: quality.className, detailId: quality.detailId || "goldenTestsPanel", tag: "Quality" });
-    }
-  }
-
-  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-  if (evidence.className !== "healthy") {
-    add({ label: evidence.label, className: evidence.className, detailId: "adminDashboardHandoff", tag: "Evidence" });
-  }
-
-  const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
-  if (checklist.className !== "healthy") {
-    add({ label: checklist.label, className: checklist.className, detailId: "adminDashboardHandoff", tag: "Handoff" });
-  }
-
-  if (!queue.length) {
-    add({ label: "Dashboard clear", className: "healthy", tag: "Clear" });
-  }
-
-  return queue.slice(0, 4);
-}
-
-function renderDashboardActionQueue(snapshots = loadCycleSnapshot()) {
-  const element = document.getElementById("adminDashboardActionQueue");
-  if (!element) return;
-  const items = dashboardActionQueue(snapshots);
-  element.innerHTML = items.map((action) => {
-    const className = dashboardAttentionClass(action.className);
-    const actionAttr = action.command === "refresh"
-      ? ' onclick="refreshAdminDashboardData()"'
-      : action.detailId
-        ? ` data-admin-detail-jump="${escapeHtml(action.detailId)}"`
-        : "";
-    return `<li><button type="button" class="admin-dashboard-queue-item ${className}"${actionAttr}><strong>${escapeHtml(action.label)}</strong><span>${escapeHtml(action.tag || "Next")}</span></button></li>`;
-  }).join("");
-}
-
-function operatorReadinessScore(snapshots = loadCycleSnapshot()) {
-  const quality = typeof combinedQualityAttentionStatus === "function"
-    ? combinedQualityAttentionStatus()
-    : { label: "Quality pending", className: "pending" };
-  const checks = [
-    { label: "Snapshots", ready: snapshotAttentionStatus(snapshots).className === "healthy" },
-    { label: "Wallet", ready: Boolean(snapshots.wallet) },
-    { label: "Deploy", ready: deployReadinessStatus(snapshots).className === "healthy" },
-    { label: "Buffer", ready: frontendDeployBufferStatus(snapshots).className === "healthy" },
-    { label: "Pre-deploy", ready: preDeployCheckStatus(snapshots).className === "healthy" },
-    { label: "Quality", ready: quality.className === "healthy" },
-    { label: "Evidence", ready: reviewEvidenceStatus(loadAdminReviewEvidence()).className === "healthy" },
-    { label: "Handoff", ready: adminChecklistStatus(loadAdminDashboardChecklist()).className === "healthy" },
-  ];
-  const completed = checks.filter((check) => check.ready).length;
-  const total = checks.length;
-  const missing = checks.filter((check) => !check.ready).map((check) => check.label);
-  const className = completed === total
-    ? "healthy"
-    : completed >= total - 1
-      ? "watch"
-      : completed >= Math.ceil(total / 2)
-        ? "aging"
-        : "pending";
-  return {
-    label: `${completed}/${total} ready`,
-    className,
-    completed,
-    total,
-    missing,
-  };
-}
-
-function renderOperatorReadinessMetric(snapshots = loadCycleSnapshot()) {
-  const metric = document.getElementById("healthOperatorReadiness");
-  const score = operatorReadinessScore(snapshots);
-  const missing = score.missing.length ? `Missing: ${score.missing.slice(0, 3).join(", ")}` : "Ready for handoff";
-  if (metric) {
-    metric.innerHTML = `<span class="admin-cycle-runway-label ${score.className}" title="${escapeHtml(missing)}">${escapeHtml(score.label)}</span>`;
-  }
-  const blockers = document.getElementById("healthReadinessBlockers");
-  if (blockers) {
-    blockers.textContent = score.missing.length ? score.missing.join(", ") : "None";
-  }
-}
-
-function localBackupStatus() {
-  const snapshots = loadCycleSnapshot();
-  const checklist = loadAdminDashboardChecklist();
-  const buckets = [
-    { label: "Cycles", saved: Boolean(snapshots.frontend || snapshots.backend || snapshots.wallet) },
-    { label: "Review", saved: Boolean(loadDashboardReview()) },
-    { label: "Refresh", saved: Boolean(loadDashboardRefresh()) },
-    { label: "Checklist", saved: ADMIN_DASHBOARD_CHECKLIST_ITEMS.some((item) => checklist[item.key]) },
-    { label: "Evidence", saved: Boolean(loadAdminReviewEvidence()) },
-    { label: "Note", saved: Boolean(loadAdminDashboardNote() || loadAdminDashboardNoteDraft()) },
-    { label: "Activity", saved: Boolean(loadAdminDashboardActivity().length) },
-    { label: "Movement", saved: Boolean(loadCycleHistory().length) },
-  ];
-  const saved = buckets.filter((bucket) => bucket.saved).length;
-  const missing = buckets.filter((bucket) => !bucket.saved).map((bucket) => bucket.label);
-  const className = saved === buckets.length
-    ? "healthy"
-    : saved >= 4
-      ? "watch"
-      : saved > 0
-        ? "aging"
-        : "pending";
-  return {
-    label: `${saved}/${buckets.length} saved`,
-    className,
-    saved,
-    total: buckets.length,
-    missing,
-  };
-}
-
-function renderLocalBackupMetric() {
-  const metric = document.getElementById("healthLocalBackup");
-  if (!metric) return;
-  const status = localBackupStatus();
-  const title = status.missing.length ? `Missing: ${status.missing.join(", ")}` : "All local dashboard buckets have saved state.";
-  metric.innerHTML = `<span class="admin-cycle-runway-label ${status.className}" title="${escapeHtml(title)}">${escapeHtml(status.label)}</span>`;
+  setDashboardAttentionItem("adminAttentionData", dataStatus.className, dataStatus.label);
+  setDashboardAttentionItem("adminAttentionOperations", operationsStatus.className, operationsStatus.label);
 }
 
 function updateDashboardCycleSummary(action) {
@@ -4667,8 +3584,8 @@ function updateDashboardCycleSummary(action) {
 
   const states = {
     pending: {
-      text: "Paste frontend and backend cycle snapshots to complete the dashboard view.",
-      pill: "Snapshots needed",
+      text: "Refresh live dashboard data; operational snapshots can be updated before deploy.",
+      pill: action.label,
       className: "is-pending",
     },
     "top-up": {
@@ -4713,27 +3630,15 @@ function updateDashboardCycleSummary(action) {
         pill: action.label,
         className: actionCopy[action.label].className,
       }
-    : action.className === "pending" && action.label !== "Paste snapshots"
+  : action.className === "pending"
     ? {
       text: action.label === "Refresh dashboard"
         ? "Refresh dashboard data before relying on the current operator view."
-        : "Review the dashboard and mark it reviewed when the current state looks accurate.",
+        : "Open the relevant Admin section and review the bounded state.",
       pill: action.label,
       className: "is-pending",
     }
-    : action.className === "stale" && action.label === "Review dashboard"
-      ? {
-        text: "The dashboard review is stale; review the current state before relying on it.",
-        pill: action.label,
-        className: "is-action",
-      }
-      : action.className === "aging" && action.label === "Review soon"
-        ? {
-          text: "The dashboard review is aging; refresh it before the next operator decision.",
-          pill: action.label,
-          className: "is-watch",
-        }
-        : action.className === "stale" && action.label === "Refresh dashboard"
+    : action.className === "stale" && action.label === "Refresh dashboard"
           ? {
             text: "Dashboard data is stale; refresh it before the next operator decision.",
             pill: action.label,
@@ -4759,6 +3664,7 @@ function renderRecommendedActionMetric(action) {
   if (actionElement) {
     actionElement.innerHTML = `<span class="admin-cycle-runway-label ${action.className}">${escapeHtml(action.label)}</span>`;
   }
+  setAdminMetricProvenance("healthCycleAction", "DERIVED", "from dashboard state");
 }
 
 function refreshAdminRecommendedAction(snapshots = loadCycleSnapshot()) {
@@ -4768,9 +3674,6 @@ function refreshAdminRecommendedAction(snapshots = loadCycleSnapshot()) {
   renderRecommendedActionMetric(action);
   updateDashboardCycleSummary(action);
   renderDashboardAttention(snapshots);
-  renderDashboardActionQueue(snapshots);
-  renderOperatorReadinessMetric(snapshots);
-  renderLocalBackupMetric();
   if (typeof renderAdminReviewPacket === "function") {
     renderAdminReviewPacket();
   }
@@ -4822,248 +3725,23 @@ function dashboardMetricText(id) {
   return element ? element.textContent.replace(/\s+/g, " ").trim() : "Pending";
 }
 
-function dashboardActionDestination(action) {
-  if (!action) return "";
-  if (action.command === "refresh") return "Refresh dashboard";
-  const labels = {
-    cycleRunwayPanel: "Reports > Cycles runway",
-    goldenTestsPanel: "Validation > Answer quality checks",
-    feedbackDashboardPanel: "Memory > Feedback signal",
-    memoryHealthDashboardPanel: "Reports > Memory dashboard",
-    adminDashboardHandoff: "Overview > Evidence and handoff",
-  };
-  return action.detailId ? labels[action.detailId] || action.detailId : "";
-}
-
 function buildAdminDashboardSummaryText() {
-  const noteInput = document.getElementById("adminDashboardNoteInput");
-  if (noteInput && noteInput.value.trim()) {
-    persistAdminDashboardNoteDraft(noteInput.value.trim());
-  }
-  if (document.getElementById("adminDashboardChecklist")) {
-    persistAdminDashboardChecklist(readAdminDashboardChecklistFromInputs());
-  }
-  const activity = loadAdminDashboardActivity().slice(0, 5);
-  const note = loadAdminDashboardNote();
-  const noteDraft = loadAdminDashboardNoteDraft();
-  const checklist = loadAdminDashboardChecklist();
-  const reviewEvidence = loadAdminReviewEvidence();
-  const reviewStatus = reviewEvidenceStatus(reviewEvidence);
   const topUpAmount = recommendedFrontendTopUpAmount(loadCycleSnapshot());
   const lines = [
-    "Aion Operator Dashboard",
+    "Aion Admin Dashboard",
     `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
     `Recommended action: ${dashboardMetricText("healthCycleAction")}`,
-    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
-    `Data refresh: ${dashboardMetricText("healthDataRefresh")}`,
-    `Freshness: ${dashboardMetricText("healthFreshness")}`,
-    `Quality: ${dashboardMetricText("adminAttentionQuality")}`,
-    `Golden tests: ${dashboardMetricText("healthGoldenTests")}`,
-    `Feedback signal: ${dashboardMetricText("healthFeedbackSignal")}`,
-    `Deploy readiness: ${dashboardMetricText("healthDeployReadiness")}`,
-    `Deploy buffer: ${dashboardMetricText("healthDeployBuffer")}`,
-    `Pre-deploy check: ${dashboardMetricText("healthPreDeployCheck")}`,
-    `Cycle status: ${dashboardMetricText("healthCycleRunway")}`,
-    `Cycle movement: ${dashboardMetricText("healthCycleMovement")}`,
-    `Frontend cycles: ${dashboardMetricText("healthFrontendCycles")}`,
-    `Backend cycles: ${dashboardMetricText("healthBackendCycles")}`,
-    `Wallet cycles: ${dashboardMetricText("healthWalletCycles")}`,
-    `Canister state: ${dashboardMetricText("healthCanisterState")}`,
-    `Top-up plan: ${dashboardMetricText("healthTopUpPlan")}`,
+    `Quality: ${dashboardMetricText("healthGoldenTests")}`,
+    `Data freshness: ${dashboardMetricText("healthDataRefresh")}`,
+    `Operations: ${dashboardMetricText("healthCycleRunway")}`,
+    `Operations detail: ${dashboardMetricText("operationsReadinessSummary")}`,
     `Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
-    `Snapshot age: ${dashboardMetricText("healthCycleSnapshotAge")}`,
-    `Last reviewed: ${dashboardMetricText("healthDashboardReviewed")}`,
-    `Review evidence: ${reviewStatus.label}`,
-    `Handoff readiness: ${dashboardMetricText("healthHandoffReadiness")}`,
-    `Local backup: ${dashboardMetricText("healthLocalBackup")}`,
-    `Memories: ${dashboardMetricText("healthMemoryCount")}`,
-    `Feedback count: ${dashboardMetricText("healthFeedbackCount")}`,
     `Copied: ${new Date().toLocaleString()}`,
   ];
-  lines.push("Operator checklist:");
-  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
-    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
-  });
-  if (note) {
-    lines.push("Operator note:");
-    lines.push(note);
-  } else if (noteDraft) {
-    lines.push("Operator note draft:");
-    lines.push(noteDraft);
-  }
-  if (reviewEvidence && reviewEvidence.raw) {
-    lines.push("Review evidence:");
-    lines.push(`- Saved: ${new Date(reviewEvidence.savedAt).toLocaleString()}`);
-    lines.push(`- Checks detected: ${reviewStatus.checks} of ${reviewStatus.total}`);
-  }
-  if (activity.length) {
-    lines.push("Recent activity:");
-    activity.forEach((entry) => {
-      const detail = entry.detail ? ` — ${entry.detail}` : "";
-      lines.push(`- ${entry.label || "Dashboard update"}${detail} (${formatAdminActivityTime(entry.timestamp)})`);
-    });
-  }
   return lines.join("\n");
 }
 
-function dashboardPacketItems() {
-  const snapshots = loadCycleSnapshot();
-  const snapshotStatus = snapshotAttentionStatus(snapshots);
-  const deployStatus = deployReadinessStatus(snapshots);
-  const qualityStatus = typeof combinedQualityAttentionStatus === "function"
-    ? combinedQualityAttentionStatus()
-    : { label: "Quality pending", className: "pending" };
-  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-  const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
-  const activity = loadAdminDashboardActivity()[0] || null;
-  const note = loadAdminDashboardNote();
-  const noteDraft = loadAdminDashboardNoteDraft();
-  const refresh = dashboardRefreshStatus(loadDashboardRefresh());
-  const review = dashboardReviewStatus(loadDashboardReview());
-  return [
-    { label: "Next action", value: currentAdminRecommendedAction.label || "Pending" },
-    { label: "Readiness", value: operatorReadinessScore(snapshots).label },
-    { label: "Freshness", value: dashboardFreshnessStatus(snapshots).label },
-    { label: "Snapshots", value: snapshotStatus.label },
-    { label: "Cycle movement", value: dashboardMetricText("healthCycleMovement") },
-    { label: "Canister state", value: dashboardMetricText("healthCanisterState") },
-    { label: "Top-up plan", value: dashboardMetricText("healthTopUpPlan") },
-    { label: "Deploy", value: deployStatus.label },
-    { label: "Deploy buffer", value: frontendDeployBufferStatus(snapshots).label },
-    { label: "Pre-deploy", value: preDeployCheckStatus(snapshots).label },
-    { label: "Quality", value: qualityStatus.label },
-    { label: "Evidence", value: evidence.label },
-    { label: "Checklist", value: checklist.label },
-    { label: "Local backup", value: localBackupStatus().label },
-    { label: "Refresh", value: refresh.label },
-    { label: "Review", value: review.label },
-    { label: "Note", value: note ? "Saved" : noteDraft ? "Draft" : "Not saved" },
-    { label: "Latest activity", value: activity ? `${activity.label || "Dashboard update"} · ${formatAdminActivityTime(activity.timestamp)}` : "None yet" },
-  ];
-}
-
-function updateAdminPanelSummaries(snapshots = loadCycleSnapshot()) {
-  const detailsSummary = document.getElementById("adminDashboardDetailsSummary");
-  if (detailsSummary) {
-    const snapshotStatus = snapshotAttentionStatus(snapshots);
-    const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-    const readiness = operatorReadinessScore(snapshots);
-    detailsSummary.textContent = `${readiness.label} · ${snapshotStatus.label} · ${evidence.label}`;
-  }
-
-  const handoffSummary = document.getElementById("adminDashboardHandoffSummary");
-  if (handoffSummary) {
-    const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
-    const note = loadAdminDashboardNote() ? "Note saved" : loadAdminDashboardNoteDraft() ? "Draft note" : "No note";
-    handoffSummary.textContent = `${checklist.label} · ${note}`;
-  }
-}
-
-function buildAdminReviewPacketText() {
-  const noteInput = document.getElementById("adminDashboardNoteInput");
-  if (noteInput && noteInput.value.trim()) {
-    persistAdminDashboardNoteDraft(noteInput.value.trim());
-  }
-  if (document.getElementById("adminDashboardChecklist")) {
-    persistAdminDashboardChecklist(readAdminDashboardChecklistFromInputs());
-  }
-
-  const items = dashboardPacketItems();
-  const note = loadAdminDashboardNote();
-  const noteDraft = loadAdminDashboardNoteDraft();
-  const evidence = loadAdminReviewEvidence();
-  const evidenceStatus = reviewEvidenceStatus(evidence);
-  const activity = loadAdminDashboardActivity().slice(0, 5);
-  const lines = [
-    "Aion Operator Review Packet",
-    `Generated: ${new Date().toLocaleString()}`,
-    "",
-    "Status",
-  ];
-  items.forEach((item) => {
-    lines.push(`- ${item.label}: ${item.value}`);
-  });
-
-  lines.push("");
-  lines.push("Checklist");
-  ADMIN_DASHBOARD_CHECKLIST_ITEMS.forEach((item) => {
-    const checklist = loadAdminDashboardChecklist();
-    lines.push(`- ${item.label}: ${checklist[item.key] ? "yes" : "no"}`);
-  });
-
-  if (note) {
-    lines.push("");
-    lines.push("Operator note");
-    lines.push(note);
-  } else if (noteDraft) {
-    lines.push("");
-    lines.push("Operator note draft");
-    lines.push(noteDraft);
-  }
-
-  if (evidence && evidence.raw) {
-    lines.push("");
-    lines.push("Review evidence");
-    lines.push(`- Status: ${evidenceStatus.label}`);
-    lines.push(`- Saved: ${new Date(evidence.savedAt).toLocaleString()}`);
-    lines.push(`- Checks detected: ${evidenceStatus.checks} of ${evidenceStatus.total}`);
-  }
-
-  if (activity.length) {
-    lines.push("");
-    lines.push("Recent activity");
-    activity.forEach((entry) => {
-      const detail = entry.detail ? ` — ${entry.detail}` : "";
-      lines.push(`- ${entry.label || "Dashboard update"}${detail} (${formatAdminActivityTime(entry.timestamp)})`);
-    });
-  }
-
-  return lines.join("\n");
-}
-
-function renderAdminReviewPacket() {
-  const list = document.getElementById("adminDashboardReviewPacketList");
-  const status = document.getElementById("adminDashboardReviewPacketStatus");
-  updateAdminPanelSummaries();
-  if (!list && !status) return;
-
-  const items = dashboardPacketItems();
-  if (list) {
-    list.innerHTML = items
-      .map((item) => `<li><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.value)}</span></li>`)
-      .join("");
-  }
-  if (status) {
-    const checklist = adminChecklistStatus(loadAdminDashboardChecklist());
-    const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-    status.textContent = `Ready to copy · ${checklist.label} · ${evidence.label}`;
-  }
-}
-
-window.copyAdminReviewPacket = async function copyAdminReviewPacket() {
-  const button = document.getElementById("adminDashboardCopyPacketButton");
-  const previousText = button ? button.textContent : "";
-  try {
-    await copyTextToClipboard(buildAdminReviewPacketText());
-    recordAdminDashboardActivity("Review packet copied", currentAdminRecommendedAction.label || "");
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy review packet";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy review packet:", err);
-    if (button) {
-      button.textContent = "Copy failed";
-      button.title = "Could not copy review packet. Use the visible packet details or try again.";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy review packet";
-        button.removeAttribute("title");
-      }, 2200);
-    }
-  }
-};
+function updateAdminPanelSummaries(_snapshots = loadCycleSnapshot()) {}
 
 async function copyTextToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -5131,137 +3809,6 @@ window.copyFrontendTopUpCommand = async function copyFrontendTopUpCommand() {
   }
 };
 
-function buildAdminDeployPacketText() {
-  const snapshots = loadCycleSnapshot();
-  const frontend = snapshots.frontend || null;
-  const backend = snapshots.backend || null;
-  const wallet = snapshots.wallet || null;
-  const preDeploy = preDeployCheckStatus(snapshots);
-  const deployReadiness = deployReadinessStatus(snapshots);
-  const deployBuffer = frontendDeployBufferStatus(snapshots);
-  const topUpAmount = recommendedFrontendTopUpAmount(snapshots);
-  const evidence = reviewEvidenceStatus(loadAdminReviewEvidence());
-  const quality = typeof combinedQualityAttentionStatus === "function"
-    ? combinedQualityAttentionStatus()
-    : { label: "Quality pending", className: "pending" };
-  const lines = [
-    "Aion Operator Deploy Packet",
-    `Generated: ${new Date().toLocaleString()}`,
-    "",
-    "Status",
-    `- Pre-deploy: ${preDeploy.label}`,
-    `- Deploy readiness: ${deployReadiness.label}`,
-    `- Deploy buffer: ${deployBuffer.label}`,
-    `- Quality: ${quality.label}`,
-    `- Review evidence: ${evidence.label}`,
-    "",
-    "Cycles",
-    `- Frontend: ${frontend ? `${formatCycles(frontend.cycles)} · ${formatSnapshotAge(frontend)} old` : "Missing snapshot"}`,
-    `- Backend: ${backend ? `${formatCycles(backend.cycles)} · ${formatSnapshotAge(backend)} old` : "Missing snapshot"}`,
-    `- Wallet: ${wallet ? formatCycles(wallet.cycles) : "Missing balance"}`,
-    `- Movement: ${dashboardMetricText("healthCycleMovement")}`,
-    `- Recommended top-up: ${topUpAmount ? `${formatCycles(topUpAmount)} (${formatTopUpAmount(topUpAmount)})` : "Pending"}`,
-    `- Suggested frontend deploy reserve: ${formatCycles(ADMIN_FRONTEND_DEPLOY_RESERVE)}`,
-  ];
-  lines.push("");
-  lines.push("Deployment checklist");
-  lines.push("git diff --check");
-  lines.push("mops test");
-  lines.push("mops build");
-  lines.push("icp canister start teves_consulting_backend -e ic");
-  lines.push("icp canister start teves_consulting_frontend -e ic");
-  lines.push("icp build teves_consulting_backend");
-  lines.push("icp build teves_consulting_frontend");
-  lines.push("icp deploy teves_consulting_backend -e ic --mode upgrade");
-  lines.push("icp deploy teves_consulting_frontend -e ic --mode upgrade");
-  if (preDeploy.missing.length) {
-    lines.push("");
-    lines.push("Before deploy");
-    preDeploy.missing.forEach((item) => lines.push(`- ${item}`));
-  }
-  return lines.join("\n");
-}
-
-function buildCycleMovementHistoryText() {
-  const entries = loadCycleHistory();
-  const lines = [
-    "Aion Operator Cycle Movement",
-    `Generated: ${new Date().toLocaleString()}`,
-    "",
-  ];
-  if (!entries.length) {
-    lines.push("No cycle movement has been recorded yet.");
-    lines.push("Paste a second frontend, backend, or wallet snapshot to compare movement.");
-    return lines.join("\n");
-  }
-  entries.slice(0, 8).forEach((entry) => {
-    const status = cycleMovementStatus(entry);
-    const recorded = entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : "Unknown time";
-    lines.push(`- ${status.label} · ${formatCycles(entry.previousCycles)} to ${formatCycles(entry.cycles)} · ${recorded}`);
-  });
-  return lines.join("\n");
-}
-
-window.copyCycleMovementHistory = async function copyCycleMovementHistory() {
-  const button = document.getElementById("adminDashboardCopyMovementButton");
-  const status = document.getElementById("cycleSnapshotStatus");
-  const previousText = button ? button.textContent : "";
-  try {
-    await copyTextToClipboard(buildCycleMovementHistoryText());
-    recordAdminDashboardActivity("Cycle movement copied", cycleMovementStatus(loadCycleHistory()[0]).label);
-    if (status) {
-      status.textContent = "Cycle movement copied.";
-    }
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy movement";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy cycle movement:", err);
-    if (status) {
-      status.textContent = "Could not copy cycle movement. Review the visible movement history or paste a fresh snapshot and try again.";
-    }
-    if (button) {
-      button.textContent = "Copy failed";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy movement";
-      }, 2200);
-    }
-  }
-};
-
-window.copyAdminDeployPacket = async function copyAdminDeployPacket() {
-  const button = document.getElementById("adminDashboardCopyDeployPacketButton");
-  const status = document.getElementById("cycleSnapshotStatus");
-  const previousText = button ? button.textContent : "";
-  try {
-    await copyTextToClipboard(buildAdminDeployPacketText());
-    recordAdminDashboardActivity("Deploy packet copied", preDeployCheckStatus(loadCycleSnapshot()).label);
-    if (status) {
-      status.textContent = "Deploy packet copied.";
-    }
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy deploy packet";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy deploy packet:", err);
-    if (status) {
-      status.textContent = "Could not copy deploy packet. Review readiness and saved evidence, then try again.";
-    }
-    if (button) {
-      button.textContent = "Copy failed";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy deploy packet";
-      }, 2200);
-    }
-  }
-};
-
 window.copyAdminDashboardSummary = async function copyAdminDashboardSummary() {
   const button = document.getElementById("adminDashboardCopyButton");
   const previousText = button ? button.textContent : "";
@@ -5287,64 +3834,6 @@ window.copyAdminDashboardSummary = async function copyAdminDashboardSummary() {
   }
 };
 
-function buildAdminDashboardActionsText() {
-  const snapshots = loadCycleSnapshot();
-  const actions = dashboardActionQueue(snapshots);
-  const readiness = operatorReadinessScore(snapshots);
-  const lines = [
-    "Aion Operator Recommended Actions",
-    `Generated: ${new Date().toLocaleString()}`,
-    "Scope: dashboard guidance only; copying this does not execute an action.",
-    `Current state: ${dashboardMetricText("adminDashboardHeadline")}`,
-    `Operator readiness: ${dashboardMetricText("healthOperatorReadiness")}`,
-    `Freshness: ${dashboardMetricText("healthFreshness")}`,
-  ];
-  if (readiness.missing && readiness.missing.length) {
-    lines.push(`Missing readiness: ${readiness.missing.join(", ")}`);
-  }
-  lines.push("", "Actions");
-  actions.forEach((action, index) => {
-    const destination = dashboardActionDestination(action);
-    lines.push(`${index + 1}. ${action.label}${action.tag ? ` (${action.tag})` : ""}${destination ? ` — ${destination}` : ""}`);
-  });
-  return lines.join("\n");
-}
-
-window.copyAdminDashboardActions = async function copyAdminDashboardActions() {
-  const button = document.getElementById("adminDashboardCopyActionsButton");
-  const previousText = button ? button.textContent : "";
-  try {
-    await copyTextToClipboard(buildAdminDashboardActionsText());
-    recordAdminDashboardActivity("Copied next actions", currentAdminRecommendedAction.label || "");
-    if (button) {
-      button.textContent = "Copied";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy recommended actions";
-      }, 1600);
-    }
-  } catch (err) {
-    console.error("Could not copy next actions:", err);
-    if (button) {
-      button.textContent = "Copy failed";
-      button.title = "Could not copy recommended actions. Use the visible action queue or try again.";
-      window.setTimeout(() => {
-        button.textContent = previousText || "Copy recommended actions";
-        button.removeAttribute("title");
-      }, 2200);
-    }
-  }
-};
-
-function setCycleInputValue(kind, snapshot) {
-  const inputElement = document.getElementById(`${kind}CycleStatusInput`);
-  if (!inputElement || inputElement.value.trim() || !snapshot) return;
-  if (kind === "wallet") {
-    inputElement.value = `Balance: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")} cycles`;
-    return;
-  }
-  inputElement.value = `Canister Name: ${snapshot.canisterName || kind}\nCanister Id: ${snapshot.canisterId || ""}\nCycles: ${snapshot.cycles.toLocaleString().replaceAll(",", "_")}\nReserved cycles limit: ${snapshot.reservedLimit ? snapshot.reservedLimit.toLocaleString().replaceAll(",", "_") : ""}\nIdle cycles burned per day: ${snapshot.burnPerDay ? snapshot.burnPerDay.toLocaleString().replaceAll(",", "_") : ""}`;
-}
-
 function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   const frontend = snapshots.frontend || null;
   const backend = snapshots.backend || null;
@@ -5353,48 +3842,15 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   const backendSummary = document.getElementById("backendCycleSnapshotSummary");
   const walletSummary = document.getElementById("walletCycleSnapshotSummary");
   const topUpSummary = document.getElementById("frontendTopUpSummary");
+  const operationsSummary = document.getElementById("operationsReadinessSummary");
   const shortest = shortestCycleRunway(snapshots);
-  const oldest = oldestCycleSnapshot(snapshots);
-
-  if (!frontend) {
-    setAdminHealthMetric("healthFrontendCycles", "Add snapshot");
-  } else {
-    const percent = cyclePercent(frontend);
-    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
-    setAdminHealthMetric("healthFrontendCycles", `${formatCycles(frontend.cycles)}${percentLabel}`);
-  }
-
-  if (!backend) {
-    setAdminHealthMetric("healthBackendCycles", "Add snapshot");
-  } else {
-    const percent = cyclePercent(backend);
-    const percentLabel = percent === null ? "" : ` · ${percent.toFixed(1)}%`;
-    setAdminHealthMetric("healthBackendCycles", `${formatCycles(backend.cycles)}${percentLabel}`);
-  }
-
-  if (!wallet) {
-    setAdminHealthMetric("healthWalletCycles", "Add balance");
-  } else {
-    setAdminHealthMetric("healthWalletCycles", formatCycles(wallet.cycles));
-  }
-
-  const canisterStateElement = document.getElementById("healthCanisterState");
-  if (canisterStateElement) {
-    const canisterState = canisterStateStatus(snapshots);
-    canisterStateElement.innerHTML = `<span class="admin-cycle-runway-label ${canisterState.className}">${escapeHtml(canisterState.label)}</span>`;
-  }
-
-  const topUpPlanElement = document.getElementById("healthTopUpPlan");
-  if (topUpPlanElement) {
-    const topUpPlan = topUpPlanStatus(snapshots);
-    topUpPlanElement.innerHTML = `<span class="admin-cycle-runway-label ${topUpPlan.className}">${escapeHtml(topUpPlan.label)}</span>`;
-  }
 
   if (!shortest) {
     const runwayElement = document.getElementById("healthCycleRunway");
     if (runwayElement) {
       runwayElement.innerHTML = `Pending<span class="admin-cycle-runway-label pending">Pending</span>`;
     }
+    setAdminMetricProvenance("healthCycleRunway", "DERIVED", "needs cycle snapshots");
   } else {
     const label = ADMIN_CYCLE_LABELS[shortest.key] || shortest.key;
     const runway = shortest.days >= 365
@@ -5405,27 +3861,7 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
     if (runwayElement) {
       runwayElement.innerHTML = `${escapeHtml(runway)} · ${escapeHtml(label)}<span class="admin-cycle-runway-label ${runwayStatus.className}">${runwayStatus.label}</span>`;
     }
-  }
-
-  const snapshotAgeElement = document.getElementById("healthCycleSnapshotAge");
-  if (!oldest) {
-    if (snapshotAgeElement) {
-      snapshotAgeElement.innerHTML = `Pending<span class="admin-cycle-freshness-label pending">Pending</span>`;
-    }
-  } else {
-    const label = ADMIN_CYCLE_LABELS[oldest.key] || oldest.key;
-    const freshnessStatus = cycleFreshnessStatus(oldest.hours);
-    const days = Math.floor(oldest.hours / 24);
-    const ageLabel = oldest.hours < 1
-      ? "Less than 1 hour"
-      : oldest.hours < 24
-        ? `${Math.floor(oldest.hours)} hours`
-        : days === 1
-          ? "1 day"
-          : `${days} days`;
-    if (snapshotAgeElement) {
-      snapshotAgeElement.innerHTML = `${escapeHtml(ageLabel)} · ${escapeHtml(label)}<span class="admin-cycle-freshness-label ${freshnessStatus.className}">${freshnessStatus.label}</span>`;
-    }
+    setAdminMetricProvenance("healthCycleRunway", "DERIVED", "from cycle snapshots");
   }
 
   if (frontendSummary) {
@@ -5437,7 +3873,9 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   if (walletSummary) {
     walletSummary.innerHTML = walletCycleSnapshotSummaryHtml(wallet);
   }
-  renderCycleMovement();
+  if (operationsSummary) {
+    operationsSummary.innerHTML = operationsReadinessSummaryHtml(snapshots);
+  }
   if (topUpSummary) {
     topUpSummary.innerHTML = frontendTopUpSummaryHtml(snapshots);
   }
@@ -5445,57 +3883,16 @@ function renderCycleSnapshot(snapshots = loadCycleSnapshot()) {
   const topUpButton = document.getElementById("frontendTopUpButton");
   if (topUpButton) {
     const topUpAmount = recommendedFrontendTopUpAmount(snapshots);
+    topUpButton.disabled = !topUpAmount;
     topUpButton.textContent = topUpAmount
       ? `Copy top-up ${formatTopUpAmount(topUpAmount)}`
-      : "Copy recommended top-up";
+      : "No top-up action";
   }
 
-  const deployReadinessElement = document.getElementById("healthDeployReadiness");
-  if (deployReadinessElement) {
-    const deployReadiness = deployReadinessStatus(snapshots);
-    deployReadinessElement.innerHTML = `<span class="admin-cycle-runway-label ${deployReadiness.className}">${escapeHtml(deployReadiness.label)}</span>`;
-  }
-  renderFrontendDeployBuffer(snapshots);
-  renderPreDeployCheck(snapshots);
   refreshAdminRecommendedAction(snapshots);
   renderDashboardRefresh();
-  renderDashboardReview();
-  setCycleInputValue("frontend", frontend);
-  setCycleInputValue("backend", backend);
-  setCycleInputValue("wallet", wallet);
   renderAdminReviewEvidence();
-  renderAdminDashboardChecklist();
-  renderAdminDashboardNote();
-  renderAdminDashboardActivity();
 }
-
-window.saveCycleSnapshotFromInput = function saveCycleSnapshotFromInput(kind = "frontend") {
-  const input = document.getElementById(`${kind}CycleStatusInput`);
-  const status = document.getElementById("cycleSnapshotStatus");
-
-  try {
-    const snapshot = parseCycleStatusSnapshot(input ? input.value : "", kind);
-    const snapshots = loadCycleSnapshot();
-    recordCycleHistory({ [kind]: snapshot }, snapshots);
-    snapshots[kind] = snapshot;
-    persistCycleSnapshots(snapshots);
-    renderCycleSnapshot(snapshots);
-    if (snapshots.frontend && snapshots.backend) {
-      updateAdminDashboardChecklist({ snapshots: true });
-    }
-    recordAdminDashboardActivity(
-      `${ADMIN_CYCLE_LABELS[kind] || "Canister"} snapshot updated`,
-      `${formatCycles(snapshot.cycles)} cycles`
-    );
-    if (status) {
-      status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot updated.`;
-    }
-  } catch (err) {
-    if (status) {
-      status.textContent = `${err.message || "Could not parse cycle snapshot."} Paste fresh canister status output and try again.`;
-    }
-  }
-};
 
 window.saveCombinedCycleSnapshotsFromInput = function saveCombinedCycleSnapshotsFromInput() {
   const input = document.getElementById("combinedCycleStatusInput");
@@ -5504,7 +3901,6 @@ window.saveCombinedCycleSnapshotsFromInput = function saveCombinedCycleSnapshots
   try {
     const updates = parseCombinedCycleSnapshots(input ? input.value : "");
     const snapshots = loadCycleSnapshot();
-    recordCycleHistory(updates, snapshots);
     Object.assign(snapshots, updates);
     persistCycleSnapshots(snapshots);
     renderCycleSnapshot(snapshots);
@@ -5554,68 +3950,6 @@ window.clearCombinedCycleInput = function clearCombinedCycleInput() {
   }
 };
 
-window.saveCycleWalletFromInput = function saveCycleWalletFromInput() {
-  const input = document.getElementById("walletCycleStatusInput");
-  const status = document.getElementById("cycleSnapshotStatus");
-
-  try {
-    const snapshot = parseCycleWalletSnapshot(input ? input.value : "");
-    const snapshots = loadCycleSnapshot();
-    recordCycleHistory({ wallet: snapshot }, snapshots);
-    snapshots.wallet = snapshot;
-    persistCycleSnapshots(snapshots);
-    renderCycleSnapshot(snapshots);
-    updateAdminDashboardChecklist({ wallet: true });
-    recordAdminDashboardActivity("Wallet balance updated", `${formatCycles(snapshot.cycles)} cycles`);
-    if (status) {
-      status.textContent = "Cycles wallet balance updated.";
-    }
-  } catch (err) {
-    if (status) {
-      status.textContent = `${err.message || "Could not parse cycles wallet balance."} Paste fresh wallet balance output and try again.`;
-    }
-  }
-};
-
-window.clearCycleSnapshot = function clearCycleSnapshot(kind = "frontend") {
-  const snapshots = loadCycleSnapshot();
-  delete snapshots[kind];
-  persistCycleSnapshots(snapshots);
-  const input = document.getElementById(`${kind}CycleStatusInput`);
-  const status = document.getElementById("cycleSnapshotStatus");
-  if (input) input.value = "";
-  renderCycleSnapshot(snapshots);
-  if (kind === "frontend" || kind === "backend") {
-    updateAdminDashboardChecklist({ snapshots: false });
-  }
-  if (kind === "wallet") {
-    updateAdminDashboardChecklist({ wallet: false });
-  }
-  recordAdminDashboardActivity(`${ADMIN_CYCLE_LABELS[kind] || "Canister"} snapshot cleared`);
-  if (status) {
-    status.textContent = `${ADMIN_CYCLE_LABELS[kind] || "Canister"} cycle snapshot cleared.`;
-  }
-};
-
-window.clearCycleHistory = function clearCycleHistory() {
-  const status = document.getElementById("cycleSnapshotStatus");
-  persistCycleHistory([]);
-  renderCycleMovement();
-  renderLocalBackupMetric();
-  recordAdminDashboardActivity("Cycle movement cleared");
-  if (status) {
-    status.textContent = "Cycle movement history cleared.";
-  }
-};
-
-window.markDashboardReviewed = function markDashboardReviewed() {
-  const review = { reviewedAt: new Date().toISOString() };
-  persistDashboardReview(review);
-  renderDashboardReview(review);
-  renderCycleSnapshot(loadCycleSnapshot());
-  recordAdminDashboardActivity("Dashboard reviewed", "Operator marked current state reviewed");
-};
-
 window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
   const button = document.getElementById("adminDashboardRefreshButton");
   const previousText = button ? button.textContent : "";
@@ -5627,6 +3961,7 @@ window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
   if (button) {
     button.disabled = true;
     button.textContent = "Refreshing...";
+    button.title = "Refreshes live memories, golden-test state, and feedback. Cycle and validation snapshots remain manual.";
   }
 
   try {
@@ -5644,6 +3979,7 @@ window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
     if (button) {
       button.disabled = false;
       button.textContent = previousText || "Refresh dashboard";
+      button.title = "Refreshes live memories, golden-test state, and feedback. Cycle and validation snapshots remain manual.";
     }
   }
 };
@@ -5652,9 +3988,10 @@ window.refreshAdminDashboardData = async function refreshAdminDashboardData() {
 const savedGolden = loadSavedGoldenResults();
 
 if (savedGolden) {
-  renderGoldenTests(savedGolden);
+  renderGoldenTests(savedGolden, { save: false, provenance: { kind: "CACHED", detail: "browser cache" } });
 }
-restoreCachedSiteMetrics();
+setAdminOverviewProvenanceDefaults();
+initMemoryListControls();
 renderCycleSnapshot();
 renderGoldenDashboardSignal(loadSavedGoldenResults());
 renderFeedbackDashboardSignal(latestFeedback);
