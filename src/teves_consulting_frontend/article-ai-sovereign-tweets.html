@@ -316,6 +316,24 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+  .post-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 42px;
+    height: 28px;
+    color: var(--muted);
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .post-counter svg {
+    width: 21px;
+    height: 21px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    fill: none;
+    stroke-linecap: round;
+  }
   .back-link {
     display: inline-flex;
     margin: 34px 18px 0;
@@ -585,8 +603,26 @@
   setTheme(savedTheme || preferredTheme);
   toggle.addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
 
+  const freeWillCounters = [
+    { letter: 'F', value: 6 },
+    { letter: 'R', value: 18 },
+    { letter: 'E', value: 5 },
+    { letter: 'E', value: 5 },
+    { letter: 'W', value: 23 },
+    { letter: 'I', value: 9 },
+    { letter: 'L', value: 12 },
+    { letter: 'L', value: 12 },
+  ];
+
   document.querySelectorAll('.post').forEach((post, index) => {
     post.id = post.id || `post-${index + 1}`;
+    const counterValue = freeWillCounters[index % freeWillCounters.length];
+    const counter = document.createElement('span');
+    counter.className = 'post-counter';
+    counter.setAttribute('aria-label', `Free Will: ${counterValue.letter} equals ${counterValue.value}`);
+    counter.title = `Free Will: ${counterValue.letter}`;
+    counter.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20v-4"/><path d="M9 20v-8"/><path d="M15 20V8"/><path d="M21 20V4"/></svg><span>${counterValue.value}</span>`;
+    post.querySelector('[data-action="share"]')?.before(counter);
   });
 
   document.querySelectorAll('[data-action="like"]').forEach((button) => {
